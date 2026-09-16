@@ -1,4 +1,4 @@
-# Windflaw Flow Experiment — V1 Implementation Spec
+# Windfall Flow Experiment — V1 Implementation Spec
 
 Handoff brief for building the first version of the generative flow visual. Written to be
 self-contained: everything needed to implement is in this file. Reference imagery lives in
@@ -139,7 +139,7 @@ iterations change *inputs*, not mechanics:
 - surplus wind in Scotland → high emission north, damped/lighter activity travelling south
 - England's generation mix → more sources with different `type` and palette (solar
   simplified to major solar farms)
-- information layer (current windflaw.co.uk content) → HTML/SVG overlaid on the canvas,
+- information layer (current windfall.scot content) → HTML/SVG overlaid on the canvas,
   not drawn into it
 
 Nothing in V1 should need undoing for any of these.

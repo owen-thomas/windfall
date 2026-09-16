@@ -2,10 +2,11 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "windflaw-dev",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["vite", "--port", "5177", "--strictPort"],
-      "port": 5177
+      "name": "windfall-dev",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "npx vite --port \"${PORT:-5177}\" --strictPort"],
+      "port": 5177,
+      "autoPort": true
     }
   ]
 }

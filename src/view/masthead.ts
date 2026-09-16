@@ -44,7 +44,7 @@ export function mastheadView(): View {
     el(
       'div',
       { class: 'masthead__id' },
-      el('h1', { class: 'wordmark', text: 'Windflaw' }),
+      el('h1', { class: 'wordmark', text: 'Windfall' }),
       note
     ),
     clock
@@ -83,7 +83,7 @@ export function mastheadView(): View {
         setAttr(note, 'data-role', 'warning');
         setText(
           note,
-          'Windflaw is not reaching its data sources. Nothing on this page is current.'
+          'Windfall is not reaching its data sources. Nothing on this page is current.'
         );
         return;
       }

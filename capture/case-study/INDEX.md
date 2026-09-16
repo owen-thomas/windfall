@@ -1,7 +1,7 @@
 # Case study capture pack
 
-Assembled 2026-07-28, against `v1.0` ([f47746a](https://github.com/owen-thomas/windflaw/commit/f47746a)), the commit live at
-[windflaw.co.uk](https://windflaw.co.uk) when this pack was built.
+Assembled 2026-07-28, against `v1.0` ([f47746a](https://github.com/owen-thomas/windfall/commit/f47746a)), the commit live at
+[windfall.scot](https://windfall.scot) when this pack was built.
 
 **[DECISIONS.md](../../DECISIONS.md) is the primary source.** It carries the reasoning —
 what was tried, what was rejected, and why — for everything summarised here. This pack is
@@ -20,7 +20,7 @@ everything below must be read:
 
 ## states/ — all seven reachable states, plus true live
 
-Captured at 1440×900 from `https://windflaw.co.uk` on 2026-07-28. Six of the seven are
+Captured at 1440×900 from `https://windfall.scot` on 2026-07-28. Six of the seven are
 reached via `?state=<name>` — production-shipped fixtures per DECISIONS 012 and 269,
 specifically because four of the five original states (calm, degraded, stale, waiting)
 cannot be summoned from the real grid on demand.
@@ -51,8 +51,8 @@ actual git history under identical synthetic conditions — every `/api/*` respo
 
 | File | Commit | What it shows |
 |---|---|---|
-| `before-cold-load.png` | [`746ac08`](https://github.com/owen-thomas/windflaw/commit/746ac08) (parent of the fix) | Three confident false claims — "not reaching its data sources," "unavailable," "no reading arrived" — asserted about a fetch that simply hadn't resolved yet |
-| `after-cold-load.png` | [`b1f0c44`](https://github.com/owen-thomas/windflaw/commit/b1f0c44) (the fix, and everything since) | The same synthetic delay, same capture point: a neutral "Reading… Windflaw is asking Elexon what is being held down this half-hour. Nothing is claimed until it answers." |
+| `before-cold-load.png` | [`746ac08`](https://github.com/owen-thomas/windfall/commit/746ac08) (parent of the fix) | Three confident false claims — "not reaching its data sources," "unavailable," "no reading arrived" — asserted about a fetch that simply hadn't resolved yet |
+| `after-cold-load.png` | [`b1f0c44`](https://github.com/owen-thomas/windfall/commit/b1f0c44) (the fix, and everything since) | The same synthetic delay, same capture point: a neutral "Reading… Windfall is asking Elexon what is being held down this half-hour. Nothing is claimed until it answers." |
 
 Same delay, same timing, same viewport — the only variable is the commit.
 
