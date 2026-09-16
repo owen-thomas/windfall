@@ -1,0 +1,496 @@
+/*
+ * /map — step 1: geometry and composition skeleton.
+ *
+ * Light-only (021, 022): cream ground, white island, inky wind. Layout is
+ * a wide desktop composition — the island fills roughly the left 60% of
+ * the viewport, with Scotland's mix and the curtailment headline stacked
+ * to its right, England's mix and the border caption overlaid on the map
+ * itself (positioned from the same Projection that draws the coast — see
+ * main.ts), and narration/colophon spanning full width beneath. Below
+ * ~768px everything stacks in reading order (022).
+ *
+ * Placeholder copy only in step 1 — real lengths, no live binding. Mix
+ * bars and the share bar reuse app.css's fuel-colour attribute selectors
+ * (data-fuel, via the shared --fuel-* tokens) but are otherwise redrawn
+ * here rather than imported, since app.css carries a lot of dashboard-only
+ * dark-mode assumptions this page doesn't share.
+ */
+
+html {
+  background: var(--ink-void);
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background: var(--ink-ground);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-weight: var(--wt-regular);
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: var(--figures);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.map-screen {
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  gap: var(--gap-lg);
+  min-height: 100svh;
+  max-width: 92rem;
+  margin-inline: auto;
+  padding: var(--gap-md) var(--page-x) var(--gap-lg);
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: var(--wt-medium);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* --- Masthead ------------------------------------------------------------ */
+
+.map-masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gap-md);
+  padding-bottom: var(--gap-md);
+  border-bottom: var(--rule) solid var(--ink-line);
+}
+
+.map-masthead__id {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--gap-md);
+  max-width: 60ch;
+}
+
+.map-wordmark {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: var(--wt-bold);
+  letter-spacing: -0.02em;
+}
+
+.map-standfirst {
+  margin: 0;
+  max-width: 52ch;
+  font-size: 0.9rem;
+  font-weight: var(--wt-light);
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.map-clock {
+  display: grid;
+  justify-items: end;
+  gap: 0.15rem;
+  font-size: 0.8rem;
+  text-align: right;
+  color: var(--text-muted);
+}
+
+.map-clock__period {
+  font-weight: var(--wt-medium);
+  color: var(--text-secondary);
+}
+
+/* --- Composition: map + info column -------------------------------------- */
+
+/*
+ * Grid for layout (map column vs info column); position:relative so the
+ * England panel and border caption — direct children, not nested in
+ * .map__stage — can be placed in the same pixel coordinate space the
+ * Projection itself uses (main.ts positions them with getBoundingClientRect
+ * math against this element, not percentages, since the two grid columns
+ * aren't equal width). Absolutely positioned children of a grid container
+ * opt out of grid placement entirely, so this composes cleanly with the
+ * grid-column placement below.
+ */
+.composition {
+  position: relative;
+  display: grid;
+  grid-template-columns: 60% 1fr;
+  gap: var(--gap-lg);
+  align-items: stretch;
+}
+
+.map__stage {
+  grid-column: 1;
+  position: relative;
+  min-height: 32rem;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.map__svg,
+.map__canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.map__island {
+  fill: #fff;
+  stroke: none;
+}
+
+.map__border-line {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.map__overlay {
+  position: absolute;
+  z-index: 2;
+  /* main.ts sets top/left in px, computed against .composition's own
+   * bounding box — see its positionOverlay(). Placeholder position until
+   * the first layout pass runs, so nothing flashes at the origin. */
+  visibility: hidden;
+}
+
+.map__wind-note {
+  position: absolute;
+  left: var(--gap-sm);
+  bottom: var(--gap-sm);
+  z-index: 2;
+  margin: 0;
+  max-width: 28ch;
+  font-size: 0.68rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+/* Alignment debug canvas (toggle 'd') — see main.ts. Drawn at device-pixel
+ * resolution like the SVG/flow canvas, sitting above both. */
+.map__debug {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.info-column {
+  grid-column: 2;
+  display: grid;
+  align-content: start;
+  gap: var(--gap-md);
+}
+
+/* --- Panels: Scotland, England (overlaid), the headline ------------------ */
+
+.panel {
+  display: grid;
+  gap: var(--gap-hair);
+  padding: var(--gap-sm) var(--gap-md);
+  border-radius: 4px;
+  background: rgb(245 242 234 / 0.92);
+  box-shadow: inset 0 0 0 1px var(--ink-line);
+  backdrop-filter: blur(6px);
+}
+
+.panel--england {
+  max-width: 20rem;
+  transform: translate(-50%, -50%);
+}
+
+.panel__place {
+  margin: 0;
+  font-size: clamp(1.15rem, 1.8vw, 1.5rem);
+  font-weight: var(--wt-light);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.panel__reading {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: var(--wt-medium);
+}
+
+.panel--scotland .panel__lead {
+  color: var(--fuel-wind);
+}
+
+.panel--england .panel__lead {
+  color: var(--fuel-gas);
+}
+
+.panel__sep {
+  color: var(--ink-line-strong);
+}
+
+.panel__intensity {
+  font-weight: var(--wt-light);
+  color: var(--text-secondary);
+}
+
+.panel__caption {
+  margin: 0.2rem 0 0;
+  max-width: 40ch;
+  font-size: 0.8rem;
+  font-weight: var(--wt-light);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.mix {
+  display: flex;
+  height: 1.6rem;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--ink-line);
+  box-shadow: inset 0 0 0 1px var(--ink-line-strong);
+  margin-top: 0.2rem;
+}
+
+.mix__seg {
+  flex-grow: 0;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  box-shadow: inset -1px 0 0 rgb(233 229 220 / 0.55);
+}
+
+.mix__label {
+  padding-inline: 0.4rem;
+  font-size: 0.6rem;
+  font-weight: var(--wt-medium);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: #fff;
+}
+
+.mix__seg[data-fuel='wind'] { background: var(--fuel-wind); }
+.mix__seg[data-fuel='hydro'] { background: var(--fuel-hydro); }
+.mix__seg[data-fuel='solar'] { background: var(--fuel-solar); }
+.mix__seg[data-fuel='nuclear'] { background: var(--fuel-nuclear); }
+.mix__seg[data-fuel='biomass'] { background: var(--fuel-biomass); }
+.mix__seg[data-fuel='imports'] { background: var(--fuel-imports); }
+.mix__seg[data-fuel='gas'] { background: var(--fuel-gas); }
+.mix__seg[data-fuel='coal'] { background: var(--fuel-coal); }
+.mix__seg[data-fuel='other'] { background: var(--fuel-other); }
+
+/* --- Headline panel -------------------------------------------------------*/
+
+.panel--headline .eyebrow {
+  margin: 0;
+}
+
+.panel__figure {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: var(--wt-light);
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+  color: var(--fuel-wind);
+}
+
+.panel__predicate {
+  margin: 0;
+  max-width: 34ch;
+  font-size: 0.95rem;
+  font-weight: var(--wt-light);
+  line-height: 1.35;
+  color: var(--text-primary);
+}
+
+.share {
+  height: 0.5rem;
+  border-radius: 2px;
+  background: var(--ink-line);
+  box-shadow: inset 0 0 0 1px var(--ink-line-strong);
+  overflow: hidden;
+  margin-top: 0.3rem;
+}
+
+.share__fill {
+  height: 100%;
+  background-color: var(--curtailed);
+  background-image: var(--hatch);
+  box-shadow: inset -1px 0 0 var(--curtailed-edge);
+}
+
+.share__note,
+.panel__settled {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: var(--wt-light);
+  color: var(--text-muted);
+}
+
+.panel__farms {
+  margin: 0.2rem 0 0;
+  font-size: 0.76rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.farms__mw {
+  color: var(--curtailed-edge);
+  font-weight: var(--wt-medium);
+}
+
+.panel__settled {
+  padding-top: 0.3rem;
+  margin-top: 0.2rem;
+  border-top: var(--rule) solid var(--ink-line);
+}
+
+/* --- Border caption (overlaid on the map, at the border's own position) --*/
+
+.map__border-caption {
+  max-width: 24rem;
+  text-align: center;
+  transform: translate(-50%, -50%);
+}
+
+.border-caption__body {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  font-weight: var(--wt-light);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* --- Narration & colophon ------------------------------------------------- */
+
+.map-narration {
+  display: grid;
+  gap: 0.35rem;
+  padding-top: var(--gap-sm);
+  border-top: var(--rule) solid var(--ink-line);
+}
+
+.map-narration__body {
+  margin: 0;
+  max-width: 68ch;
+  padding-left: var(--gap-md);
+  border-left: 2px solid var(--fuel-wind);
+  font-size: clamp(1rem, 1.4vw, 1.15rem);
+  font-weight: var(--wt-light);
+  line-height: 1.55;
+  color: var(--text-primary);
+}
+
+.map-narration__strap {
+  margin: 0;
+  padding-left: calc(var(--gap-md) + 2px);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.map-colophon {
+  display: grid;
+  gap: var(--gap-xs);
+  padding-top: var(--gap-xs);
+  border-top: var(--rule) solid var(--ink-line);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.method__summary {
+  cursor: pointer;
+  font-weight: var(--wt-medium);
+  color: var(--text-secondary);
+}
+
+.method p {
+  margin: var(--gap-xs) 0 0;
+  max-width: 74ch;
+  font-weight: var(--wt-light);
+  line-height: 1.55;
+}
+
+.map-colophon__byline {
+  margin: 0;
+  color: var(--ink-line-strong);
+}
+
+/* --- Mobile stack ---------------------------------------------------------
+ * Below ~768px the island fills the width and the panels stack beneath it
+ * in reading order: Scotland, headline, border caption, England (022).
+ * Overlays leave the map's coordinate space entirely and become ordinary
+ * flow content, in that order, via CSS `order` on a single flex column.
+ */
+@media (max-width: 48rem) {
+  .map-screen {
+    padding: var(--gap-sm) var(--gap-sm) var(--gap-lg);
+    gap: var(--gap-md);
+  }
+
+  .map-masthead {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--gap-xs);
+  }
+
+  .map-clock {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .composition {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap-md);
+  }
+
+  .map__stage {
+    order: 1;
+    min-height: 20rem;
+  }
+
+  .map__overlay,
+  .map__wind-note {
+    position: static;
+    visibility: visible;
+    transform: none;
+    max-width: none;
+    margin-top: var(--gap-sm);
+  }
+
+  .map__wind-note {
+    padding: 0 var(--gap-sm);
+  }
+
+  .info-column {
+    display: contents;
+  }
+
+  .panel--scotland {
+    order: 2;
+  }
+
+  .panel--headline {
+    order: 3;
+  }
+
+  .map__border-caption {
+    order: 4;
+  }
+
+  .panel--england {
+    order: 5;
+  }
+}

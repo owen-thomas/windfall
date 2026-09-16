@@ -46,7 +46,7 @@
  * Run with:
  *   npx tsx scripts/flow-harness.ts [--particles=3000] [--seconds=60] [--legacy]
  *     [--baseFieldMode=divergent|south] [--noDensity]
- *     [--noiseMode=transverse|isotropicCurl] [--noConform]
+ *     [--noiseMode=transverse|isotropicCurl] [--noConform] [--ring=ne|ons]
  *
  * --legacy reproduces step 1's fixed 4-9s age-budget ceiling (only), for a
  * true before/after comparison of just that fix in isolation from 2a-2e.
@@ -63,9 +63,16 @@
  */
 
 import { performance } from 'node:perf_hooks';
-import { buildWorld } from '../src/flow/world';
+import { buildWorld, GB_RING } from '../src/flow/world';
 import { ParticleSystem, type DeathCause } from '../src/flow/particles';
 import { DEFAULT_FIELD_PARAMS, getDefaultNoise3, type FieldParams, southness } from '../src/flow/field';
+import gbCountries from '../src/map/data/gb-countries.json';
+
+/** Step 1 of the map plan: buildWorld now takes the ring explicitly, so this harness can compare the Natural Earth ring /flow is tuned against with the ONS ring /map uses, without retuning anything. */
+const RINGS = {
+  ne: GB_RING,
+  ons: (gbCountries as unknown as { island: { ring: [number, number][] } }).island.ring,
+};
 
 interface Args {
   particles: number;
@@ -81,6 +88,8 @@ interface Args {
   noiseMode: FieldParams['noiseMode'];
   /** 2i A/B: --noConform disables the coast-conform band for comparison. */
   conformEnabled: boolean;
+  /** Windfall_Map_Spec.md step 1: --ring=ons runs against the ONS mainland ring /map uses, instead of the Natural Earth ring /flow is tuned against. */
+  ring: keyof typeof RINGS;
 }
 
 function parseArgs(): Args {
@@ -97,6 +106,10 @@ function parseArgs(): Args {
   if (noiseMode !== 'transverse' && noiseMode !== 'isotropicCurl') {
     throw new Error(`--noiseMode must be 'transverse' or 'isotropicCurl', got '${noiseMode}'`);
   }
+  const ring = get('ring', 'ne');
+  if (ring !== 'ne' && ring !== 'ons') {
+    throw new Error(`--ring must be 'ne' or 'ons', got '${ring}'`);
+  }
   return {
     particles: Number(get('particles', '3000')),
     seconds: Number(get('seconds', '60')),
@@ -109,6 +122,7 @@ function parseArgs(): Args {
     densityEnabled: !argv.includes('--noDensity'),
     noiseMode,
     conformEnabled: !argv.includes('--noConform'),
+    ring,
   };
 }
 
@@ -131,7 +145,7 @@ function meanAndStddev(values: number[]): { mean: number; stddev: number } {
 }
 
 function run(args: Args) {
-  const world = buildWorld(args.width, args.height);
+  const world = buildWorld(RINGS[args.ring], args.width, args.height);
   const fieldParams: FieldParams = {
     ...DEFAULT_FIELD_PARAMS,
     baseFieldMode: args.baseFieldMode,
@@ -222,7 +236,7 @@ function run(args: Args) {
   const totalParticleSeconds = args.particles * args.seconds;
 
   console.log(
-    `\n=== flow-harness: ${args.particles} particles, ${args.seconds}s sim, ` +
+    `\n=== flow-harness: ${args.particles} particles, ${args.seconds}s sim, ring=${args.ring}, ` +
       `ageBudgetMode=${args.ageBudgetMode}, baseFieldMode=${args.baseFieldMode}, ` +
       `densityEnabled=${args.densityEnabled}, noiseMode=${args.noiseMode}, ` +
       `conformEnabled=${args.conformEnabled}, ${args.width}x${args.height} ===\n`,

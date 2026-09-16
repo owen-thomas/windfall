@@ -1,0 +1,43 @@
+/*
+ * Light tokens for /map — provisional, per DECISIONS 021/022. Loaded
+ * *after* tokens.css and only by /map, so `/` and `/flow` keep the dark
+ * ground untouched (011: a light variant is a second design, not a
+ * setting; this is that design, scoped to its own page).
+ *
+ * Cream ground and --fuel-wind are lifted directly from the flow's own
+ * LIGHT_PALETTE (src/flow/palette.ts) rather than re-eyeballed, so the
+ * page's wind colour and the flow's stroke colour are the same hue by
+ * construction: backgroundRGB 233,229,220 -> #e9e5dc; the palette's
+ * baseHue 216 at full saturation/its tuned lightness -> #0f5fd6, sampled
+ * from the same reference (Digital Art.jpg) palette.ts already cites.
+ *
+ * Everything else here — ink, secondary fuels, signal colours — is a
+ * first pass to get the page standing, not a settled identity. The
+ * foundations pass (step 4) redraws all of it in Figma against the real
+ * proportions.
+ */
+
+:root {
+  --ink-void: #e9e5dc;
+  --ink-ground: #e9e5dc;
+  --ink-raised: #f5f2ea;
+  --ink-line: #d8d2c4;
+  --ink-line-strong: #b8b0a0;
+
+  --text-primary: #1c1f16;
+  --text-secondary: #4a4d40;
+  --text-muted: #7a7768;
+
+  --fuel-wind: #0f5fd6;
+  --fuel-gas: #c4632b;
+
+  --curtailed: #b9cdf0;
+  --curtailed-edge: #0f5fd6;
+
+  --signal-ok: #0f5fd6;
+  --signal-ageing: #a8790f;
+  --signal-stale: #c4632b;
+  --signal-failed: #b13d2c;
+
+  --hatch: repeating-linear-gradient(-45deg, transparent 0 3px, rgb(15 95 214 / 0.22) 3px 4px);
+}

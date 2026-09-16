@@ -113,12 +113,13 @@ function snapInside(
 }
 
 export function buildWorld(
+  ring: [number, number][],
   viewportWidth: number,
   viewportHeight: number,
   options: WorldBuildOptions = {},
 ): World {
-  const projection = buildProjection(GB_RING, viewportWidth, viewportHeight);
-  const mask = buildRasterMask(GB_RING, projection, viewportWidth, viewportHeight);
+  const projection = buildProjection(ring, viewportWidth, viewportHeight);
+  const mask = buildRasterMask(ring, projection, viewportWidth, viewportHeight);
   const distanceField = buildDistanceField(mask);
   const geodesicField = buildGeodesicField(mask);
 
