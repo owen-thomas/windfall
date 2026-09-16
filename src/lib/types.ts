@@ -58,6 +58,15 @@ export interface RegionalState {
   southScotland: RegionState | null;
   southEngland: RegionState | null;
   southEastEngland: RegionState | null;
+  /**
+   * England as a whole, published directly by Carbon Intensity (regionid 15)
+   * — the map page's England mix (Windfall_Map_Spec.md §2, decision 3 in
+   * DECISIONS 021: not South England, which reads as cherry-picked, and not
+   * a modelled England-and-Wales blend, which 021 found isn't a stable
+   * weighted sum of the published country figures). `/` keeps using
+   * `southEngland`/`southEastEngland`; this is additive.
+   */
+  england: RegionState | null;
 }
 
 export interface GridResponse {

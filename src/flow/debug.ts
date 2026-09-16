@@ -12,7 +12,13 @@ export type DebugLayer = 'coastline' | 'mask' | 'sdf' | 'gradient';
 export function renderDebugOverlay(
   world: World,
   layers: Set<DebugLayer>,
-  ring: [number, number][],
+  /**
+   * Every land ring to stroke for the 'coastline' layer — the mainland plus,
+   * on /map, every drawn island (step 3, Part A.5: "no particle may be
+   * drawn outside a mask cell", checkable only if every drawn shape's edge
+   * is on screen alongside the mask tint). /flow passes a single-ring array.
+   */
+  rings: [number, number][][],
 ): HTMLCanvasElement {
   const { mask, distanceField, projection } = world;
   const canvas = document.createElement('canvas');
@@ -83,14 +89,16 @@ export function renderDebugOverlay(
   }
 
   if (layers.has('coastline')) {
-    const points = ring.map(projection.project);
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
     ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(points[0][0], points[0][1]);
-    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
-    ctx.closePath();
-    ctx.stroke();
+    for (const ring of rings) {
+      const points = ring.map(projection.project);
+      ctx.beginPath();
+      ctx.moveTo(points[0][0], points[0][1]);
+      for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
+      ctx.closePath();
+      ctx.stroke();
+    }
   }
 
   return canvas;

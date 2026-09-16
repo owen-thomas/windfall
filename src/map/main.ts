@@ -1,21 +1,26 @@
 /**
- * Boot for /map — Windfall_Map_Spec.md step 2: real farms, real output.
- * Step 1 proved the geometry (one Projection, one mask, no drift between
- * the SVG coast and the canvas containment — DECISIONS 022). This step
- * replaces the seven fictional /flow sources with the 76 real Scottish wind
- * farms (src/map/farmSources.ts, built from farms.json + the live
- * `farms` payload), and wires the state machinery — live fetch, `?state=`
- * fixtures, the `[`/`]` cycler — so those sources have real rates to show.
+ * Boot for /map — Windfall_Map_Spec.md step 3: islands, composition fixes,
+ * and the information layer for real.
  *
- * The information layer (Scotland, England, headline, border-caption
- * panels) stays placeholder copy in this step (step 3 writes it live) —
- * every panel carries a visible "Placeholder" tag (map.css) so a gate
- * screenshot is never mistaken for a live claim that contradicts the real,
- * live flow underneath it.
+ * Step 1 proved the geometry (DECISIONS 022); step 2 replaced the seven
+ * fictional /flow sources with the 76 real farms and wired the state
+ * machinery (DECISIONS 023). This step draws the islands the gate 2 review
+ * asked for, fixes the England-panel and border-caption composition, and
+ * replaces every placeholder panel with the real `src/view` modules —
+ * mastheadView, bandView, headlineView, narrationView, colophonView reused
+ * verbatim (both their DOM and, via `../styles/app.css` imported below,
+ * their CSS — map.css only ever overrides the composition/overlay layer and
+ * the compact-card treatment, never redraws the component styles
+ * themselves) — plus a new borderView that reuses constraintView's copy.
+ * The whole DOM tree is built here rather than in map/index.html, mirroring
+ * src/main.ts's own `app.replaceChildren(...)` pattern, because most of
+ * what's on screen now comes from shared view modules rather than static
+ * markup.
  */
 
 import '../styles/tokens.css';
 import '../styles/tokens-light.css';
+import '../styles/app.css';
 import './map.css';
 
 import { DEFAULT_FIELD_PARAMS, type FieldParams } from '../flow/field';
@@ -37,12 +42,52 @@ import { DEFAULT_RATE_PARAMS, type RateParams } from './rate';
 import { createMapControlPanel } from './controls';
 import { fetchCoreFeeds } from '../lib/client';
 import { scenarioByName, SCENARIOS } from '../lib/scenarios';
+import { emptyFeeds, type AppState } from '../lib/state';
 import type { FarmNow } from '../lib/types';
+
+import { el, setText, type View } from '../view/dom';
+import { mastheadView } from '../view/masthead';
+import { bandView, ENGLAND, SCOTLAND } from '../view/band';
+import { headlineView } from '../view/headline';
+import { borderView } from '../view/border';
+import { narrationView } from '../view/narration';
+import { colophonView } from '../view/colophon';
+import { toggleView } from '../view/toggle';
+import { buildProjection } from '../flow/projection';
+
+interface IslandRing {
+  name: string;
+  ring: [number, number][];
+}
 
 const ISLAND_RING = (gbCountries as unknown as { island: { ring: [number, number][] } }).island
   .ring;
 const BORDER_LINE = (gbCountries as unknown as { border: { line: [number, number][] } }).border
   .line;
+const ALL_ISLANDS = (gbCountries as unknown as { islands: IslandRing[] }).islands;
+
+/**
+ * Part A.2 (the extent decision): true extent draws Shetland where it
+ * actually is, at the cost of shrinking the mainland to fit it in — the
+ * whole reason to prefer it is that it's the only mode where Viking's
+ * corridor is a real, connected, in-position thing rather than a decorative
+ * aside. Inset is the documented fallback: Shetland (and its outlying isles,
+ * Yell/Unst) drop out of the main stage's own projection fit and instead
+ * render in a small, separately-projected box (buildInset below) — a static
+ * comparison, not a second live map, since a corridor needs both its ends in
+ * one coordinate space and the inset deliberately isn't. Toggle with 't' for
+ * the gate screenshot pair; true extent is the shipped default (see
+ * DECISIONS 024 for the measured mainland heights that decided it).
+ */
+type ExtentMode = 'trueExtent' | 'inset';
+let extentMode: ExtentMode = 'trueExtent';
+const SHETLAND_ARCHIPELAGO = new Set(['Shetland Mainland', 'Yell', 'Unst']);
+
+function islandsForFit(): IslandRing[] {
+  return extentMode === 'trueExtent'
+    ? ALL_ISLANDS
+    : ALL_ISLANDS.filter((i) => !SHETLAND_ARCHIPELAGO.has(i.name));
+}
 
 /**
  * Two positions tried for each projection-placed panel, per the step 1 gate
@@ -51,8 +96,15 @@ const BORDER_LINE = (gbCountries as unknown as { border: { line: [number, number
  * review rather than something to reconstruct from a screenshot.
  */
 const ENGLAND_LABEL_CANDIDATES = {
-  /** Irish Sea, between Anglesey and the Isle of Man. */
-  irishSea: [53.5, -4.6] as [number, number],
+  /**
+   * Central Irish Sea, well south and west of the Solway border caption —
+   * moved further out than step 2's point (DECISIONS 023's [53.5,-4.6] sat
+   * only ~6px clear of the coast, and stacked almost directly on top of the
+   * Solway border caption once that moved back per Part B.2) so the two
+   * cards don't collide even though the England card itself is now narrower
+   * (Part B.1).
+   */
+  irishSea: [51.9, -5.6] as [number, number],
   /** Celtic Sea, south-west of Cornwall. */
   celticSea: [49.7, -6.6] as [number, number],
 };
@@ -62,34 +114,105 @@ const BORDER_CAPTION_CANDIDATES = {
   /** Solway/Irish Sea, west of the border. */
   solway: [54.3, -4.27] as [number, number],
 };
-/** DECISIONS 023 records which candidate was kept and why. */
+/** DECISIONS 024 records which candidate was kept and why. Part B.2: the England panel's narrowing frees up room, so the caption moves back to the Solway side. */
 let englandLabelCandidate: keyof typeof ENGLAND_LABEL_CANDIDATES = 'irishSea';
-let borderCaptionCandidate: keyof typeof BORDER_CAPTION_CANDIDATES = 'northSea';
+let borderCaptionCandidate: keyof typeof BORDER_CAPTION_CANDIDATES = 'solway';
 
-const stage = document.querySelector<HTMLDivElement>('#map-stage')!;
-const composition = document.querySelector<HTMLDivElement>('#composition')!;
-const svg = document.querySelector<SVGSVGElement>('#map-svg')!;
-const canvas = document.querySelector<HTMLCanvasElement>('#map-canvas')!;
-const ctx = canvas.getContext('2d')!;
-const englandPanel = document.querySelector<HTMLDivElement>('#england-panel')!;
-const borderCaption = document.querySelector<HTMLDivElement>('#border-caption')!;
+// --- Build the whole page from here (src/main.ts's own pattern), rather
+// than from static markup — most of what's on screen is a reused view
+// module now, not bespoke HTML. -------------------------------------------
+
+const app = document.querySelector<HTMLDivElement>('#map-app')!;
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const islandPath = document.createElementNS(SVG_NS, 'path');
-islandPath.setAttribute('class', 'map__island');
+const svg = document.createElementNS(SVG_NS, 'svg') as SVGSVGElement;
+svg.setAttribute('class', 'map__svg');
+svg.setAttribute('aria-hidden', 'true');
+const canvas = document.createElement('canvas');
+canvas.className = 'map__canvas';
+canvas.setAttribute('aria-hidden', 'true');
+const ctx = canvas.getContext('2d')!;
+
+const windNote = el('p', { class: 'map__wind-note' });
+
+// Island paths (mainland + every drawn island) are rebuilt per rebuild()
+// since which islands are in play depends on extentMode; border and its
+// leader are stable elements reused across rebuilds.
+let islandPaths: SVGPathElement[] = [];
 const borderPath = document.createElementNS(SVG_NS, 'path');
 borderPath.setAttribute('class', 'map__border-line');
-// Part A.2: the caption is moved off the land into open water, connected
-// back to the line it describes by a short leader — the panel is wide
-// enough that no offshore point is fully clear of it at this box size (see
-// DECISIONS 023), so the leader is what keeps the connection legible
-// rather than trying to find a point with more clearance than the box is
-// wide.
+// Part A.2/B.2: the caption is moved off the land into open water, connected
+// back to the line it describes by a short leader — see DECISIONS 023/024
+// on why neither offshore candidate has enough clearance for the box on its
+// own.
 const borderLeader = document.createElementNS(SVG_NS, 'line');
 borderLeader.setAttribute('class', 'map__border-caption-leader');
-svg.append(islandPath, borderPath, borderLeader);
+svg.append(borderPath, borderLeader);
 
-// The field stays on /flow's own tuned defaults throughout step 2 — the
+// The inset (Part A.2's fallback path): a small, separately-projected SVG
+// box for Shetland, shown only in 'inset' mode. Built once; repositioned
+// and repopulated in rebuild().
+const insetSvg = document.createElementNS(SVG_NS, 'svg') as SVGSVGElement;
+insetSvg.setAttribute('class', 'map__inset');
+insetSvg.setAttribute('aria-hidden', 'true');
+const insetIslandPaths: SVGPathElement[] = [];
+const insetMarker = document.createElementNS(SVG_NS, 'circle');
+insetMarker.setAttribute('class', 'map__inset-marker');
+insetMarker.setAttribute('r', '3');
+insetSvg.append(insetMarker);
+const insetBox = el('div', { class: 'map__inset-box' }, insetSvg, el('p', { class: 'map__inset-label', text: 'Shetland' }));
+
+const stage = el('div', { class: 'map__stage', id: 'map-stage' }, svg, canvas, insetBox, windNote);
+
+// --- Reused view modules (Part C) -----------------------------------------
+const masthead = mastheadView();
+const scotlandBand = bandView(SCOTLAND);
+const englandBand = bandView(ENGLAND);
+const headline = headlineView();
+const border = borderView();
+const narration = narrationView();
+const colophon = colophonView();
+
+const scotlandPanel = el('section', { class: 'panel panel--scotland' }, scotlandBand.el);
+const headlinePanel = el('section', { class: 'panel panel--headline' }, headline.el);
+const englandPanel = el('div', { class: 'map__overlay panel panel--england' }, englandBand.el);
+border.el.classList.add('map__overlay');
+
+// Part C.7: stagger, Scotland 0 / headline 1 / border 2 / England 3 /
+// narration 4 — the same --i mechanism screen.ts uses on `/` (app.css's
+// crossfade transitions read --i from their nearest ancestor).
+[scotlandPanel, headlinePanel, border.el, englandPanel, narration.el].forEach((node, i) => {
+  node.style.setProperty('--i', String(i));
+});
+
+const composition = el(
+  'div',
+  { class: 'composition', id: 'composition' },
+  stage,
+  englandPanel,
+  border.el,
+  scotlandPanel,
+  headlinePanel
+);
+
+app.replaceChildren(masthead.el, composition, narration.el, colophon.el);
+
+// Part C.4: "the method note gains two lines" — appended to colophonView's
+// own <details> rather than edited into colophon.ts, since that module is
+// reused unchanged on `/` too and these two lines are map-only.
+const methodEl = colophon.el.querySelector('.method')!;
+const methodFlowScope = el('p', { class: 'method__map-scope' });
+const methodBlindFarms = el('p', { class: 'method__map-blind' });
+methodEl.append(methodFlowScope, methodBlindFarms);
+
+// Part C.6: the state toggle and its colophon-flow position, as on `/`.
+const params = new URLSearchParams(location.search);
+let scenarioName = scenarioByName(params.get('state')).name;
+const showToggle = params.has('dev') || params.has('state') || import.meta.env.DEV;
+const toggle = showToggle ? toggleView(scenarioName, selectScenario) : null;
+if (toggle) app.append(toggle.el);
+
+// The field stays on /flow's own tuned defaults throughout step 3 — the
 // drawn-island retune waits for step 6, after the border spike (§5.3).
 const fieldParams: FieldParams = { ...DEFAULT_FIELD_PARAMS };
 const palette = { ...LIGHT_PALETTE };
@@ -147,10 +270,73 @@ function lineToPath(line: [number, number][], project: World['projection']['proj
   return d.trim();
 }
 
+/**
+ * Part A.3: islands drawn white like the mainland, under the flow canvas.
+ * One <path> per land shape (mainland ring + every currently-in-play
+ * island) so the debug 'coastline' layer and any future per-shape styling
+ * has something to target; all share the .map__island class so they read
+ * as one continuous white landmass.
+ */
+function drawIslands(project: World['projection']['project']) {
+  for (const path of islandPaths) path.remove();
+  islandPaths = [];
+
+  const mainlandPath = document.createElementNS(SVG_NS, 'path');
+  mainlandPath.setAttribute('class', 'map__island');
+  mainlandPath.setAttribute('d', ringToPath(ISLAND_RING, project));
+  svg.insertBefore(mainlandPath, borderPath);
+  islandPaths.push(mainlandPath);
+
+  for (const island of islandsForFit()) {
+    const path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('class', 'map__island');
+    path.dataset.island = island.name;
+    path.setAttribute('d', ringToPath(island.ring, project));
+    svg.insertBefore(path, borderPath);
+    islandPaths.push(path);
+  }
+}
+
+/** Part A.2's fallback: a small, independently-projected Shetland, static (no live flow — see the type's own docs above). */
+function drawInset() {
+  if (extentMode !== 'inset') {
+    insetBox.style.display = 'none';
+    return;
+  }
+  insetBox.style.display = 'block';
+  const shetlandIslands = ALL_ISLANDS.filter((i) => SHETLAND_ARCHIPELAGO.has(i.name));
+  if (shetlandIslands.length === 0) return;
+
+  const INSET_WIDTH = 150;
+  const INSET_HEIGHT = 110;
+  insetSvg.setAttribute('viewBox', `0 0 ${INSET_WIDTH} ${INSET_HEIGHT}`);
+
+  const allPoints = shetlandIslands.flatMap((i) => i.ring);
+  const insetProjection = buildProjection(allPoints, INSET_WIDTH, INSET_HEIGHT, { padding: 0.12 });
+
+  for (const p of insetIslandPaths) p.remove();
+  insetIslandPaths.length = 0;
+  for (const island of shetlandIslands) {
+    const path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('class', 'map__island');
+    path.setAttribute('d', ringToPath(island.ring, insetProjection.project));
+    insetSvg.insertBefore(path, insetMarker);
+    insetIslandPaths.push(path);
+  }
+
+  const viking = FARM_SITES.find((s) => s.farm === 'Viking');
+  if (viking) {
+    const [vx, vy] = insetProjection.project(viking.latLon);
+    insetMarker.setAttribute('cx', vx.toFixed(1));
+    insetMarker.setAttribute('cy', vy.toFixed(1));
+  }
+}
+
 function drawGeometry() {
-  islandPath.setAttribute('d', ringToPath(ISLAND_RING, world.projection.project));
+  drawIslands(world.projection.project);
   borderPath.setAttribute('d', lineToPath(BORDER_LINE, world.projection.project));
   markerLayer.reposition(world.projection.project);
+  drawInset();
 }
 
 /**
@@ -158,8 +344,8 @@ function drawGeometry() {
  * coordinate space (the same Projection that draws the coast), not a
  * hand-placed CSS position — so they track the map area's actual fit
  * rather than an assumed one. Positioned against `.composition` rather
- * than `.map__stage` itself (see map.css's docs on why) via
- * getBoundingClientRect, in css px (world.projection deals in device px).
+ * than `.map__stage` itself via getBoundingClientRect, in css px
+ * (world.projection deals in device px).
  */
 function positionOverlays() {
   const stageRect = stage.getBoundingClientRect();
@@ -173,9 +359,9 @@ function positionOverlays() {
   englandPanel.style.visibility = 'visible';
 
   const [bx, by] = world.projection.project(BORDER_CAPTION_CANDIDATES[borderCaptionCandidate]);
-  borderCaption.style.left = `${offsetX + bx / currentDpr}px`;
-  borderCaption.style.top = `${offsetY + by / currentDpr}px`;
-  borderCaption.style.visibility = 'visible';
+  border.el.style.left = `${offsetX + bx / currentDpr}px`;
+  border.el.style.top = `${offsetY + by / currentDpr}px`;
+  border.el.style.visibility = 'visible';
 
   // Leader: from the caption's anchor to the nearest point on the border
   // line itself, so the connection reads even though the caption sits well
@@ -203,9 +389,32 @@ function paintTransparent() {
 
 function rebuild() {
   const { width, height } = sizeStage();
+  const fitIslands = islandsForFit();
+  const projectionRing =
+    extentMode === 'trueExtent'
+      ? [...ISLAND_RING, ...fitIslands.flatMap((i) => i.ring)]
+      : ISLAND_RING;
+
   world = buildWorld(ISLAND_RING, farmSources, width, height, {
     corridorWidthPx: fieldParams.steerThreshold * 2,
+    islands: ALL_ISLANDS,
+    projectionRing,
   });
+
+  // Record the mainland's own rendered height under this extent, per
+  // DECISIONS 024 — measured directly from the live Projection rather than
+  // eyeballed from a screenshot.
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const p of ISLAND_RING) {
+    const [, y] = world.projection.project(p);
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  console.log(
+    `[map] extent=${extentMode} mainland rendered height: ${((maxY - minY) / currentDpr).toFixed(0)}px (css)`,
+  );
+
   if (particles) {
     particles.setWorld(world);
   } else {
@@ -238,16 +447,22 @@ window.addEventListener('keydown', (e) => {
   } else if (e.key === 'h') {
     controlPanel.toggle();
   } else if (e.key === 'e') {
-    // Gate-review convenience (Part A.3): cycle the England panel between
+    // Gate-review convenience (Part B.1): cycle the England panel between
     // its two tried positions without a rebuild — see the candidates above.
     englandLabelCandidate = englandLabelCandidate === 'irishSea' ? 'celticSea' : 'irishSea';
     console.log(`[map] England label -> ${englandLabelCandidate}`);
     positionOverlays();
   } else if (e.key === 'b') {
-    // Same, for the border caption (Part A.2).
+    // Same, for the border caption (Part B.2).
     borderCaptionCandidate = borderCaptionCandidate === 'northSea' ? 'solway' : 'northSea';
     console.log(`[map] Border caption -> ${borderCaptionCandidate}`);
     positionOverlays();
+  } else if (e.key === 't') {
+    // Gate-review convenience (Part A.2): true extent vs. the inset
+    // fallback, side by side across two screenshots.
+    extentMode = extentMode === 'trueExtent' ? 'inset' : 'trueExtent';
+    console.log(`[map] extent -> ${extentMode}`);
+    rebuild();
   }
 });
 
@@ -267,21 +482,98 @@ const controlPanel = createMapControlPanel({
   },
 });
 
-// --- State machinery (Part E.3): fetchCoreFeeds on the same cadence as
-// src/main.ts, ?state= fixtures via scenarioByName, and the [ / ] cycler.
-// Sources rebuild their rates on every landing — a genuine data change, not
-// a tween (020): the emission rate itself may ease over up to --dur-slow
-// (CSS handles that on the canvas wash/particle render, nothing here
-// tweens a number). The information-layer panels are not touched by any
-// of this in step 2 — they stay placeholder copy, per the plan.
+// --- State machinery: fetchCoreFeeds on the same cadence as src/main.ts,
+// ?state= fixtures via scenarioByName, and the [ / ] cycler. Sources rebuild
+// their rates on every landing — a genuine data change, not a tween (020).
 const REFETCH_MS = 120_000;
 
-const params = new URLSearchParams(location.search);
-let scenarioName = scenarioByName(params.get('state')).name;
+const state: AppState = {
+  ...emptyFeeds(),
+  now: new Date(),
+  scenario: scenarioName,
+  pending: true,
+};
+
+const views: View[] = [masthead, scotlandBand, englandBand, headline, border, narration, colophon];
+
+function render() {
+  state.now = new Date();
+  for (const view of views) view.update(state);
+  updateWindNote();
+  updateMethodMapNotes();
+}
+
+/**
+ * Part C.5: "Live Scottish wind only" reads from state — a fixture or a
+ * stale reading is a claim the note has to carry too, in the same voice
+ * 016/010 use elsewhere on the page (say what's true, never assert past
+ * what's known).
+ */
+function updateWindNote() {
+  if (state.scenario !== 'live') {
+    const scenario = scenarioByName(state.scenario);
+    setText(
+      windNote,
+      `Showing the "${scenario.label}" fixture, not a live reading. ${scenario.note} Live Scottish wind ` +
+        'only; England and Wales generation appears in the England mix, never as motion.',
+    );
+    return;
+  }
+  const fetchedAt = state.curtailment?.fetchedAt;
+  const ageMs = fetchedAt ? Date.now() - Date.parse(fetchedAt) : null;
+  if (ageMs !== null && ageMs > 30 * 60 * 1000) {
+    setText(
+      windNote,
+      'This reading has not refreshed for over half an hour — the flow below reflects the last farm ' +
+        'output Windfall received, not this instant.',
+    );
+    return;
+  }
+  setText(
+    windNote,
+    'Live Scottish wind only. England and Wales generation appears in the England mix, never as motion.',
+  );
+}
+
+/** Part C.4: the method note's two map-only lines. */
+function updateMethodMapNotes() {
+  const method = state.curtailment?.method;
+  setText(
+    methodFlowScope,
+    'The flow above shows declared output of tracked Scottish farms only — a physical notification, ' +
+      'not a metered reading (§4.3).',
+  );
+  const now = state.curtailment?.now;
+  if (now) {
+    const blind = now.farms.filter((f) => f.unitsDeclaring === 0).length;
+    setText(
+      methodBlindFarms,
+      blind > 0
+        ? `${blind} of ${now.farms.length} tracked farms had no declaration at the sampled instant, and ` +
+            'render silent on the map rather than as an assumed zero.'
+        : `All ${now.farms.length} tracked farms had a declaration at the sampled instant.`,
+    );
+  } else {
+    setText(
+      methodBlindFarms,
+      method
+        ? 'Per-farm coverage is unknown while the balancing feed is unavailable — every marker renders silent.'
+        : '',
+    );
+  }
+}
 
 function landFarms(farmsNow: FarmNow[] | null | undefined) {
   lastFarmsNow = farmsNow ?? null;
-  applyFarmRates(farmSources, lastFarmsNow, rateParams);
+  if (lastFarmsNow === null) {
+    // Part C.6: degraded/offline/waiting carry no farms at all — every
+    // marker renders silent and nothing flows, rather than reading as the
+    // floor rate a genuinely-tracked-but-silent farm gets (see
+    // applyFarmRates's own docs on that distinction).
+    for (const source of farmSources) source.rate = 0;
+  } else {
+    applyFarmRates(farmSources, lastFarmsNow, rateParams);
+  }
   particles.refreshRates();
 
   const statesByFarm = new Map<string, FarmMarkerState>();
@@ -293,32 +585,54 @@ function landFarms(farmsNow: FarmNow[] | null | undefined) {
 }
 
 async function refresh() {
-  const scenario = scenarioByName(scenarioName);
+  const scenario = scenarioByName(state.scenario);
   if (scenario.build) {
-    const feeds = scenario.build(new Date());
-    landFarms(feeds.curtailment?.now?.farms);
+    Object.assign(state, scenario.build(new Date()));
+    state.pending = scenario.pending ?? false;
+    landFarms(state.curtailment?.now?.farms);
+    render();
     return;
   }
   const feeds = await fetchCoreFeeds();
-  landFarms(feeds.curtailment?.now?.farms);
+  if (feeds.grid) state.grid = feeds.grid;
+  state.gridError = feeds.gridError;
+  if (feeds.curtailment) state.curtailment = feeds.curtailment;
+  state.curtailmentError = feeds.curtailmentError;
+  state.pending = false;
+  landFarms(state.curtailment?.now?.farms);
+  render();
 }
 
+function selectScenario(name: string) {
+  const next = new URLSearchParams(location.search);
+  if (name === 'live') next.delete('state');
+  else next.set('state', name);
+  next.set('dev', '1');
+  history.replaceState(null, '', `${location.pathname}?${next.toString()}`);
+
+  Object.assign(state, emptyFeeds());
+  state.scenario = name;
+  scenarioName = name;
+  state.pending = true;
+  toggle?.setActive(name);
+  render();
+  void refresh();
+}
+
+render();
 void refresh();
+
+const TICK_MS = 15_000;
+setInterval(render, TICK_MS);
 setInterval(() => void refresh(), REFETCH_MS);
 
 if (import.meta.env.DEV) {
   addEventListener('keydown', (event) => {
     if (event.key !== ']' && event.key !== '[') return;
-    const index = SCENARIOS.findIndex((s) => s.name === scenarioName);
+    const index = SCENARIOS.findIndex((s) => s.name === state.scenario);
     const step = event.key === ']' ? 1 : -1;
     const next = SCENARIOS[(index + step + SCENARIOS.length) % SCENARIOS.length];
-    scenarioName = next.name;
-    const nextParams = new URLSearchParams(location.search);
-    if (next.name === 'live') nextParams.delete('state');
-    else nextParams.set('state', next.name);
-    history.replaceState(null, '', `${location.pathname}?${nextParams.toString()}`);
-    console.log(`[map] state -> ${next.name}`);
-    void refresh();
+    selectScenario(next.name);
   });
 }
 
@@ -341,7 +655,9 @@ function frame(now: number) {
   particles.render(ctx, palette);
 
   if (debugVisible) {
-    if (!debugCanvas) debugCanvas = renderDebugOverlay(world, debugLayers, ISLAND_RING);
+    if (!debugCanvas) {
+      debugCanvas = renderDebugOverlay(world, debugLayers, [ISLAND_RING, ...islandsForFit().map((i) => i.ring)]);
+    }
     ctx.drawImage(debugCanvas, 0, 0);
   }
 
@@ -349,7 +665,7 @@ function frame(now: number) {
 }
 requestAnimationFrame(frame);
 
-// Exposed for the mechanical alignment check (step 1's gate) and the step 2
+// Exposed for the mechanical alignment check (step 1's gate) and the step 2/3
 // gate's farm-coverage checks — not part of the runtime UI. Mirrors
 // /flow's own window.__flow convention.
 (window as unknown as { __map: unknown }).__map = {
@@ -361,4 +677,5 @@ requestAnimationFrame(frame);
   isDebugVisible: () => debugVisible,
   getFarmSources: () => farmSources,
   getLastFarmsNow: () => lastFarmsNow,
+  getExtentMode: () => extentMode,
 };

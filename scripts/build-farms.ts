@@ -71,7 +71,101 @@ export interface FarmSite {
   repdRef?: string;
   /** Present only when the coordinate needed a hand decision — see the module docs above. */
   source?: string;
+  /**
+   * [lat, lon] where this farm's export cable comes ashore — step 3,
+   * Windfall_Map_Spec.md Part A.4. Set for every farm not on the mainland:
+   * the 7 offshore farms plus the 2 island farms (Viking, Edinbane). See
+   * LANDING_POINTS below and DECISIONS.md 024 for each point's source.
+   */
+  landing?: [number, number];
+  landingSource?: string;
+  /** Name of a gb-countries.json `islands` ring this farm's own `latLon` sits on — set only for Viking and Edinbane. */
+  island?: string;
 }
+
+// --- Landings for offshore and island farms (step 3, Part A.4) -------------
+//
+// A landing is where the export cable actually comes ashore, sourced from
+// the operator's or the Crown Estate's own project material — not the
+// nearest coast point to the turbines, which is what buildWorld falls back
+// to for any farm without one. Every offshore farm here has a real,
+// documented landfall; none needed the "nearest coast point they use today"
+// fallback the plan allows for. Coordinates are the named beach/village's
+// own position (a few hundred metres' precision — the corridor these drive
+// is never drawn, only its containment matters), not the cable's own
+// as-built survey.
+
+interface Landing {
+  latLon: [number, number];
+  source: string;
+}
+
+const LANDING_POINTS: Record<string, Landing> = {
+  Viking: {
+    latLon: [58.479, -3.0509],
+    source:
+      'Shetland HVDC Link: converter station at Kergord, Shetland, to a new switching station at ' +
+      'Noss Head, near Wick, Caithness (SSEN Transmission project page, en.wikipedia.org/wiki/' +
+      'Shetland_HVDC_Connection). Coordinate is Noss Head itself (58.479, -3.0509, Wikipedia).',
+  },
+  Edinbane: {
+    latLon: [57.28, -5.65],
+    source:
+      "Skye's own grid connection reaches the mainland via Kyle of Lochalsh — the same point used " +
+      "as Edinbane's snap anchor in src/flow/sources.ts's fictional /flow source, kept identical here " +
+      'for consistency rather than independently re-sourced.',
+  },
+  'Aberdeen Offshore': {
+    latLon: [57.2333, -2.073],
+    source:
+      'EOWDC export cables make landfall at Blackdog, Aberdeenshire, then ~21km to the onshore ' +
+      'substation at Blackdog village (SPT Offshore, sptoffshore.com/projects/aberdeen-offshore-wind-farm; ' +
+      'Vattenfall EOWDC project page).',
+  },
+  Beatrice: {
+    latLon: [57.65, -3.0],
+    source:
+      'Two 220kV export cables land near Portgordon, Moray, then ~20km underground to Blackhillock ' +
+      'substation near Keith (Herrenknecht "Beatrice Offshore Wind Farm Landfall"; offshorewind.biz).',
+  },
+  'Moray East': {
+    latLon: [57.6685, -2.5561],
+    source:
+      'Cable landfall at Inverboyndie Bay, west of Banff, Aberdeenshire, then 33km to the onshore ' +
+      'substation at Burnside, New Deer (Aberdeenshire HER record MAB54304 "Inverboyndie to New Deer, ' +
+      'Moray East Offshore Windfarm Cable Route"; energyvoice.com).',
+  },
+  'Moray West': {
+    latLon: [57.6842, -2.7498],
+    source:
+      'Export cables come ashore east of Sandend Bay, Aberdeenshire, then 31km underground to the ' +
+      'onshore substation at Whitehillock and on to Blackhillock (moraywest.com/project).',
+  },
+  'Neart Na Gaoithe': {
+    latLon: [55.9621, -2.399],
+    source:
+      'Two export cables make landfall at Thorntonloch Beach, East Lothian, then ~12.3km to the ' +
+      'onshore substation at Crystal Rig wind farm (nngoffshorewind.com/offshore-cable-installation-campaign).',
+  },
+  'Robin Rigg': {
+    latLon: [54.652, -3.548],
+    source:
+      'Two 132kV export cables land near Seaton, Cumbria, then ~2km to the onshore substation there ' +
+      '(power-technology.com/projects/robinriggwind; Tethys PNNL project page).',
+  },
+  Seagreen: {
+    latLon: [56.5001, -2.7168],
+    source:
+      'Subsea export cables land at Carnoustie, Angus, then ~19km underground to a new substation ' +
+      'at Tealing (seagreenwindenergy.com/onshorecable).',
+  },
+};
+
+/** Which gb-countries.json `islands` ring each island farm's own coordinate sits on. */
+const ISLAND_FARMS: Record<string, string> = {
+  Viking: 'Shetland Mainland',
+  Edinbane: 'Skye',
+};
 
 // --- REPD fetch + parse ----------------------------------------------------
 
@@ -435,6 +529,39 @@ async function main() {
   const autoMatched = sites.filter((s) => !s.source).length;
   console.log(`Resolved all ${sites.length} farms: ${autoMatched} auto-matched, ${sites.length - autoMatched} hand-matched.`);
   console.log(`Offshore: ${sites.filter((s) => s.offshore).length}, onshore: ${sites.filter((s) => !s.offshore).length}.`);
+
+  // --- Landings and islands (step 3, Part A.4) ------------------------------
+  const missingLanding: string[] = [];
+  for (const site of sites) {
+    const landing = LANDING_POINTS[site.farm];
+    if (site.offshore || ISLAND_FARMS[site.farm]) {
+      if (!landing) {
+        missingLanding.push(site.farm);
+        continue;
+      }
+      site.landing = landing.latLon;
+      site.landingSource = landing.source;
+    }
+    const island = ISLAND_FARMS[site.farm];
+    if (island) site.island = island;
+  }
+  if (missingLanding.length > 0) {
+    throw new Error(
+      `${missingLanding.length} offshore/island farm(s) have no LANDING_POINTS entry: ` +
+        `${missingLanding.join(', ')}. Every farm not on the mainland needs a landing (Windfall_Map_Spec.md ` +
+        'Part A.4) — add each to LANDING_POINTS above.',
+    );
+  }
+  const staleLandingNames = Object.keys(LANDING_POINTS).filter(
+    (name) => !sites.some((s) => s.farm === name),
+  );
+  if (staleLandingNames.length > 0) {
+    throw new Error(
+      `LANDING_POINTS names farm(s) not tracked in bmus.ts: ${staleLandingNames.join(', ')}. Remove the stale entry.`,
+    );
+  }
+  const landed = sites.filter((s) => s.landing).length;
+  console.log(`Landings: ${landed} farms (7 offshore + Viking + Edinbane, per the plan).`);
 
   writeFileSync(OUTPUT_PATH, JSON.stringify(sites, null, 2) + '\n');
   console.log(`Wrote ${OUTPUT_PATH}`);

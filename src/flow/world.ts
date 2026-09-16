@@ -2,7 +2,7 @@ import gbMainland from './data/gb-mainland.json';
 import { buildDistanceField, type DistanceField } from './distanceField';
 import { buildDivergentField, type DivergentField } from './divergentField';
 import { buildGeodesicField, type GeodesicField } from './geodesicField';
-import { buildRasterMask, paintCapsule, type RasterMask } from './mask';
+import { buildRasterMask, paintCapsule, scanlineFillMask, type RasterMask } from './mask';
 import { buildProjection, type Projection } from './projection';
 import { originOf } from './sources';
 import type { Source, Vec2 } from './types';
@@ -71,6 +71,24 @@ export interface WorldBuildOptions {
   divergentNorthwardCostMultiplier?: number;
   /** Offshore-corridor diameter, device px — see DEFAULT_CORRIDOR_WIDTH_PX's own docs. Only used when at least one source sets `offshore: true`. */
   corridorWidthPx?: number;
+  /**
+   * Named island rings (gb-countries.json's `islands`, step 3) — the ring a
+   * source's `islandName` points at is rasterized into the mask before its
+   * corridor is painted, so an island farm is born on real land rather than
+   * at the empty mainland end of an invisible line (Windfall_Map_Spec.md
+   * Part A.4). Only ever read for sources that set `islandName`; /flow and
+   * the flow-harness's fictional-source runs never pass this.
+   */
+  islands?: { name: string; ring: [number, number][] }[];
+  /**
+   * Fit the Projection's extent to a different set of lat/lon points than
+   * the mask itself is built from — step 3's "true extent" mode fits the
+   * projection to mainland-plus-islands (so Shetland sits where it is) while
+   * the mask still only ever contains the mainland ring plus whatever
+   * corridors/islands the sources above add. Defaults to `ring` (the
+   * existing, pre-step-3 behaviour) when omitted.
+   */
+  projectionRing?: [number, number][];
 }
 
 /**
@@ -130,27 +148,60 @@ export function buildWorld(
   viewportHeight: number,
   options: WorldBuildOptions = {},
 ): World {
-  const projection = buildProjection(ring, viewportWidth, viewportHeight);
+  const projection = buildProjection(options.projectionRing ?? ring, viewportWidth, viewportHeight);
   const mask = buildRasterMask(ring, projection, viewportWidth, viewportHeight);
 
-  // Step 2 Part F: paint an offshore corridor — a capsule from the source's
-  // own projected position to its nearest coast point — into the mask for
-  // every source that sets `offshore: true`, *before* the distance,
-  // geodesic and divergent fields are built below, so a corridor cell is
-  // simply interior to every one of them (Windfall_Map_Spec.md §5.2). The
-  // SVG island drawn on top is untouched — this only ever extends the
-  // canvas mask into the sea. A no-op when no source is offshore (/flow's
-  // fictional sources never set it).
-  const offshoreSources = sourceList.filter((s) => s.offshore);
-  if (offshoreSources.length > 0) {
+  // Step 3 Part A.4: fold in the island a source sits on, for every source
+  // that names one, *before* any corridor is painted — so the corridor's
+  // island-side endpoint lands on real rasterized land rather than empty
+  // sea/nothing. A name with no entry in options.islands is skipped rather
+  // than erroring (see Source.islandName's own docs).
+  const islandsByName = new Map((options.islands ?? []).map((i) => [i.name, i.ring]));
+  for (const source of sourceList) {
+    if (!source.islandName) continue;
+    const islandRing = islandsByName.get(source.islandName);
+    if (!islandRing) continue;
+    const islandMask = scanlineFillMask(islandRing.map(projection.project), mask.width, mask.height);
+    for (let i = 0; i < mask.data.length; i++) {
+      if (islandMask[i]) mask.data[i] = 1;
+    }
+  }
+
+  // Step 2 Part F, extended in step 3 Part A.4: paint a corridor — a
+  // capsule from the source's own projected position to its landing point
+  // — into the mask for every source that sets `offshore` or `islandName`,
+  // *before* the distance, geodesic and divergent fields are built below,
+  // so a corridor cell is simply interior to every one of them
+  // (Windfall_Map_Spec.md §5.2). The SVG island drawn on top is untouched —
+  // this only ever extends the canvas mask into the sea (or, for an island
+  // farm, connects the now-rasterized island to the mainland). A no-op when
+  // no source sets either flag (/flow's fictional sources never do).
+  const corridorSources = sourceList.filter((s) => s.offshore || s.islandName);
+  if (corridorSources.length > 0) {
     const preCorridorDistanceField = buildDistanceField(mask);
     const radius = (options.corridorWidthPx ?? DEFAULT_CORRIDOR_WIDTH_PX) / 2;
-    for (const source of offshoreSources) {
+    for (const source of corridorSources) {
       const projected = projection.project(originOf(source));
-      // buffer=0: walk exactly to the first inside pixel — "where the
-      // cable lands" — not past it with the source-snap's clearance
-      // margin, which would shorten the corridor's coast end for no reason.
-      const landing = snapInside(projected, mask, preCorridorDistanceField, 0);
+      let landing: Vec2;
+      if (source.landing) {
+        const projectedLanding = projection.project(source.landing);
+        // A named landing point should already sit on the mainland; snap it
+        // in only if the simplified coastline puts it just outside (the
+        // same Douglas-Peucker artefact snapInside exists for elsewhere in
+        // this function), rather than always re-walking from scratch.
+        landing = mask.isInside(projectedLanding[0], projectedLanding[1])
+          ? projectedLanding
+          : snapInside(projectedLanding, mask, preCorridorDistanceField, 0);
+      } else {
+        // No named landing (shouldn't happen for a real farm past step 3 —
+        // see DECISIONS 024 — but kept as a fallback for any future source
+        // that sets `offshore`/`islandName` without one): walk from the
+        // source's own position to the nearest coast, as step 2 always did.
+        // buffer=0: walk exactly to the first inside pixel — "where the
+        // cable lands" — not past it with the source-snap's clearance
+        // margin, which would shorten the corridor's coast end for no reason.
+        landing = snapInside(projected, mask, preCorridorDistanceField, 0);
+      }
       paintCapsule(mask.data, mask.width, mask.height, projected, landing, radius);
     }
   }

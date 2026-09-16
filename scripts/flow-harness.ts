@@ -162,7 +162,21 @@ function run(args: Args) {
     sources = buildFarmSources();
     applyFarmRates(sources, SAMPLE_CURTAILMENT.now?.farms);
   }
-  const world = buildWorld(RINGS[args.ring], sources, args.width, args.height);
+  // Step 3: --realSources with --ring=ons has to build the world the same
+  // way /map does, islands included — two of the 76 sources (Viking,
+  // Edinbane) now name an `islandName` and a `landing`, and without the
+  // matching `islands`/`projectionRing` options their true position is off
+  // the mainland-only canvas entirely (Shetland/Skye aren't in RINGS.ons),
+  // which broke containment before this was wired up. /flow's own
+  // fictional sources and any --ring=ne run are unaffected — neither sets
+  // `islandName`.
+  const islands = (gbCountries as unknown as { islands: { name: string; ring: [number, number][] }[] })
+    .islands;
+  const worldOptions =
+    args.ring === 'ons' && args.realSources
+      ? { islands, projectionRing: [...RINGS.ons, ...islands.flatMap((i) => i.ring)] }
+      : {};
+  const world = buildWorld(RINGS[args.ring], sources, args.width, args.height, worldOptions);
   const fieldParams: FieldParams = {
     ...DEFAULT_FIELD_PARAMS,
     baseFieldMode: args.baseFieldMode,

@@ -308,6 +308,55 @@ export const SAMPLE_GRID: GridResponse = {
       ],
       "windPct": 6.9,
       "gasPct": 20.6
+    },
+    "england": {
+      "regionId": 15,
+      "name": "England",
+      "intensity": {
+        "forecast": 151,
+        "actual": null,
+        "index": "high"
+      },
+      "generationMix": [
+        {
+          "fuel": "biomass",
+          "perc": 9
+        },
+        {
+          "fuel": "coal",
+          "perc": 0
+        },
+        {
+          "fuel": "imports",
+          "perc": 12
+        },
+        {
+          "fuel": "gas",
+          "perc": 35
+        },
+        {
+          "fuel": "nuclear",
+          "perc": 18
+        },
+        {
+          "fuel": "other",
+          "perc": 6
+        },
+        {
+          "fuel": "hydro",
+          "perc": 0
+        },
+        {
+          "fuel": "solar",
+          "perc": 8
+        },
+        {
+          "fuel": "wind",
+          "perc": 12
+        }
+      ],
+      "windPct": 12,
+      "gasPct": 35
     }
   },
   "forecast": [

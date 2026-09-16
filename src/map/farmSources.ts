@@ -14,6 +14,16 @@ export interface FarmSite {
   offshore: boolean;
   repdRef?: string;
   source?: string;
+  /**
+   * [lat, lon] where this farm's export cable comes ashore — step 3,
+   * Windfall_Map_Spec.md Part A.4. Present for every farm not on the
+   * mainland (the 7 offshore farms, plus the 2 island farms below).
+   */
+  landing?: [number, number];
+  /** Citation for `landing` — see DECISIONS.md 024. */
+  landingSource?: string;
+  /** Name of the gb-countries.json `islands` ring this farm's `latLon` sits on — set only for Viking (Shetland Mainland) and Edinbane (Skye). */
+  island?: string;
 }
 
 export const FARM_SITES = farmsData as FarmSite[];
@@ -43,6 +53,8 @@ export function buildFarmSources(sites: FarmSite[] = FARM_SITES): Source[] {
     rate: DEFAULT_RATE_PARAMS.floor,
     palette: site.farm,
     offshore: site.offshore,
+    landing: site.landing,
+    islandName: site.island,
   }));
 }
 

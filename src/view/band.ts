@@ -23,6 +23,13 @@ export interface BandSpec {
   /** The fuel this band's reading leads with. */
   lead: 'wind' | 'gas';
   /**
+   * Shown in the pending/failed states, before a real region name has
+   * arrived from the payload. Explicit per spec (rather than derived from
+   * `side`) because two specs can share a side but name a different place —
+   * SOUTH (South England) and ENGLAND (England) both read `side: 'south'`.
+   */
+  placeholderName: string;
+  /**
    * The caption asserts something about the constraint, so it has to follow
    * the constraint — including when the constraint is unreadable. On a calm
    * day the curtailment copy would simply be false; with Elexon down, both
@@ -108,7 +115,7 @@ export function bandView(spec: BandSpec): View {
 
       if (!region && state.pending) {
         setAttr(root, 'data-state', 'pending');
-        setText(place, spec.side === 'north' ? 'Scotland' : 'South England');
+        setText(place, spec.placeholderName);
         setTextCrossfade(leadFigure, 'Reading');
         setTextCrossfade(intensity, 'Waiting for Carbon Intensity');
         for (const { seg, label } of segments.values()) {
@@ -125,7 +132,7 @@ export function bandView(spec: BandSpec): View {
 
       if (!region) {
         setAttr(root, 'data-state', 'failed');
-        setText(place, spec.side === 'north' ? 'Scotland' : 'South England');
+        setText(place, spec.placeholderName);
         setTextCrossfade(leadFigure, 'No reading');
         setTextCrossfade(intensity, 'Carbon Intensity unavailable');
         for (const { seg, label } of segments.values()) {
@@ -179,6 +186,7 @@ export const NORTH: BandSpec = {
   side: 'north',
   eyebrow: 'The wind is here',
   lead: 'wind',
+  placeholderName: 'Scotland',
   caption: {
     constrained: {
       now: 'Scotland is generating more than it can use, and more than the network can carry away.',
@@ -193,10 +201,45 @@ export const NORTH: BandSpec = {
   pick: (r) => r.scotland ?? r.northScotland,
 };
 
+/**
+ * The map's Scotland band (Windfall_Map_Spec.md Part C.1, step 3) — "as
+ * NORTH today", per the plan: literally the same spec, not a rewrite,
+ * because `/map` wants the identical claim `/` already makes about the
+ * north. Aliased rather than duplicated so the two pages can't drift.
+ */
+export const SCOTLAND: BandSpec = NORTH;
+
+/**
+ * The map's England band. Reads the `england` region (added to
+ * RegionalState/carbon.ts alongside this) rather than South England — see
+ * DECISIONS 021's reasoning for the map showing all of England, not a
+ * sub-region. Three voices, matching SOUTH's own pattern but named for the
+ * whole country the map actually draws.
+ */
+export const ENGLAND: BandSpec = {
+  side: 'south',
+  eyebrow: 'The demand is here',
+  lead: 'gas',
+  placeholderName: 'England',
+  caption: {
+    constrained: {
+      now: 'With the northern wind held back, gas plants across England make up the difference.',
+      past: 'With the northern wind held back, gas plants across England made up the difference.',
+    },
+    clear: {
+      now: 'English demand is being met close to home, largely by gas.',
+      past: 'English demand was being met close to home, largely by gas.',
+    },
+    unknown: 'English demand leans on gas whenever northern wind cannot reach it.',
+  },
+  pick: (r) => r.england,
+};
+
 export const SOUTH: BandSpec = {
   side: 'south',
   eyebrow: 'The demand is here',
   lead: 'gas',
+  placeholderName: 'South England',
   caption: {
     constrained: {
       now: 'With the northern wind held back, gas plants in the south make up the difference.',

@@ -19,11 +19,19 @@
  * the mainland ring is picked the same way build-gb-outline.ts picks GB
  * out of the UK feature: largest ring by area, by a wide margin.
  *
- * Three outputs, all in lat/lon like gb-mainland.json:
+ * Four outputs, all in lat/lon like gb-mainland.json:
  *   - `island`: the union of the three mainland rings — the raster mask.
  *   - `border`: the open polyline shared by the Scotland and England
  *     mainland rings, Solway to the Tweed.
  *   - `countries`: the three mainland rings, lightly simplified.
+ *   - `islands`: every non-mainland ring across the three countries whose
+ *     raw shoelace area (same units as mainlandRing()'s own area-margin
+ *     logging — unprojected [lon,lat] degrees²) is at or above
+ *     ISLAND_AREA_THRESHOLD (step 3, Windfall_Map_Spec.md Part A.1). Named
+ *     by nearest-centroid match against a curated table (ISLAND_NAMES) so a
+ *     re-fetch that reorders MultiPolygon parts doesn't silently relabel an
+ *     island — an unmatched ring throws rather than shipping unnamed. See
+ *     DECISIONS.md 024 for the threshold's derivation and the resulting list.
  *
  * The union and the border are both found by rasterizing the three
  * mainland rings (the same primitives mask.ts already exports) rather than
@@ -55,6 +63,58 @@ const ISLAND_TARGET_POINTS = 1200;
 const COUNTRY_TARGET_POINTS = 600;
 /** The border is short (Solway to the Tweed); this keeps it smooth without much data. */
 const BORDER_TARGET_POINTS = 300;
+
+/**
+ * Raw shoelace area (unprojected [lon,lat] degrees², matching mainlandRing's
+ * own area-margin logging), at or above which a non-mainland ring is drawn
+ * as an island. Chosen empirically (see scratch exploration logged in
+ * DECISIONS.md 024): 0.015 yields exactly the ring the plan names —
+ * Shetland Mainland, Yell, Unst, Orkney Mainland, Hoy, Lewis and Harris,
+ * Skye, Raasay, Mull, Islay, Jura, Arran, Bute, North Uist, South Uist
+ * (Scotland), Anglesey (Wales) and Isle of Wight (England) — 17 rings, none
+ * of them a skerry, with the next-largest excluded ring (Isle of Sheppey,
+ * Kent) well below it.
+ */
+const ISLAND_AREA_THRESHOLD = 0.015;
+/** Island ring point-count scales with sqrt(area) so a big island (Lewis
+ * and Harris) gets meaningfully more detail than a small one (Raasay)
+ * without a bespoke target per ring. */
+const ISLAND_POINTS_PER_SQRT_AREA = 800;
+const ISLAND_MIN_POINTS = 60;
+const ISLAND_MAX_POINTS = 400;
+
+function islandTargetPoints(area: number): number {
+  const raw = Math.round(ISLAND_POINTS_PER_SQRT_AREA * Math.sqrt(area));
+  return Math.max(ISLAND_MIN_POINTS, Math.min(ISLAND_MAX_POINTS, raw));
+}
+
+/**
+ * Curated name for every ring ISLAND_AREA_THRESHOLD is expected to select,
+ * matched by nearest centroid rather than by MultiPolygon part index (which
+ * ArcGIS gives no ordering guarantee over). `near` is [lat, lon], read off
+ * the same exploration that picked the threshold.
+ */
+const ISLAND_NAMES: { name: string; near: [number, number] }[] = [
+  { name: 'Lewis and Harris', near: [58.11, -6.67] },
+  { name: 'Skye', near: [57.33, -6.27] },
+  { name: 'Shetland Mainland', near: [60.25, -1.35] },
+  { name: 'Mull', near: [56.42, -6.08] },
+  { name: 'Orkney Mainland', near: [58.95, -3.03] },
+  { name: 'Islay', near: [55.75, -6.31] },
+  { name: 'Arran', near: [55.57, -5.21] },
+  { name: 'Jura', near: [55.98, -5.89] },
+  { name: 'North Uist', near: [57.6, -7.25] },
+  { name: 'South Uist', near: [57.26, -7.29] },
+  { name: 'Yell', near: [60.63, -1.09] },
+  { name: 'Hoy', near: [58.83, -3.28] },
+  { name: 'Unst', near: [60.77, -0.87] },
+  { name: 'Bute', near: [55.81, -5.09] },
+  { name: 'Raasay', near: [57.0, -6.35] },
+  { name: 'Anglesey', near: [53.3, -4.39] },
+  { name: 'Isle of Wight', near: [50.7, -1.37] },
+];
+/** A named-island centroid may drift a little between ONS releases; this is generous margin without risking a cross-match between two real islands (the closest pair, Yell/Unst, are ~0.4° apart). */
+const ISLAND_NAME_MATCH_RADIUS_DEG = 0.3;
 
 // Proxy viewport for the raster union/border extraction — same convention
 // as build-gb-outline.ts's spur-pruning pass (a plausible mid-range-laptop
@@ -616,21 +676,93 @@ async function main() {
     wales: simplifyRing(latLonRings.wales, lonScale, COUNTRY_TARGET_POINTS),
   };
 
+  // --- Islands (step 3, Windfall_Map_Spec.md Part A.1): every non-mainland
+  // ring across all three countries at or above ISLAND_AREA_THRESHOLD,
+  // named by nearest-centroid match. Extracted from the raw ArcGIS rings
+  // directly (not via the raster union above) — a standalone ring needs no
+  // adjacency handling, so plain Douglas-Peucker on the vector ring is both
+  // simpler and higher-fidelity than the mainland/border's raster-trace
+  // detour, which exists only to resolve the seam between two independently
+  // generalised, independently rasterized *adjacent* polygons.
+  console.log(`Selecting islands at area >= ${ISLAND_AREA_THRESHOLD}...`);
+  function centroidOf(ring: LonLat[]): [number, number] {
+    let sx = 0;
+    let sy = 0;
+    for (const [x, y] of ring) {
+      sx += x;
+      sy += y;
+    }
+    return [sy / ring.length, sx / ring.length]; // -> [lat, lon]
+  }
+
+  const islandCandidates: { ring: [number, number][]; area: number; centroid: [number, number] }[] = [];
+  for (const country of ['England', 'Scotland', 'Wales'] as const) {
+    const parts = byName[country];
+    const outerRings = parts.map((part) => part[0]);
+    const areas = outerRings.map(ringArea);
+    const mainlandArea = Math.max(...areas);
+    outerRings.forEach((ring, i) => {
+      if (areas[i] >= mainlandArea || areas[i] < ISLAND_AREA_THRESHOLD) return;
+      const latLonRing = ring.map(([lon, lat]) => [lat, lon] as [number, number]);
+      islandCandidates.push({ ring: latLonRing, area: areas[i], centroid: centroidOf(ring) });
+    });
+  }
+
+  const namedIslands: { name: string; area: number; pointCount: number; ring: [number, number][] }[] = [];
+  const usedNames = new Set<string>();
+  for (const candidate of islandCandidates) {
+    let best: { name: string } | null = null;
+    let bestDist = Infinity;
+    for (const { name, near } of ISLAND_NAMES) {
+      const dist = Math.hypot(candidate.centroid[0] - near[0], candidate.centroid[1] - near[1]);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = { name };
+      }
+    }
+    if (!best || bestDist > ISLAND_NAME_MATCH_RADIUS_DEG) {
+      throw new Error(
+        `Unnamed island ring at centroid [${candidate.centroid[0].toFixed(2)}, ` +
+          `${candidate.centroid[1].toFixed(2)}], area ${candidate.area.toFixed(5)} — add it to ` +
+          `ISLAND_NAMES (nearest known name "${best?.name ?? 'none'}" is ${bestDist.toFixed(2)}° away).`,
+      );
+    }
+    if (usedNames.has(best.name)) {
+      throw new Error(`Two island rings matched the name "${best.name}" — check ISLAND_NAMES for ambiguity.`);
+    }
+    usedNames.add(best.name);
+    const target = islandTargetPoints(candidate.area);
+    const simplified = simplifyRing(candidate.ring, lonScale, target);
+    namedIslands.push({ name: best.name, area: candidate.area, pointCount: simplified.length, ring: simplified });
+  }
+  const missingNames = ISLAND_NAMES.map((n) => n.name).filter((n) => !usedNames.has(n));
+  if (missingNames.length > 0) {
+    throw new Error(
+      `ISLAND_NAMES entries never matched a ring above the threshold: ${missingNames.join(', ')}. ` +
+        'Either the threshold moved or the ONS data changed — check before shipping.',
+    );
+  }
+  namedIslands.sort((a, b) => b.area - a.area);
+  console.log(
+    `Islands: ${namedIslands.length} — ${namedIslands.map((i) => `${i.name} (${i.pointCount}pt)`).join(', ')}.`,
+  );
+
   console.log(
     `Island: ${islandRing.length} points. Border: ${borderLine.length} points. ` +
       `Countries: england ${countries.england.length}, scotland ${countries.scotland.length}, ` +
-      `wales ${countries.wales.length}.`,
+      `wales ${countries.wales.length}. Islands: ${namedIslands.length}.`,
   );
 
   writeFileSync(
     OUTPUT_PATH,
     JSON.stringify(
       {
-        name: 'GB countries (England, Scotland, Wales mainlands)',
+        name: 'GB countries (England, Scotland, Wales mainlands, plus named islands)',
         source:
           'ONS Open Geography Portal, Countries (December 2023) Boundaries UK BGC ' +
           '(services1.arcgis.com/ESMARspQHYMw9BZ9, layer CTRY_DEC_2023_UK_BGC), ' +
-          'Northern Ireland dropped, island rings excluded per country',
+          'Northern Ireland dropped, mainland ring per country plus every non-mainland ring at or ' +
+          `above area ${ISLAND_AREA_THRESHOLD} (see DECISIONS.md 024)`,
         island: { pointCount: islandRing.length, ring: islandRing },
         border: { pointCount: borderLine.length, line: borderLine },
         countries: {
@@ -638,6 +770,7 @@ async function main() {
           scotland: { pointCount: countries.scotland.length, ring: countries.scotland },
           wales: { pointCount: countries.wales.length, ring: countries.wales },
         },
+        islands: namedIslands.map(({ name, pointCount, ring }) => ({ name, pointCount, ring })),
       },
       null,
       0,

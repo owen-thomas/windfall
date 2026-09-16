@@ -242,7 +242,7 @@ function frame(now: number) {
 
   if (debugVisible) {
     if (!debugCanvas) {
-      debugCanvas = renderDebugOverlay(world, debugLayers, GB_RING);
+      debugCanvas = renderDebugOverlay(world, debugLayers, [GB_RING]);
     }
     ctx.drawImage(debugCanvas, 0, 0);
   }

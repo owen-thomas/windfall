@@ -94,6 +94,7 @@ export async function fetchRegions(): Promise<RegionalState> {
     southScotland: normaliseRegion(byName('South Scotland')),
     southEngland: normaliseRegion(byName('South England')),
     southEastEngland: normaliseRegion(byName('South East England')),
+    england: normaliseRegion(byName('England')),
   };
 }
 

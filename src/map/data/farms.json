@@ -17,7 +17,12 @@
     ],
     "offshore": true,
     "repdRef": "2505",
-    "source": "REPD's site name is 'European Offshore Wind Deployment Centre (EOWDC) (Aberdeen Bay - Demonstration site)' — not name-matchable against 'Aberdeen Offshore'; matched by capacity (96.8 MW REPD vs 99 MW registered) and being the only Scottish offshore site near Aberdeen."
+    "source": "REPD's site name is 'European Offshore Wind Deployment Centre (EOWDC) (Aberdeen Bay - Demonstration site)' — not name-matchable against 'Aberdeen Offshore'; matched by capacity (96.8 MW REPD vs 99 MW registered) and being the only Scottish offshore site near Aberdeen.",
+    "landing": [
+      57.2333,
+      -2.073
+    ],
+    "landingSource": "EOWDC export cables make landfall at Blackdog, Aberdeenshire, then ~21km to the onshore substation at Blackdog village (SPT Offshore, sptoffshore.com/projects/aberdeen-offshore-wind-farm; Vattenfall EOWDC project page)."
   },
   {
     "farm": "Afton",
@@ -71,7 +76,12 @@
       -2.95016
     ],
     "offshore": true,
-    "repdRef": "2521"
+    "repdRef": "2521",
+    "landing": [
+      57.65,
+      -3
+    ],
+    "landingSource": "Two 220kV export cables land near Portgordon, Moray, then ~20km underground to Blackhillock substation near Keith (Herrenknecht \"Beatrice Offshore Wind Farm Landfall\"; offshorewind.biz)."
   },
   {
     "farm": "Beinneun",
@@ -273,7 +283,13 @@
       -6.43221
     ],
     "offshore": false,
-    "repdRef": "4674"
+    "repdRef": "4674",
+    "landing": [
+      57.28,
+      -5.65
+    ],
+    "landingSource": "Skye's own grid connection reaches the mainland via Kyle of Lochalsh — the same point used as Edinbane's snap anchor in src/flow/sources.ts's fictional /flow source, kept identical here for consistency rather than independently re-sourced.",
+    "island": "Skye"
   },
   {
     "farm": "Enoch Hill",
@@ -517,7 +533,12 @@
       -2.79054
     ],
     "offshore": true,
-    "repdRef": "2534"
+    "repdRef": "2534",
+    "landing": [
+      57.6685,
+      -2.5561
+    ],
+    "landingSource": "Cable landfall at Inverboyndie Bay, west of Banff, Aberdeenshire, then 33km to the onshore substation at Burnside, New Deer (Aberdeenshire HER record MAB54304 \"Inverboyndie to New Deer, Moray East Offshore Windfarm Cable Route\"; energyvoice.com)."
   },
   {
     "farm": "Moray West",
@@ -526,7 +547,12 @@
       -3.31307
     ],
     "offshore": true,
-    "repdRef": "6158"
+    "repdRef": "6158",
+    "landing": [
+      57.6842,
+      -2.7498
+    ],
+    "landingSource": "Export cables come ashore east of Sandend Bay, Aberdeenshire, then 31km underground to the onshore substation at Whitehillock and on to Blackhillock (moraywest.com/project)."
   },
   {
     "farm": "Neart Na Gaoithe",
@@ -535,7 +561,12 @@
       -2.25
     ],
     "offshore": true,
-    "repdRef": "2522"
+    "repdRef": "2522",
+    "landing": [
+      55.9621,
+      -2.399
+    ],
+    "landingSource": "Two export cables make landfall at Thorntonloch Beach, East Lothian, then ~12.3km to the onshore substation at Crystal Rig wind farm (nngoffshorewind.com/offshore-cable-installation-campaign)."
   },
   {
     "farm": "North Kyle",
@@ -575,7 +606,12 @@
     ],
     "offshore": true,
     "repdRef": "2496+2497",
-    "source": "One physical offshore wind farm, consented and built as two separate REPD rows (East and West arrays, both Operational). Centroid of both used."
+    "source": "One physical offshore wind farm, consented and built as two separate REPD rows (East and West arrays, both Operational). Centroid of both used.",
+    "landing": [
+      54.652,
+      -3.548
+    ],
+    "landingSource": "Two 132kV export cables land near Seaton, Cumbria, then ~2km to the onshore substation there (power-technology.com/projects/robinriggwind; Tethys PNNL project page)."
   },
   {
     "farm": "Sandy Knowe",
@@ -604,7 +640,12 @@
       -1.92662
     ],
     "offshore": true,
-    "repdRef": "2540"
+    "repdRef": "2540",
+    "landing": [
+      56.5001,
+      -2.7168
+    ],
+    "landingSource": "Subsea export cables land at Carnoustie, Angus, then ~19km underground to a new substation at Tealing (seagreenwindenergy.com/onshorecable)."
   },
   {
     "farm": "South Kyle",
@@ -667,7 +708,13 @@
       -1.20843
     ],
     "offshore": false,
-    "repdRef": "4622"
+    "repdRef": "4622",
+    "landing": [
+      58.479,
+      -3.0509
+    ],
+    "landingSource": "Shetland HVDC Link: converter station at Kergord, Shetland, to a new switching station at Noss Head, near Wick, Caithness (SSEN Transmission project page, en.wikipedia.org/wiki/Shetland_HVDC_Connection). Coordinate is Noss Head itself (58.479, -3.0509, Wikipedia).",
+    "island": "Shetland Mainland"
   },
   {
     "farm": "Whitelee",

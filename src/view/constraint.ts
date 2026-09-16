@@ -26,7 +26,13 @@ import { speaksOfNow, type AppState } from '../lib/state';
  * headline above it. The unknown copy needs no pair: it describes the
  * network's standing role rather than its state this half-hour.
  */
-const CONSTRAINED = {
+/**
+ * Exported for src/view/border.ts (step 3, Windfall_Map_Spec.md Part C.3):
+ * the map's borderView reuses this exact three-state copy and the same
+ * tense/state logic, rather than restating it, so the two pages can never
+ * drift into describing the same constraint differently.
+ */
+export const CONSTRAINED = {
   now:
     'The transmission network between Scotland and England is full. Power that cannot ' +
     'flow south is paid to stop.',
@@ -35,7 +41,7 @@ const CONSTRAINED = {
     'read. Power that could not flow south was paid to stop.',
 };
 
-const CLEAR = {
+export const CLEAR = {
   now:
     'The transmission network between Scotland and England has room this half-hour. ' +
     'What the north makes can travel south.',
@@ -44,7 +50,7 @@ const CLEAR = {
     'read. What the north made could travel south.',
 };
 
-const UNKNOWN =
+export const UNKNOWN =
   'The transmission network between Scotland and England is the limit on how much ' +
   'northern wind can reach southern demand.';
 
