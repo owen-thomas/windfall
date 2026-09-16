@@ -61,7 +61,7 @@ function sizeCanvas(): { width: number; height: number } {
 
 function rebuild() {
   const { width, height } = sizeCanvas();
-  world = buildWorld(GB_RING, width, height);
+  world = buildWorld(GB_RING, SOURCES, width, height);
   if (particles) {
     particles.setWorld(world);
   } else {

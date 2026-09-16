@@ -36,6 +36,7 @@
         </div>
 
         <div class="map__overlay panel panel--england" id="england-panel">
+          <span class="placeholder-tag">Placeholder</span>
           <p class="eyebrow">The demand is here</p>
           <h2 class="panel__place">England</h2>
           <p class="panel__reading">
@@ -60,6 +61,7 @@
         </div>
 
         <div class="map__overlay map__border-caption" id="border-caption">
+          <span class="placeholder-tag">Placeholder</span>
           <p class="eyebrow">The constraint</p>
           <p class="border-caption__body">
             The transmission network between Scotland and England is full. Power that cannot flow
@@ -67,45 +69,45 @@
           </p>
         </div>
 
-        <div class="info-column">
-          <section class="panel panel--scotland">
-            <p class="eyebrow">The wind is here</p>
-            <h2 class="panel__place">Scotland</h2>
-            <p class="panel__reading">
-              <span class="panel__lead">71% wind</span>
-              <span class="panel__sep">·</span>
-              <span class="panel__intensity">0 gCO₂/kWh</span>
-            </p>
-            <div class="mix" aria-hidden="true">
-              <div class="mix__seg" data-fuel="wind" style="flex-basis: 71%">
-                <span class="mix__label">Wind 71%</span>
-              </div>
-              <div class="mix__seg" data-fuel="hydro" style="flex-basis: 11%"></div>
-              <div class="mix__seg" data-fuel="nuclear" style="flex-basis: 9%"></div>
-              <div class="mix__seg" data-fuel="imports" style="flex-basis: 7%"></div>
-              <div class="mix__seg" data-fuel="other" style="flex-basis: 2%"></div>
+        <section class="panel panel--scotland" id="scotland-panel">
+          <span class="placeholder-tag">Placeholder</span>
+          <p class="eyebrow">The wind is here</p>
+          <h2 class="panel__place">Scotland</h2>
+          <p class="panel__reading">
+            <span class="panel__lead">71% wind</span>
+            <span class="panel__sep">·</span>
+            <span class="panel__intensity">0 gCO₂/kWh</span>
+          </p>
+          <div class="mix" aria-hidden="true">
+            <div class="mix__seg" data-fuel="wind" style="flex-basis: 71%">
+              <span class="mix__label">Wind 71%</span>
             </div>
-            <p class="panel__caption">
-              Scotland is generating more than it can use, and more than the network can carry
-              away.
-            </p>
-          </section>
+            <div class="mix__seg" data-fuel="hydro" style="flex-basis: 11%"></div>
+            <div class="mix__seg" data-fuel="nuclear" style="flex-basis: 9%"></div>
+            <div class="mix__seg" data-fuel="imports" style="flex-basis: 7%"></div>
+            <div class="mix__seg" data-fuel="other" style="flex-basis: 2%"></div>
+          </div>
+          <p class="panel__caption">
+            Scotland is generating more than it can use, and more than the network can carry
+            away.
+          </p>
+        </section>
 
-          <section class="panel panel--headline">
-            <p class="eyebrow">At least</p>
-            <p class="panel__figure">1,840 MW</p>
-            <p class="panel__predicate">of Scottish wind is being held off the grid, right now.</p>
-            <div class="share" aria-hidden="true"><div class="share__fill" style="width: 14%"></div></div>
-            <p class="share__note">14.0% of the 13,105 MW of Scottish wind Windfall tracks.</p>
-            <p class="panel__farms">
-              Seagreen <span class="farms__mw">412 MW</span> · Moray East
-              <span class="farms__mw">301 MW</span> · Moray West
-              <span class="farms__mw">288 MW</span> · Viking
-              <span class="farms__mw">210 MW</span> · and 6 more, Beatrice and Dorenell among them
-            </p>
-            <p class="panel__settled">1,762 MWh over the last complete half-hour, 11:30 to 12:00.</p>
-          </section>
-        </div>
+        <section class="panel panel--headline" id="headline-panel">
+          <span class="placeholder-tag">Placeholder</span>
+          <p class="eyebrow">At least</p>
+          <p class="panel__figure">1,840 MW</p>
+          <p class="panel__predicate">of Scottish wind is being held off the grid, right now.</p>
+          <div class="share" aria-hidden="true"><div class="share__fill" style="width: 14%"></div></div>
+          <p class="share__note">14.0% of the 13,105 MW of Scottish wind Windfall tracks.</p>
+          <p class="panel__farms">
+            Seagreen <span class="farms__mw">412 MW</span> · Moray East
+            <span class="farms__mw">301 MW</span> · Moray West
+            <span class="farms__mw">288 MW</span> · Viking
+            <span class="farms__mw">210 MW</span> · and 6 more, Beatrice and Dorenell among them
+          </p>
+          <p class="panel__settled">1,762 MWh over the last complete half-hour, 11:30 to 12:00.</p>
+        </section>
       </div>
 
       <section class="map-narration">

@@ -23,7 +23,9 @@ const METHOD_BASIS =
   'Instructed turn-downs of transmission-connected Scottish wind via the ' +
   'balancing mechanism: declared output (PN) minus accepted level (BOALF). ' +
   'Excludes self-curtailment, pre-adjusted declarations and ' +
-  'distribution-connected units, so the figure is a floor.';
+  'distribution-connected units, so the figure is a floor. Per-farm output ' +
+  'figures are declared output — a physical notification, not a metered ' +
+  'reading — at the instant sampled.';
 
 export default async function handler(_req: ApiRequest, res: ApiResponse) {
   const sampledAt = new Date();
@@ -64,13 +66,14 @@ export default async function handler(_req: ApiRequest, res: ApiResponse) {
 
   if (currentData.status === 'fulfilled') {
     const [pn, boalf] = currentData.value;
-    const { curtailedMW, units } = deriveNow(pn, boalf, sampledAt);
+    const { curtailedMW, units, farms } = deriveNow(pn, boalf, sampledAt);
     body.now = {
       settlement: current,
       sampledAt: sampledAt.toISOString(),
       curtailedMW,
       unitsCurtailed: units.length,
       units,
+      farms,
     };
   }
 

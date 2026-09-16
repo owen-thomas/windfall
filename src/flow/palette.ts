@@ -98,6 +98,34 @@ const SOURCE_HUE_OFFSET: Record<string, number> = {
   g: 12,
 };
 
+/**
+ * /map's 76 farms use their own name as the channel key, so they can't be
+ * curated by hand the way /flow's seven letters are (SOURCE_HUE_OFFSET
+ * above). A deterministic hash gives every farm its own small, stable
+ * offset instead — stable across reloads (not per-session random), and
+ * small enough that 76 farms still read as one ink, not a rainbow
+ * (Windfall_Map_Spec.md §5.1/Part E.4: "keep the per-source hue offset
+ * mechanism but reduce ... the spread").
+ */
+const HASHED_HUE_SPREAD_DEG = 3;
+
+function hashChannel(channel: string): number {
+  let h = 0;
+  for (let i = 0; i < channel.length; i++) h = (h * 31 + channel.charCodeAt(i)) | 0;
+  return h;
+}
+
+/** -1..1, deterministic per channel string. */
+function hashedUnitOffset(channel: string): number {
+  return (((hashChannel(channel) % 2001) + 2001) % 2001) / 1000 - 1;
+}
+
+function hueOffsetForChannel(channel: string): number {
+  const curated = SOURCE_HUE_OFFSET[channel];
+  if (curated !== undefined) return curated;
+  return hashedUnitOffset(channel) * HASHED_HUE_SPREAD_DEG;
+}
+
 /** Degrees per per-particle hue-jitter bucket step (bucket values are -1, 0, 1 — see particles.ts). */
 export const HUE_JITTER_STEP_DEG = 6;
 /** Fractional stroke-width change per per-particle weight-jitter bucket step (-1, 0, 1). */
@@ -109,7 +137,7 @@ export function resolveStrokeColor(
   sourceChannel: string | undefined,
   hueBucket: number,
 ): string {
-  const sourceOffset = sourceChannel !== undefined ? (SOURCE_HUE_OFFSET[sourceChannel] ?? 0) : 0;
+  const sourceOffset = sourceChannel !== undefined ? hueOffsetForChannel(sourceChannel) : 0;
   const hue = palette.baseHue + sourceOffset + hueBucket * HUE_JITTER_STEP_DEG;
   return `hsla(${hue}, ${palette.saturation}%, ${palette.lightness}%, ${palette.baseStrokeAlpha})`;
 }

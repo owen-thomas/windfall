@@ -553,3 +553,96 @@ The strike-rate rise (steering grazing the coast more often) and the trapped→d
 **Assumptions made without a spec figure to check against:** `countries` per-country simplification target (600 points each, "lightly simplified" per the plan, not otherwise specified); `border` simplification target (300 points — short line, doesn't need many); the England-label and border-caption panels are positioned from the Projection via `getBoundingClientRect` pixel math against `.composition` (not CSS percentages, which don't resolve sensibly across the two unequal grid columns) — recomputed on every `rebuild()`, so it survives resize.
 
 **What was rejected:** matching country-ring vertices at the border (their independent generalisation doesn't guarantee it; the raster approach is exact-enough and reuses primitives already in `mask.ts`); painting the island into the canvas wash (see above); stretching the drawn island to fill 60% of the stage width (would misrepresent the geography); a CSS-percentage-based overlay position (breaks across unequal grid columns).
+
+---
+
+## 023 — Map step 2: real farms, real output
+
+**Date:** 2026-09-16
+**Phase:** Map page, step 2 (real farms, real output)
+**Decision:** `farms.json` carries all 76 tracked farms with a coordinate; `CurtailmentNow` gains a `farms: FarmNow[]` array rolled up from every tracked unit, not only curtailed ones; `/map`'s sources are built from that data (`buildFarmSources`/`applyFarmRates`, `src/map/farmSources.ts`) through one named `rateForMW` function; offshore farms sit in the sea via mask corridors; farm markers show declaring/held-down/silent; the composition is redrawn full-bleed per the gate 1 outcome. `buildWorld` now takes `sources: Source[]` as an explicit parameter (`/flow` passes its own `SOURCES`, `/map` passes the farm-built list) — the last piece of 022's "still reads the SOURCES constant internally" caveat.
+
+### REPD matching (Part B)
+
+Source: DESNZ's Renewable Energy Planning Database, the Q2 2026 quarterly CSV (`assets.publishing.service.gov.uk`, linked from the `renewable-energy-planning-database-quarterly-extract` gov.uk page — the `-monthly-extract` URL the spec named 301s to it). X/Y are British National Grid (EPSG:27700); converted to WGS84 in `scripts/build-farms.ts` with `proj4` (a `devDependency` only — nothing new in the page bundle) using the standard EPSG:27700 proj string and OSGB36→WGS84 Helmert parameters, verified against Edinburgh Castle's published lat/lon (agreed to within ~150m, comfortably inside marker precision).
+
+Matching is two passes. First, every Scotland "Wind Onshore"/"Wind Offshore" row is normalised (strip "wind farm", roman-numeral/"extension"/"repowering" suffixes, punctuation) and compared against each of the 76 farms' own normalised name (exact match, then containment); rows sharing an exact coordinate are deduplicated first, since REPD frequently carries a farm and a near-duplicate re-registration at the identical site. A farm left with exactly one distinct-coordinate candidate is auto-matched — 52 of 76. The remaining 24 needed a hand decision, each recorded in `farms.json`'s own `source` field and in `scripts/build-farms.ts`'s `HAND_MATCHES` table:
+
+| Farm | REPD ref(s) | Why |
+|---|---|---|
+| A’Chruach | 4331 | Two REPD phases; the built one (Operational, 48.3 MW) used over the unbuilt Phase 2. |
+| Aberdeen Offshore | 2505 | REPD's name is "European Offshore Wind Deployment Centre (EOWDC)" — not name-matchable; matched by capacity and being the only Scottish offshore site near Aberdeen. |
+| Beinneun | 3787 | Parent used over its extension (same coordinate) per the extension rule; a third, unbuilt "Beinneun II" row excluded. |
+| Crystal Rig | 3114 | Parent ("Phase 1") used over "Extension II". |
+| Dorenell | 4244 | The built site ("...Previously Site A and B Scaut Hill") used; an abandoned row shares its coordinate exactly, a much larger unbuilt "Extension" row excluded. |
+| Dun Law | 3579 | The only tracked BM unit is registered "Dun Law Ext" (29.75 MW) — the extension's own coordinate used, not the 17.2 MW parent, since the parent isn't part of the tracked farm. |
+| Gordonbush | 3662 | Parent used over its extension. |
+| Hadyard Hill | 3109 | Parent used; the extension row was withdrawn. |
+| Hagshaw Hill | 3301 | Four rows share this name; the plain, non-extension, non-repowering row used per the extension rule, despite its own stale-looking capacity figure. |
+| Harestanes | 4119 | Parent used; the extension row was refused. |
+| Keith Hill | 4516 | Two rows; the Operational one matches the tracked unit's 4.5 MW exactly. |
+| Kennoxhead | 4385 | REPD status "Under Construction" lags what Elexon already tracks as live (60 MW). |
+| Kilgallioch | 4386 | Parent used over the Under Construction extension. |
+| Limekiln | 6005 | Three rows; the Operational, non-extension one used. |
+| Lochluichart | 4123 | Parent used over its extension. |
+| Millennium | 4682 | The plain-named row used; two extension rows and an unbuilt, differently-sited "South"/"East" proposal excluded. |
+| North Kyle | 6607 | "North Kyle Energy Project" (Under Construction, 205.8 MW) matches the tracked units' 212 MW — status lags reality, as with Kennoxhead. |
+| Pencloe | 4480 | Matches the tracked unit's 81 MW exactly — status again lags reality. |
+| Pogbie | 4434+5637 | No single row covers the farm — centroid of its two REPD phases. |
+| Robin Rigg | 2496+2497 | One physical offshore farm, consented as separate East/West REPD rows — centroid of both. |
+| Sandy Knowe | 6703 | Two "Revised"-status duplicates plus this Operational row (81.6 MW) — the Operational one used. |
+| Sanquhar | 4441 | "Sanquhar Community Windfarm" (32.4 MW) matches the tracked unit almost exactly; REPD's "Sanquhar 2" (308 MW) is a distinct, larger, separate development. |
+| Whitelee | 3489 | Parent used over both extension phases. |
+| Windy Standard | 4431 | The tracked unit is registered "Brockloch Rig II" — the REPD row whose name ("formerly Windy Standard II") and site match it, not the separate "Brochloch Rig 1 (formerly Windy Standard)". |
+
+The recurring shape: REPD frequently registers a farm and its later extension as two rows, sometimes at the identical coordinate, sometimes a short distance apart at the same site — the plan's own rule (use the parent) resolves most of these outright; Dun Law is the one deliberate exception, because the tracked BM unit *is* the extension. A second recurring shape — Kennoxhead, Pencloe, North Kyle — is REPD's development-status field visibly lagging what Elexon already treats as a live, tracked unit; all three still matched cleanly on capacity once the status filter was widened to include "Under Construction"/"Awaiting Construction". `npm run farms:check` (new script, Part B) fails the build if any of the 76 lacks a coordinate or any `farms.json` entry names a farm bmus.ts doesn't track; it passes clean.
+
+### Per-farm output (Part C)
+
+`deriveNow` (`api/_lib/elexon.ts`) now rolls up *every* tracked unit by farm — not only units with an acceptance — reading each unit's declared PN level at the sampled instant regardless of whether it's being curtailed, so a farm with no curtailment still has a `declaredMW`/`instructedMW` for the map to draw from. The existing `units`/`curtailedMW` derivation (acceptance-only) is unchanged in meaning and value; both now share one per-unit shortfall map, so `sum(farms[].curtailedMW)` always equals the headline `curtailedMW` to rounding — asserted in `scripts/probe-api.ts`, which prints PASS/FAIL on every run. Method note text now says per-farm figures are declared output (a physical notification), never "generating".
+
+### Fixtures (Part D)
+
+`SAMPLE_CURTAILMENT.now` is replaced wholesale with a fresh derivation against the *same* historical settlement (24 July 2026, period 42, `sampledAt` unchanged) re-run through the current, fuller 112-unit `bmus.ts` — not a patch onto the old 15-unit/1,841 MW capture. The old capture predates several units this project added since (see 015's own history of the BMU list growing); re-deriving the same real event against today's population is more complete, not a different day. Result: 2,049.5 MW across 19 units and 10 farms (Seagreen, Moray East, Moray West, Beatrice, Creag Riabhach, Limekiln, Glen Kyllachy, Halsary, Gordonbush, Edinbane) — still headlined by the same four big offshore/Highland farms the old sample named, with six more the old 15-unit list simply didn't have coverage for. `calm` zeroes every farm's `curtailedMW`/`unitsCurtailed` and sets `instructedMW = declaredMW` — a still day isn't a windless one, so declared output stays real and only the curtailment fields go to zero. `degraded`/`waiting`/`offline` carry no `farms` at all, since `curtailment.now` itself is null for those states, unchanged from before.
+
+### Sources, rates, corridors (Part E/F)
+
+`rateForMW(instructedMW, capacityMW, params)` (`src/map/rate.ts`) is one linear map from 0..capacity onto `floor..cap` (defaults 1 and 20 particles/sec — the same order of magnitude as `/flow`'s fictional per-source constant of 12, so 76 real sources don't need a wholesale re-tune of `DEFAULT_FIELD_PARAMS` to read sensibly). Both ends are exposed live in a new, minimal `/map`-only control panel (`src/map/controls.ts`, `h` to toggle) — deliberately not `/flow`'s full field-weight panel, which stays out of scope until step 6's retune. A fully curtailed farm (`instructedMW` clamped to 0) reads at the floor, which is correct, not a display bug: the emission weight is meant to track what's actually flowing, and "wind, extinguished" is exactly what a floor-rate Seagreen is supposed to look like.
+
+`buildWorld` paints an offshore corridor — a capsule from the source's true offshore position to its nearest coast point, found by walking the *pre-corridor* mask's distance-field gradient (reusing `world.ts`'s existing `snapInside`, buffer 0) — into the raster mask for every `Source` with `offshore: true`, before the distance/geodesic/divergent fields are built, so a corridor cell is simply interior to all three. Radius is `steerThreshold` (18px default, so 36px diameter — "about twice `steerThreshold`" per the plan). Verified live: all 7 offshore farms (Aberdeen Offshore, Beatrice, Moray East, Moray West, Neart Na Gaoithe, Robin Rigg, Seagreen) resolve `wasSnapped: false` — their true position, not a coast-snapped one. **Corridor, not the snap-with-connector fallback** — the corridor is invisible by construction (it only extends the *particle-containment* mask, never the drawn SVG island or any visible fill), so the "reads as a canal" risk the plan named doesn't arise: there is nothing painted over the sea for it to read as a channel. No fallback build was needed.
+
+76 sources needed the per-source hue-offset mechanism (`palette.ts`'s `SOURCE_HUE_OFFSET`) to scale past its original 7 hand-curated letter keys. Added a deterministic string hash (`hueOffsetForChannel`) that falls back to a small (±3°, against `/flow`'s ±12°) hashed offset for any channel it doesn't recognise — `/flow`'s own 7 sources are unaffected (the curated table still wins for `a`–`g`), and every farm gets its own name as its channel, so 76 farms read as one ink with real per-farm distinguishability, not a rainbow.
+
+The state machinery (`fetchCoreFeeds` on the same 120s cadence as `src/main.ts`, `?state=` via `scenarioByName`, the `[`/`]` cycler) drives `farmSources.ts`'s `applyFarmRates` + `particles.refreshRates()` on every landing — confirmed against the `curtailing` fixture: exactly the 10 farms named above render `data-state="held-down"`, the other 66 `"declaring"`. The information-layer panels are untouched by any of this in step 2 (still static placeholder copy, per the plan); each now carries a small `.placeholder-tag` badge so a gate screenshot is never read as a live claim the flow underneath it contradicts.
+
+### Farm markers (Part G)
+
+Three states, never colour alone: `declaring` is a small filled circle; `held-down` is larger, hatch-filled (`--curtailed`/`--curtailed-edge`, redrawn as an SVG `<pattern>` since a `fill` attribute can't reference a CSS `background-image`) with a stroke; `silent` (no PN at the instant — `unitsDeclaring === 0`) is hollow with a dashed stroke. Held-down farms get no special motion in this step (§5.5's sputtering emission is step 6).
+
+### Composition corrections (Part A)
+
+The island now fills the viewport below the masthead (`.composition { min-height: 100svh }`) with every panel — Scotland, England, the headline, the border caption — an absolutely-positioned overlay on top of it; narration, the method note and the colophon sit below the fold. Scotland and the headline aren't tied to a coastline point the sketch cares about, so they're plain CSS overlays stacked top-right, not projection-positioned.
+
+**Border weight.** Bumped from `var(--text-muted)` at 2px to `var(--text-primary)` at 3px, 0.85 opacity — full ink, not a muted orientation line, per "the border is the most visible line on the map." Provisional; step 6 owns the final constraint-state styling.
+
+**Border caption: North Sea, with a leader.** Tried both `[56.0, -0.9]`-ish North Sea and `[54.3, -4.27]`-ish Solway positions (both confirmed outside the mask via the distance field before use, walked out from the border until genuinely clear of the coast — not just barely outside it). North Sea kept: Solway sits close enough to the border that its caption box collided visually with the England panel's own position, which North Sea doesn't. Neither offshore point has anywhere near the ~190px CSS clearance the caption's own `max-width: 24rem` box would need to avoid touching the coast entirely — the box is wider than the firths are open — so, per the plan's own suggested fallback, a short dashed SVG leader now connects the caption's anchor to the nearest point on the drawn border line, which is what actually keeps the connection legible at this box size, not a further search for an untouched coordinate.
+
+**England panel: Irish Sea.** Tried `[53.5, -4.6]` (Irish Sea, between Anglesey and the Isle of Man) against `[49.7, -6.6]` (Celtic Sea, south-west of Cornwall). Celtic Sea is geographically cleaner (more open water, ~112px mask clearance vs Irish Sea's ~64px) but reads worse in the composition: at a typical desktop height it sits far enough south to require scrolling, disconnected from the Scotland/headline/border cluster near the top of the screen, which is exactly the "or moved east" failure mode 022 flagged for the *previous* Irish Sea point (`[53.3, -4.15]`, ~6px clearance, which did visibly spill onto Wales). The refined Irish Sea point clears the coast outright and stays on-screen with the rest of the composition. Both candidates are kept as named constants in `main.ts` (`ENGLAND_LABEL_CANDIDATES`/`BORDER_CAPTION_CANDIDATES`), toggleable live with the `e`/`b` keys for the next review, rather than deleted after picking one.
+
+### What the real 76 sources changed about containment
+
+`npm run flow:harness --ring=ons --realSources` (new flag: swaps in the 76 real farm sources at the `curtailing` fixture's rates, in place of `/flow`'s 7 fictional ones) — 3000 particles, 60s, `DEFAULT_FIELD_PARAMS` untouched, per the plan ("Do not retune the field in steps 1–5"):
+
+| Metric | 7 fictional sources (022 baseline, `--ring=ons`) | 76 real sources (this baseline) |
+|---|---|---|
+| Interior coverage | 93.1% | 95.2% |
+| Top-5% concentration | 33.0% | 27.2% |
+| Direction coherence | 0.377 | 0.428 |
+| Death: trapped / density | 11.8% / 45.8% | 19.6% / 25.1% |
+| Strike rate | 2.043 / particle-s | 2.032 / particle-s |
+| Escape samples | 0 | 0 (holds) |
+| Frame cost (avg) | 1.583ms | 2.058ms |
+
+Coverage and concentration both move in the direction more, more-spread-out sources would be expected to move them — 76 emission points instead of 7 fill more of the interior and pile up less at any one of them. The trapped/density death-cause split shifted (more trapped, less density-recycled) rather than the total changing much, consistent with a wider spread of spawn points meaning fewer particles ever sit in a single crowded cell long enough to trigger the recycle path. Frame cost rose (2400 device-px width, 76-source rate table, still cheap) but stays two orders of magnitude under the 16.7ms/frame budget for 60fps. Two onshore sources (Edinbane, Viking) auto-snap at this harness's 2400×1600 canvas size — the same coastline-simplification-artefact mechanism `world.ts` already handles for `/flow`'s own sources, not a new failure mode; flagged, not chased, per the plan (retune is step 6's). Nothing here is retuned; recorded as the step 2 baseline for step 6 to compare against.
+
+**What was rejected:** patching `SAMPLE_CURTAILMENT`'s old 15-unit capture in place with a `farms` array bolted on (would leave `units`/`farms` describing two different unit populations under one timestamp); a generic "any REPD row containing this substring" fallback for the 24 ambiguous farms instead of a named, reasoned table (would silently pick a wrong coordinate on the next REPD refresh instead of erroring loud); the snap-with-connector offshore fallback (never needed — the corridor never read as a canal, since nothing about it is ever drawn); deleting the England/border position candidates after choosing one (kept as named, toggleable constants since this is exactly the kind of call a designer revisits).

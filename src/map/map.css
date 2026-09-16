@@ -1,19 +1,24 @@
 /*
- * /map — step 1: geometry and composition skeleton.
+ * /map — step 2: real farms, real output.
  *
- * Light-only (021, 022): cream ground, white island, inky wind. Layout is
- * a wide desktop composition — the island fills roughly the left 60% of
- * the viewport, with Scotland's mix and the curtailment headline stacked
- * to its right, England's mix and the border caption overlaid on the map
- * itself (positioned from the same Projection that draws the coast — see
- * main.ts), and narration/colophon spanning full width beneath. Below
- * ~768px everything stacks in reading order (022).
+ * Light-only (021, 022): cream ground, white island, inky wind. Composition
+ * corrections from the step 1 gate (see DECISIONS 023): the island fills the
+ * viewport below the masthead and every panel — Scotland, England, the
+ * headline and the border caption — is an overlay directly on top of it,
+ * not beside it in a column; the page scrolls for narration, the method
+ * note and the colophon. Below ~768px everything leaves the map's
+ * coordinate space and stacks in reading order (022) — deferred to step 4,
+ * kept only working here.
  *
- * Placeholder copy only in step 1 — real lengths, no live binding. Mix
- * bars and the share bar reuse app.css's fuel-colour attribute selectors
- * (data-fuel, via the shared --fuel-* tokens) but are otherwise redrawn
- * here rather than imported, since app.css carries a lot of dashboard-only
- * dark-mode assumptions this page doesn't share.
+ * Mix bars and the share bar reuse app.css's fuel-colour attribute
+ * selectors (data-fuel, via the shared --fuel-* tokens) but are otherwise
+ * redrawn here rather than imported, since app.css carries a lot of
+ * dashboard-only dark-mode assumptions this page doesn't share.
+ *
+ * The information layer is still placeholder copy in this step (step 3
+ * writes it live) — every panel below carries a small "Placeholder" tag
+ * (`.placeholder-tag`) so a gate screenshot never reads as a live claim
+ * that contradicts the real, live flow underneath it.
  */
 
 html {
@@ -34,10 +39,7 @@ body {
 }
 
 .map-screen {
-  display: grid;
-  grid-template-rows: auto 1fr auto auto;
-  gap: var(--gap-lg);
-  min-height: 100svh;
+  display: block;
   max-width: 92rem;
   margin-inline: auto;
   padding: var(--gap-md) var(--page-x) var(--gap-lg);
@@ -105,29 +107,25 @@ body {
 /* --- Composition: map + info column -------------------------------------- */
 
 /*
- * Grid for layout (map column vs info column); position:relative so the
- * England panel and border caption — direct children, not nested in
- * .map__stage — can be placed in the same pixel coordinate space the
- * Projection itself uses (main.ts positions them with getBoundingClientRect
- * math against this element, not percentages, since the two grid columns
- * aren't equal width). Absolutely positioned children of a grid container
- * opt out of grid placement entirely, so this composes cleanly with the
- * grid-column placement below.
+ * Full-bleed: the island fills the viewport below the masthead (gate 1
+ * outcome, DECISIONS 023) — `.composition` and `.map__stage` are now the
+ * same box, sized to at least a full viewport tall, with every panel an
+ * absolutely-positioned overlay on top of it rather than a sibling beside
+ * it. position:relative so the England panel and border caption — placed
+ * from the same Projection that draws the coast — resolve their `left`/
+ * `top` against this element (main.ts's positionOverlays(), via
+ * getBoundingClientRect math, not percentages: a projected map position
+ * doesn't correspond to a fixed CSS percentage of the box).
  */
 .composition {
   position: relative;
-  display: grid;
-  grid-template-columns: 60% 1fr;
-  gap: var(--gap-lg);
-  align-items: stretch;
+  min-height: 100svh;
+  overflow: hidden;
 }
 
 .map__stage {
-  grid-column: 1;
-  position: relative;
-  min-height: 32rem;
-  border-radius: 4px;
-  overflow: hidden;
+  position: absolute;
+  inset: 0;
 }
 
 .map__svg,
@@ -144,11 +142,56 @@ body {
   stroke: none;
 }
 
+/*
+ * The border is the most visible line on the map (gate 1 outcome, Part A.2)
+ * — provisional weight and contrast, not the final treatment (that's step
+ * 6, when the border figure and its constraint-state styling land). Full
+ * ink rather than a muted grey: this line is the argument, not a boundary
+ * drawn for orientation only.
+ */
 .map__border-line {
   fill: none;
-  stroke: var(--text-muted);
-  stroke-width: 2;
+  stroke: var(--text-primary);
+  stroke-width: 3;
   stroke-linecap: round;
+  opacity: 0.85;
+}
+
+.map__border-caption-leader {
+  stroke: var(--text-muted);
+  stroke-width: 1.25;
+  stroke-dasharray: 2 3;
+}
+
+/* --- Farm markers (Part G) -------------------------------------------------
+ * Three states — declaring, held down, silent — never carried by colour
+ * alone (see markers.ts): held-down is both larger and hatch-filled (the
+ * page's existing curtailed-share convention, tokens.css's --hatch, redrawn
+ * as an SVG pattern in markers.ts since a `fill` attribute can't reference
+ * a CSS background-image); silent is hollow and dashed. Provisional styling;
+ * step 4 sets the final look.
+ */
+.map__farm-marker {
+  stroke-width: 1.25;
+  pointer-events: none;
+}
+
+.map__farm-marker[data-state='declaring'] {
+  fill: var(--fuel-wind);
+  stroke: rgb(255 255 255 / 0.7);
+}
+
+.map__farm-marker[data-state='held-down'] {
+  fill: url(#map-farm-hatch);
+  stroke: var(--curtailed-edge);
+  stroke-width: 1.5;
+}
+
+.map__farm-marker[data-state='silent'] {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 1.5 1.5;
 }
 
 .map__overlay {
@@ -184,14 +227,27 @@ body {
   pointer-events: none;
 }
 
-.info-column {
-  grid-column: 2;
-  display: grid;
-  align-content: start;
-  gap: var(--gap-md);
+/*
+ * Placeholder tag (Part E.3): the information layer is still static copy
+ * in this step, not bound to live data. A small, visible flag on every
+ * panel so a gate screenshot is never mistaken for a live claim that
+ * contradicts the real flow underneath it — step 3 removes this along with
+ * the placeholder copy it's attached to.
+ */
+.placeholder-tag {
+  justify-self: start;
+  margin-bottom: 0.1rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 2px;
+  background: var(--signal-ageing);
+  color: var(--ink-void);
+  font-size: 0.6rem;
+  font-weight: var(--wt-medium);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
-/* --- Panels: Scotland, England (overlaid), the headline ------------------ */
+/* --- Panels: Scotland, England, the headline (all overlaid) -------------- */
 
 .panel {
   display: grid;
@@ -206,6 +262,30 @@ body {
 .panel--england {
   max-width: 20rem;
   transform: translate(-50%, -50%);
+}
+
+/*
+ * Scotland and the headline aren't tied to a specific coastline point the
+ * way England's panel and the border caption are (positioned from the
+ * Projection in main.ts) — the sketch places them generally "to the right
+ * of Scotland," so they're a plain CSS overlay, stacked top-right of the
+ * full-bleed stage, and skip the visibility:hidden-until-positioned rule
+ * `.map__overlay` sets for the projected ones.
+ */
+.panel--scotland,
+.panel--headline {
+  position: absolute;
+  visibility: visible;
+  right: var(--gap-lg);
+  max-width: 22rem;
+}
+
+.panel--scotland {
+  top: var(--gap-lg);
+}
+
+.panel--headline {
+  top: 14rem;
 }
 
 .panel__place {
@@ -454,15 +534,20 @@ body {
     display: flex;
     flex-direction: column;
     gap: var(--gap-md);
+    min-height: 0;
+    overflow: visible;
   }
 
   .map__stage {
+    position: static;
     order: 1;
     min-height: 20rem;
   }
 
   .map__overlay,
-  .map__wind-note {
+  .map__wind-note,
+  .panel--scotland,
+  .panel--headline {
     position: static;
     visibility: visible;
     transform: none;
@@ -472,10 +557,6 @@ body {
 
   .map__wind-note {
     padding: 0 var(--gap-sm);
-  }
-
-  .info-column {
-    display: contents;
   }
 
   .panel--scotland {

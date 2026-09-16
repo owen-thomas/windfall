@@ -12,10 +12,14 @@
     "spike:carbon": "npx tsx spike/carbon-intensity.ts",
     "spike:elexon": "npx tsx spike/elexon-curtailment.ts",
     "narrate:eval": "npx tsx scripts/narrate-eval.ts",
-    "flow:harness": "npx tsx scripts/flow-harness.ts"
+    "flow:harness": "npx tsx scripts/flow-harness.ts",
+    "farms:build": "npx tsx scripts/build-farms.ts",
+    "farms:check": "npx tsx scripts/check-farms.ts"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
+    "@types/proj4": "^2.5.6",
+    "proj4": "^2.22.0",
     "tsx": "^4.23.11",
     "typescript": "^5.8.0",
     "vite": "^6.3.0"

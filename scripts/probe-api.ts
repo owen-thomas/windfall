@@ -76,6 +76,27 @@ async function main() {
   for (const u of (curtBody.now?.units ?? []).slice(0, 8)) {
     console.log(`  ${u.id.padEnd(10)} ${u.name.padEnd(22)} ${String(u.curtailedMW).padStart(8)} MW / ${u.capacityMW} MW`);
   }
+
+  const farms = curtBody.now?.farms ?? [];
+  console.log(`now.farms: ${farms.length} farms tracked`);
+  const declaring = farms.filter((f: any) => f.unitsDeclaring > 0);
+  console.log(`  declaring right now: ${declaring.length} of ${farms.length}`);
+  for (const f of farms.slice(0, 8)) {
+    console.log(
+      `  ${f.farm.padEnd(20)} declared ${String(f.declaredMW).padStart(7)} MW  instructed ${String(f.instructedMW).padStart(7)} MW  curtailed ${String(f.curtailedMW).padStart(7)} MW  (${f.unitsDeclaring}/${f.unitsCurtailed} units declaring/curtailed)`
+    );
+  }
+  // Step 2 gate check (Windfall_Map_Spec.md Part C): farms[].curtailedMW
+  // must sum to the headline curtailedMW to within rounding — both are
+  // derived from the same per-unit shortfalls in deriveNow.
+  const farmSum = farms.reduce((sum: number, f: any) => sum + f.curtailedMW, 0);
+  const headline = curtBody.now?.curtailedMW ?? 0;
+  const diff = Math.abs(farmSum - headline);
+  console.log(
+    `  sum(farms[].curtailedMW) = ${farmSum.toFixed(1)} MW vs headline curtailedMW = ${headline} MW ` +
+      `(diff ${diff.toFixed(2)} MW) — ${diff < 0.5 ? 'PASS' : 'FAIL'}`
+  );
+
   console.log(
     `settled: ${curtBody.settled?.curtailedMWh} MWh across ${curtBody.settled?.unitsCurtailed} units` +
       ` (period ${curtBody.settled?.settlement?.period})`

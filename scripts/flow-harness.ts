@@ -66,6 +66,9 @@ import { performance } from 'node:perf_hooks';
 import { buildWorld, GB_RING } from '../src/flow/world';
 import { ParticleSystem, type DeathCause } from '../src/flow/particles';
 import { DEFAULT_FIELD_PARAMS, getDefaultNoise3, type FieldParams, southness } from '../src/flow/field';
+import { SOURCES } from '../src/flow/sources';
+import { applyFarmRates, buildFarmSources } from '../src/map/farmSources';
+import { SAMPLE_CURTAILMENT } from '../src/lib/sample';
 import gbCountries from '../src/map/data/gb-countries.json';
 
 /** Step 1 of the map plan: buildWorld now takes the ring explicitly, so this harness can compare the Natural Earth ring /flow is tuned against with the ONS ring /map uses, without retuning anything. */
@@ -90,6 +93,14 @@ interface Args {
   conformEnabled: boolean;
   /** Windfall_Map_Spec.md step 1: --ring=ons runs against the ONS mainland ring /map uses, instead of the Natural Earth ring /flow is tuned against. */
   ring: keyof typeof RINGS;
+  /**
+   * Step 2 Part E's baseline run: --realSources swaps /flow's seven
+   * fictional sources for /map's 76 real farm sources (src/map/farmSources
+   * ts), rates taken from the `curtailing` fixture (src/lib/sample.ts's
+   * SAMPLE_CURTAILMENT.now.farms) rather than left at the floor — "the real
+   * sources at the curtailing fixture's rates," per the plan.
+   */
+  realSources: boolean;
 }
 
 function parseArgs(): Args {
@@ -123,6 +134,7 @@ function parseArgs(): Args {
     noiseMode,
     conformEnabled: !argv.includes('--noConform'),
     ring,
+    realSources: argv.includes('--realSources'),
   };
 }
 
@@ -145,7 +157,12 @@ function meanAndStddev(values: number[]): { mean: number; stddev: number } {
 }
 
 function run(args: Args) {
-  const world = buildWorld(RINGS[args.ring], args.width, args.height);
+  let sources = SOURCES;
+  if (args.realSources) {
+    sources = buildFarmSources();
+    applyFarmRates(sources, SAMPLE_CURTAILMENT.now?.farms);
+  }
+  const world = buildWorld(RINGS[args.ring], sources, args.width, args.height);
   const fieldParams: FieldParams = {
     ...DEFAULT_FIELD_PARAMS,
     baseFieldMode: args.baseFieldMode,
@@ -237,6 +254,7 @@ function run(args: Args) {
 
   console.log(
     `\n=== flow-harness: ${args.particles} particles, ${args.seconds}s sim, ring=${args.ring}, ` +
+      `sources=${args.realSources ? `real (${sources.length})` : `fictional (${sources.length})`}, ` +
       `ageBudgetMode=${args.ageBudgetMode}, baseFieldMode=${args.baseFieldMode}, ` +
       `densityEnabled=${args.densityEnabled}, noiseMode=${args.noiseMode}, ` +
       `conformEnabled=${args.conformEnabled}, ${args.width}x${args.height} ===\n`,

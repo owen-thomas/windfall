@@ -1,0 +1,710 @@
+[
+  {
+    "farm": "A’Chruach",
+    "latLon": [
+      56.15277,
+      -5.31022
+    ],
+    "offshore": false,
+    "repdRef": "4331",
+    "source": "REPD splits this into 'A'Chruach (Phase 1)' (Operational, 48.3 MW) and 'A'Chruach (Phase 2)' (Planning Permission Expired, 4MW, unbuilt) — the built phase is used."
+  },
+  {
+    "farm": "Aberdeen Offshore",
+    "latLon": [
+      57.1462,
+      -2.07281
+    ],
+    "offshore": true,
+    "repdRef": "2505",
+    "source": "REPD's site name is 'European Offshore Wind Deployment Centre (EOWDC) (Aberdeen Bay - Demonstration site)' — not name-matchable against 'Aberdeen Offshore'; matched by capacity (96.8 MW REPD vs 99 MW registered) and being the only Scottish offshore site near Aberdeen."
+  },
+  {
+    "farm": "Afton",
+    "latLon": [
+      55.3116,
+      -4.17428
+    ],
+    "offshore": false,
+    "repdRef": "4262"
+  },
+  {
+    "farm": "Aikengall",
+    "latLon": [
+      55.91721,
+      -2.49007
+    ],
+    "offshore": false,
+    "repdRef": "4526"
+  },
+  {
+    "farm": "An Suidhe",
+    "latLon": [
+      56.21867,
+      -5.21937
+    ],
+    "offshore": false,
+    "repdRef": "3298"
+  },
+  {
+    "farm": "Arecleoch",
+    "latLon": [
+      55.06878,
+      -4.79705
+    ],
+    "offshore": false,
+    "repdRef": "3258"
+  },
+  {
+    "farm": "Bad a Cheo",
+    "latLon": [
+      58.42046,
+      -3.42919
+    ],
+    "offshore": false,
+    "repdRef": "4646"
+  },
+  {
+    "farm": "Beatrice",
+    "latLon": [
+      58.08823,
+      -2.95016
+    ],
+    "offshore": true,
+    "repdRef": "2521"
+  },
+  {
+    "farm": "Beinneun",
+    "latLon": [
+      57.09561,
+      -4.96548
+    ],
+    "offshore": false,
+    "repdRef": "3787",
+    "source": "Parent 'Beinneun' (Operational, 85 MW) used over 'Beinneun Windfarm Extension' (23.8 MW) per the extension rule — both share the exact same coordinate. A third row, 'Beinneun II' (136.8 MW, Application Submitted), is a separate unbuilt proposal at a different site."
+  },
+  {
+    "farm": "Benbrack",
+    "latLon": [
+      55.26719,
+      -4.31197
+    ],
+    "offshore": false,
+    "repdRef": "3503"
+  },
+  {
+    "farm": "Bhlaraidh",
+    "latLon": [
+      57.25136,
+      -4.66179
+    ],
+    "offshore": false,
+    "repdRef": "7473"
+  },
+  {
+    "farm": "Black Law",
+    "latLon": [
+      55.76219,
+      -3.76257
+    ],
+    "offshore": false,
+    "repdRef": "3116"
+  },
+  {
+    "farm": "Blackcraig",
+    "latLon": [
+      55.11991,
+      -4.03212
+    ],
+    "offshore": false,
+    "repdRef": "4032"
+  },
+  {
+    "farm": "Broken Cross",
+    "latLon": [
+      55.6045,
+      -3.81617
+    ],
+    "offshore": false,
+    "repdRef": "6708"
+  },
+  {
+    "farm": "Carraig Gheal",
+    "latLon": [
+      56.33901,
+      -5.29454
+    ],
+    "offshore": false,
+    "repdRef": "4619"
+  },
+  {
+    "farm": "Clyde",
+    "latLon": [
+      55.44163,
+      -3.54273
+    ],
+    "offshore": false,
+    "repdRef": "4011"
+  },
+  {
+    "farm": "Corriegarth",
+    "latLon": [
+      57.19008,
+      -4.35964
+    ],
+    "offshore": false,
+    "repdRef": "4664"
+  },
+  {
+    "farm": "Corriemoillie",
+    "latLon": [
+      57.66873,
+      -4.77302
+    ],
+    "offshore": false,
+    "repdRef": "4120"
+  },
+  {
+    "farm": "Cour",
+    "latLon": [
+      55.68068,
+      -5.48493
+    ],
+    "offshore": false,
+    "repdRef": "3772"
+  },
+  {
+    "farm": "Creag Riabhach",
+    "latLon": [
+      58.2193,
+      -4.51121
+    ],
+    "offshore": false,
+    "repdRef": "4300"
+  },
+  {
+    "farm": "Crossdykes",
+    "latLon": [
+      55.17615,
+      -3.17287
+    ],
+    "offshore": false,
+    "repdRef": "4633"
+  },
+  {
+    "farm": "Crystal Rig",
+    "latLon": [
+      55.88295,
+      -2.50751
+    ],
+    "offshore": false,
+    "repdRef": "3114",
+    "source": "Parent 'Crystal Rig Phase 1' (62.5 MW) used over 'Crystal Rig Extension II' (20.7 MW)."
+  },
+  {
+    "farm": "Cumberhead",
+    "latLon": [
+      55.57184,
+      -3.95894
+    ],
+    "offshore": false,
+    "repdRef": "5455"
+  },
+  {
+    "farm": "Dalquhandy",
+    "latLon": [
+      55.18061,
+      -4.90958
+    ],
+    "offshore": false,
+    "repdRef": "4189"
+  },
+  {
+    "farm": "Dersalloch",
+    "latLon": [
+      55.30426,
+      -4.48822
+    ],
+    "offshore": false,
+    "repdRef": "4269"
+  },
+  {
+    "farm": "Dorenell",
+    "latLon": [
+      57.3509,
+      -3.13168
+    ],
+    "offshore": false,
+    "repdRef": "4244",
+    "source": "'Dorenell Wind Farm (Previously Site A and B Scaut Hill)' (Operational, 177 MW) is the built site. 'Dorenell Wind Farm (extension)' (Abandoned) shares its exact coordinate; 'Dorenell Extension Wind Farm' (Application Submitted, 476.6 MW) is a separate, larger, unbuilt proposal."
+  },
+  {
+    "farm": "Douglas West",
+    "latLon": [
+      55.58736,
+      -3.8901
+    ],
+    "offshore": false,
+    "repdRef": "6826"
+  },
+  {
+    "farm": "Dun Law",
+    "latLon": [
+      55.7868,
+      -2.8423
+    ],
+    "offshore": false,
+    "repdRef": "3579",
+    "source": "The only tracked BM unit for this farm is registered as 'Dun Law Ext' (DNLWW-1, 29.75 MW), matching REPD's 'Dun Law Extension' (29.8 MW) almost exactly — the parent 'Dun Law' site (17.2 MW) is not transmission-connected and not part of this tracked farm, so the extension's own coordinate is used rather than the usual parent rule."
+  },
+  {
+    "farm": "Dunmaglass",
+    "latLon": [
+      57.25148,
+      -4.2558
+    ],
+    "offshore": false,
+    "repdRef": "4118"
+  },
+  {
+    "farm": "Edinbane",
+    "latLon": [
+      57.46913,
+      -6.43221
+    ],
+    "offshore": false,
+    "repdRef": "4674"
+  },
+  {
+    "farm": "Enoch Hill",
+    "latLon": [
+      55.35584,
+      -4.23506
+    ],
+    "offshore": false,
+    "repdRef": "3502"
+  },
+  {
+    "farm": "Ewe Hill",
+    "latLon": [
+      55.10709,
+      -3.33387
+    ],
+    "offshore": false,
+    "repdRef": "3627"
+  },
+  {
+    "farm": "Fallago Rig",
+    "latLon": [
+      55.83131,
+      -2.68803
+    ],
+    "offshore": false,
+    "repdRef": "4059"
+  },
+  {
+    "farm": "Farr",
+    "latLon": [
+      57.33392,
+      -4.10301
+    ],
+    "offshore": false,
+    "repdRef": "4676"
+  },
+  {
+    "farm": "Freasdail",
+    "latLon": [
+      55.77701,
+      -5.47064
+    ],
+    "offshore": false,
+    "repdRef": "3886"
+  },
+  {
+    "farm": "Galawhistle",
+    "latLon": [
+      55.53957,
+      -3.97542
+    ],
+    "offshore": false,
+    "repdRef": "4368"
+  },
+  {
+    "farm": "Glen App",
+    "latLon": [
+      55.00066,
+      -4.98968
+    ],
+    "offshore": false,
+    "repdRef": "4593"
+  },
+  {
+    "farm": "Glen Kyllachy",
+    "latLon": [
+      57.32073,
+      -4.08565
+    ],
+    "offshore": false,
+    "repdRef": "4371"
+  },
+  {
+    "farm": "Gordonbush",
+    "latLon": [
+      58.0595,
+      -3.95905
+    ],
+    "offshore": false,
+    "repdRef": "3662",
+    "source": "Parent 'Gordonbush' (70 MW) used over 'Gordonbush (extension)' (47 MW) per the extension rule."
+  },
+  {
+    "farm": "Griffin",
+    "latLon": [
+      56.58122,
+      -3.73375
+    ],
+    "offshore": false,
+    "repdRef": "4028"
+  },
+  {
+    "farm": "Hadyard Hill",
+    "latLon": [
+      55.25682,
+      -4.73191
+    ],
+    "offshore": false,
+    "repdRef": "3109",
+    "source": "Parent 'Hadyard Hill' (Operational, 120 MW) used; the extension row is Application Withdrawn."
+  },
+  {
+    "farm": "Hagshaw Hill",
+    "latLon": [
+      55.55528,
+      -3.92008
+    ],
+    "offshore": false,
+    "repdRef": "3301",
+    "source": "Four REPD rows share this name; the plain, non-extension, non-repowering 'Hagshaw Hill Wind Farm' row is used per the extension rule, even though REPD's own capacity for it (7.8 MW) looks stale against the tracked unit (30.258 MW) — its coordinate is the original site either way."
+  },
+  {
+    "farm": "Halsary",
+    "latLon": [
+      58.4309,
+      -3.44445
+    ],
+    "offshore": false,
+    "repdRef": "4636"
+  },
+  {
+    "farm": "Harestanes",
+    "latLon": [
+      55.23903,
+      -3.5742
+    ],
+    "offshore": false,
+    "repdRef": "4119",
+    "source": "Parent 'Harestanes' (Operational, 136 MW) used; the extension row is Application Refused."
+  },
+  {
+    "farm": "Keith Hill",
+    "latLon": [
+      55.81727,
+      -2.82546
+    ],
+    "offshore": false,
+    "repdRef": "4516",
+    "source": "REPD has two 'Keith Hill' rows; the Operational one (4.5 MW) matches the tracked unit's capacity exactly. The other (25 MW, status 'Revised') is excluded."
+  },
+  {
+    "farm": "Kennoxhead",
+    "latLon": [
+      55.49792,
+      -3.94631
+    ],
+    "offshore": false,
+    "repdRef": "4385",
+    "source": "REPD status is 'Under Construction', not yet Operational — but Elexon already tracks this unit (KENNW-1, 60 MW) as live, so the status lags reality. Its Extension (Phase 2) row is excluded."
+  },
+  {
+    "farm": "Kilbraur",
+    "latLon": [
+      58.0404,
+      -4.0588
+    ],
+    "offshore": false,
+    "repdRef": "3202"
+  },
+  {
+    "farm": "Kilgallioch",
+    "latLon": [
+      54.98845,
+      -4.80172
+    ],
+    "offshore": false,
+    "repdRef": "4386",
+    "source": "Parent 'Kilgallioch wind farm' (Operational, 239 MW) used over the Under Construction extension."
+  },
+  {
+    "farm": "Kype Muir",
+    "latLon": [
+      55.63265,
+      -4.0361
+    ],
+    "offshore": false,
+    "repdRef": "4628"
+  },
+  {
+    "farm": "Limekiln",
+    "latLon": [
+      58.52848,
+      -3.74205
+    ],
+    "offshore": false,
+    "repdRef": "6005",
+    "source": "Three REPD rows share this name; the Operational, non-extension row is used. A duplicate 'Revised'-status row at a near-identical coordinate and the Extension row are excluded."
+  },
+  {
+    "farm": "Lochluichart",
+    "latLon": [
+      57.65459,
+      -4.8167
+    ],
+    "offshore": false,
+    "repdRef": "4123",
+    "source": "Parent 'Lochluichart' (Operational, 51 MW) used over 'Lochluichart (Extension)' (18 MW)."
+  },
+  {
+    "farm": "Mark Hill",
+    "latLon": [
+      55.12837,
+      -4.74631
+    ],
+    "offshore": false,
+    "repdRef": "3260"
+  },
+  {
+    "farm": "Middle Muir",
+    "latLon": [
+      55.51289,
+      -3.80402
+    ],
+    "offshore": false,
+    "repdRef": "4440"
+  },
+  {
+    "farm": "Millennium",
+    "latLon": [
+      57.15523,
+      -4.88364
+    ],
+    "offshore": false,
+    "repdRef": "4682",
+    "source": "The plain-named, non-extension 'Millennium Windfarm' row is used; 'Millennium Extension' and 'Millennium Extension II' are excluded, as is the unbuilt 'Millennium South'/'Millennium East' proposal at a different coordinate."
+  },
+  {
+    "farm": "Minnygap",
+    "latLon": [
+      55.24877,
+      -3.5148
+    ],
+    "offshore": false,
+    "repdRef": "4437"
+  },
+  {
+    "farm": "Moray East",
+    "latLon": [
+      57.96732,
+      -2.79054
+    ],
+    "offshore": true,
+    "repdRef": "2534"
+  },
+  {
+    "farm": "Moray West",
+    "latLon": [
+      58.06989,
+      -3.31307
+    ],
+    "offshore": true,
+    "repdRef": "6158"
+  },
+  {
+    "farm": "Neart Na Gaoithe",
+    "latLon": [
+      56.27,
+      -2.25
+    ],
+    "offshore": true,
+    "repdRef": "2522"
+  },
+  {
+    "farm": "North Kyle",
+    "latLon": [
+      55.35173,
+      -4.35966
+    ],
+    "offshore": false,
+    "repdRef": "6607",
+    "source": "'North Kyle Energy Project' (Under Construction, 205.8 MW) matches the tracked units' combined 212 MW almost exactly — REPD's status lags reality, as with Kennoxhead. 'Kyle Windfarm' (Application Refused) and 'Breezy Hill, North Kyle Forest Estate' (a separate, smaller, unbuilt proposal) are excluded."
+  },
+  {
+    "farm": "Pencloe",
+    "latLon": [
+      55.36875,
+      -4.24779
+    ],
+    "offshore": false,
+    "repdRef": "4480",
+    "source": "'Pencloe Wind Farm' (Under Construction, 81 MW) matches the tracked unit's 81 MW exactly — status again lags reality. Its extension row is excluded."
+  },
+  {
+    "farm": "Pogbie",
+    "latLon": [
+      55.83065,
+      -2.83756
+    ],
+    "offshore": false,
+    "repdRef": "4434+5637",
+    "source": "No single REPD row covers the whole farm — 'Pogbie Wind Farm 1' and 'Pogbie Wind Farm 2' (both Operational, adjacent) are its two phases. Centroid of both used."
+  },
+  {
+    "farm": "Robin Rigg",
+    "latLon": [
+      54.75575,
+      -3.71242
+    ],
+    "offshore": true,
+    "repdRef": "2496+2497",
+    "source": "One physical offshore wind farm, consented and built as two separate REPD rows (East and West arrays, both Operational). Centroid of both used."
+  },
+  {
+    "farm": "Sandy Knowe",
+    "latLon": [
+      55.37215,
+      -4.05134
+    ],
+    "offshore": false,
+    "repdRef": "6703",
+    "source": "REPD has two 'Revised'-status duplicates plus this Operational row (81.6 MW) at a near-identical coordinate to one of them, plus a separate Extension row. The Operational row is used."
+  },
+  {
+    "farm": "Sanquhar",
+    "latLon": [
+      55.34418,
+      -4.04657
+    ],
+    "offshore": false,
+    "repdRef": "4441",
+    "source": "'Sanquhar Community Windfarm' (Operational, 32.4 MW) matches the tracked unit's 32.08 MW almost exactly. REPD's 'Sanquhar 2 Community Wind Farm' (308 MW, Under Construction) is a distinct, much larger, separate development at a different site and is not this farm."
+  },
+  {
+    "farm": "Seagreen",
+    "latLon": [
+      56.63551,
+      -1.92662
+    ],
+    "offshore": true,
+    "repdRef": "2540"
+  },
+  {
+    "farm": "South Kyle",
+    "latLon": [
+      55.31733,
+      -4.29318
+    ],
+    "offshore": false,
+    "repdRef": "4586"
+  },
+  {
+    "farm": "Strathy North",
+    "latLon": [
+      58.49,
+      -4.03359
+    ],
+    "offshore": false,
+    "repdRef": "4625"
+  },
+  {
+    "farm": "Stronelairg",
+    "latLon": [
+      57.12692,
+      -4.52637
+    ],
+    "offshore": false,
+    "repdRef": "4597"
+  },
+  {
+    "farm": "Toddleburn",
+    "latLon": [
+      55.76855,
+      -2.87739
+    ],
+    "offshore": false,
+    "repdRef": "3457"
+  },
+  {
+    "farm": "Tralorg",
+    "latLon": [
+      55.24977,
+      -4.80617
+    ],
+    "offshore": false,
+    "repdRef": "4073"
+  },
+  {
+    "farm": "Twentyshilling",
+    "latLon": [
+      55.31976,
+      -3.90048
+    ],
+    "offshore": false,
+    "repdRef": "4457"
+  },
+  {
+    "farm": "Viking",
+    "latLon": [
+      60.33933,
+      -1.20843
+    ],
+    "offshore": false,
+    "repdRef": "4622"
+  },
+  {
+    "farm": "Whitelee",
+    "latLon": [
+      55.68121,
+      -4.27906
+    ],
+    "offshore": false,
+    "repdRef": "3489",
+    "source": "Parent 'Whitelee' (Operational, 322 MW) used over both extension phases, per the extension rule."
+  },
+  {
+    "farm": "Whiteside Hill",
+    "latLon": [
+      55.35741,
+      -4.02944
+    ],
+    "offshore": false,
+    "repdRef": "4502"
+  },
+  {
+    "farm": "Windy Rig",
+    "latLon": [
+      55.27467,
+      -4.17856
+    ],
+    "offshore": false,
+    "repdRef": "4430"
+  },
+  {
+    "farm": "Windy Standard",
+    "latLon": [
+      55.29221,
+      -4.20315
+    ],
+    "offshore": false,
+    "repdRef": "4431",
+    "source": "The tracked unit (WISTW-2) is registered as 'Brockloch Rig II' — REPD's 'Brochloch Rig (formerly Windy Standard II)' row is the one whose name and site match it. 'Brochloch Rig 1 (formerly Windy Standard)' and two further Brochloch Rig repowering/phase rows are different, unmatched sites."
+  }
+]

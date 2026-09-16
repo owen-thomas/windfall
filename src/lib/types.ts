@@ -91,6 +91,26 @@ export interface CurtailedFarm {
 }
 
 /**
+ * Per-farm instantaneous output, rolled up from every tracked unit at that
+ * farm — not only units with an acceptance. `declaredMW` is a declaration
+ * (physical notification), not a metered reading; the map's per-farm figures
+ * are honest only if copy never calls this "generating" (Windfall_Map_Spec.md
+ * §4.3). `instructedMW` is `declaredMW − curtailedMW`: what the farm is
+ * actually being allowed to put out, and the honest quantity to drive the
+ * flow visual with. Units with no PN at the sampled instant are excluded
+ * from `declaredMW` and counted only in `unitsDeclaring`.
+ */
+export interface FarmNow {
+  farm: string;
+  capacityMW: number;
+  declaredMW: number;
+  instructedMW: number;
+  curtailedMW: number;
+  unitsDeclaring: number;
+  unitsCurtailed: number;
+}
+
+/**
  * Instantaneous curtailment. MW is a true "right now" measurement — it does
  * not accumulate, so it carries no mid-period undercount.
  */
@@ -101,6 +121,8 @@ export interface CurtailmentNow {
   curtailedMW: number;
   unitsCurtailed: number;
   units: CurtailedUnit[];
+  /** Every tracked farm's declared/instructed/curtailed output at `sampledAt` — see FarmNow's own docs. */
+  farms: FarmNow[];
 }
 
 /**

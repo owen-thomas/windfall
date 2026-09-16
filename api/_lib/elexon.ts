@@ -39,7 +39,7 @@
 import { SCOTTISH_WIND_BMUS, SCOTTISH_WIND_SET } from './bmus.js';
 import { fetchJson } from './http.js';
 import { addDays, periodsInDay } from '../../src/lib/settlement.js';
-import type { CurtailedFarm, CurtailedUnit } from '../../src/lib/types.js';
+import type { CurtailedFarm, CurtailedUnit, FarmNow } from '../../src/lib/types.js';
 
 const BASE = 'https://data.elexon.co.uk/bmrs/api/v1';
 
@@ -195,18 +195,28 @@ function groupByUnit<T extends { nationalGridBmUnit: string }>(items: T[]): Map<
 }
 
 /**
- * Instantaneous curtailment across all tracked units, in MW.
- * Units with no acceptance covering the instant are not curtailed.
+ * Instantaneous curtailment across all tracked units, in MW, plus every
+ * tracked farm's declared/instructed/curtailed output at the same instant.
+ *
+ * `units`/`curtailedMW` are unchanged in meaning and value from before the
+ * map's farms[] field existed: still derived only from units with an
+ * acceptance holding them below their declaration. `farms` additionally
+ * rolls up *every* tracked unit — including ones with no acceptance at all
+ * — because the map needs a farm's output whether or not it is being
+ * curtailed right now (Windfall_Map_Spec.md §4.3). The two share one
+ * per-unit shortfall computation, so farms[].curtailedMW summed always
+ * equals curtailedMW to rounding (see scripts/probe-api.ts's assertion).
  */
 export function deriveNow(
   pn: PNItem[],
   boalf: BOALFItem[],
   at: Date
-): { curtailedMW: number; units: CurtailedUnit[] } {
+): { curtailedMW: number; units: CurtailedUnit[]; farms: FarmNow[] } {
   const pnByUnit = groupByUnit(pn);
   const boaByUnit = groupByUnit(boalf);
   const instant = at.getTime();
   const units: CurtailedUnit[] = [];
+  const curtailedShortfallByUnit = new Map<string, number>();
   let curtailedMW = 0;
 
   for (const [id, acceptances] of boaByUnit) {
@@ -226,10 +236,56 @@ export function deriveNow(
       curtailedMW: round(shortfall, 1),
     });
     curtailedMW += shortfall;
+    curtailedShortfallByUnit.set(id, shortfall);
+  }
+  units.sort((a, b) => b.curtailedMW - a.curtailedMW);
+
+  interface FarmAccumulator {
+    capacityMW: number;
+    declaredMW: number;
+    curtailedMW: number;
+    unitsDeclaring: number;
+    unitsCurtailed: number;
+  }
+  const byFarm = new Map<string, FarmAccumulator>();
+  for (const [id, info] of Object.entries(SCOTTISH_WIND_BMUS)) {
+    const acc = byFarm.get(info.farm) ?? {
+      capacityMW: 0,
+      declaredMW: 0,
+      curtailedMW: 0,
+      unitsDeclaring: 0,
+      unitsCurtailed: 0,
+    };
+    acc.capacityMW += info.capacityMW;
+
+    const declared = levelAt(pnByUnit.get(id) ?? [], instant);
+    if (declared !== null) {
+      acc.declaredMW += declared;
+      acc.unitsDeclaring += 1;
+    }
+
+    const shortfall = curtailedShortfallByUnit.get(id);
+    if (shortfall !== undefined) {
+      acc.curtailedMW += shortfall;
+      acc.unitsCurtailed += 1;
+    }
+
+    byFarm.set(info.farm, acc);
   }
 
-  units.sort((a, b) => b.curtailedMW - a.curtailedMW);
-  return { curtailedMW: round(curtailedMW, 1), units };
+  const farms: FarmNow[] = [...byFarm.entries()]
+    .map(([farm, acc]) => ({
+      farm,
+      capacityMW: round(acc.capacityMW, 1),
+      declaredMW: round(acc.declaredMW, 1),
+      instructedMW: round(acc.declaredMW - acc.curtailedMW, 1),
+      curtailedMW: round(acc.curtailedMW, 1),
+      unitsDeclaring: acc.unitsDeclaring,
+      unitsCurtailed: acc.unitsCurtailed,
+    }))
+    .sort((a, b) => b.curtailedMW - a.curtailedMW);
+
+  return { curtailedMW: round(curtailedMW, 1), units, farms };
 }
 
 /**

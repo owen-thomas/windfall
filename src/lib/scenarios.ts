@@ -71,7 +71,7 @@ export const SCENARIOS: Scenario[] = [
   {
     name: 'curtailing',
     label: 'Curtailing',
-    note: 'A windy evening: 1.8 GW held down, Scotland at 76% wind.',
+    note: 'A windy evening: 2.0 GW held down, Scotland at 76% wind.',
     build: (now) => {
       const { grid, curtailment } = rebase(now, 0);
       return feeds(grid, curtailment);
@@ -115,6 +115,15 @@ export const SCENARIOS: Scenario[] = [
         curtailment.now.curtailedMW = 0;
         curtailment.now.unitsCurtailed = 0;
         curtailment.now.units = [];
+        // Farms keep their declared output (a still day isn't a windless
+        // one) — only the curtailment fields go to zero, so the map's
+        // sources still emit, just none of them held down (012's "no
+        // curtailment is a first-class state", not "no wind").
+        for (const farm of curtailment.now.farms) {
+          farm.curtailedMW = 0;
+          farm.instructedMW = farm.declaredMW;
+          farm.unitsCurtailed = 0;
+        }
       }
       if (curtailment.settled) {
         curtailment.settled.curtailedMWh = 0;

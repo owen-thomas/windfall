@@ -138,6 +138,44 @@ export function scanlineFillMask(points: Vec2[], width: number, height: number):
   return data;
 }
 
+/**
+ * Rasterize a capsule (a thick line segment) directly into a mask's own
+ * `data` buffer — mutates in place, no new mask object. Used by world.ts to
+ * paint offshore corridors (step 2 Part F / Windfall_Map_Spec.md §5.2)
+ * before the distance/geodesic/divergent fields are built, so a corridor
+ * cell is simply interior to every field that follows, with no special
+ * casing anywhere else.
+ */
+export function paintCapsule(
+  data: Uint8Array,
+  width: number,
+  height: number,
+  p0: Vec2,
+  p1: Vec2,
+  radius: number,
+): void {
+  const minX = Math.max(0, Math.floor(Math.min(p0[0], p1[0]) - radius));
+  const maxX = Math.min(width - 1, Math.ceil(Math.max(p0[0], p1[0]) + radius));
+  const minY = Math.max(0, Math.floor(Math.min(p0[1], p1[1]) - radius));
+  const maxY = Math.min(height - 1, Math.ceil(Math.max(p0[1], p1[1]) + radius));
+
+  const dx = p1[0] - p0[0];
+  const dy = p1[1] - p0[1];
+  const lenSq = dx * dx + dy * dy;
+  const r2 = radius * radius;
+
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      const px = x - p0[0];
+      const py = y - p0[1];
+      const t = lenSq > 1e-9 ? Math.min(1, Math.max(0, (px * dx + py * dy) / lenSq)) : 0;
+      const cx = px - t * dx;
+      const cy = py - t * dy;
+      if (cx * cx + cy * cy <= r2) data[y * width + x] = 1;
+    }
+  }
+}
+
 export function buildRasterMask(
   ring: [number, number][],
   projection: Projection,

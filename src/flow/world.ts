@@ -2,15 +2,24 @@ import gbMainland from './data/gb-mainland.json';
 import { buildDistanceField, type DistanceField } from './distanceField';
 import { buildDivergentField, type DivergentField } from './divergentField';
 import { buildGeodesicField, type GeodesicField } from './geodesicField';
-import { buildRasterMask, type RasterMask } from './mask';
+import { buildRasterMask, paintCapsule, type RasterMask } from './mask';
 import { buildProjection, type Projection } from './projection';
-import { originOf, SOURCES } from './sources';
+import { originOf } from './sources';
 import type { Source, Vec2 } from './types';
 
 export const GB_RING = (gbMainland as unknown as { ring: [number, number][] }).ring;
 
 /** Minimum device-px clearance from the coast a snapped source is walked to. */
 const SNAP_BUFFER_PX = 24;
+
+/**
+ * Default offshore-corridor radius, device px — "about twice steerThreshold"
+ * per Windfall_Map_Spec.md §5.2, using DEFAULT_FIELD_PARAMS.steerThreshold
+ * (18) as the reference value since buildWorld has no FieldParams of its
+ * own. Callers with a live, possibly-retuned steerThreshold (the /map
+ * control panel) pass their own via WorldBuildOptions.corridorWidthPx.
+ */
+const DEFAULT_CORRIDOR_WIDTH_PX = 36;
 
 /** A source resolved to canvas space, snapped inside the mask if needed. */
 export interface ResolvedSource {
@@ -60,6 +69,8 @@ export interface World {
 export interface WorldBuildOptions {
   /** Overrides divergentField.ts's default anisotropic BFS cost — see its docs. */
   divergentNorthwardCostMultiplier?: number;
+  /** Offshore-corridor diameter, device px — see DEFAULT_CORRIDOR_WIDTH_PX's own docs. Only used when at least one source sets `offshore: true`. */
+  corridorWidthPx?: number;
 }
 
 /**
@@ -114,16 +125,40 @@ function snapInside(
 
 export function buildWorld(
   ring: [number, number][],
+  sourceList: Source[],
   viewportWidth: number,
   viewportHeight: number,
   options: WorldBuildOptions = {},
 ): World {
   const projection = buildProjection(ring, viewportWidth, viewportHeight);
   const mask = buildRasterMask(ring, projection, viewportWidth, viewportHeight);
+
+  // Step 2 Part F: paint an offshore corridor — a capsule from the source's
+  // own projected position to its nearest coast point — into the mask for
+  // every source that sets `offshore: true`, *before* the distance,
+  // geodesic and divergent fields are built below, so a corridor cell is
+  // simply interior to every one of them (Windfall_Map_Spec.md §5.2). The
+  // SVG island drawn on top is untouched — this only ever extends the
+  // canvas mask into the sea. A no-op when no source is offshore (/flow's
+  // fictional sources never set it).
+  const offshoreSources = sourceList.filter((s) => s.offshore);
+  if (offshoreSources.length > 0) {
+    const preCorridorDistanceField = buildDistanceField(mask);
+    const radius = (options.corridorWidthPx ?? DEFAULT_CORRIDOR_WIDTH_PX) / 2;
+    for (const source of offshoreSources) {
+      const projected = projection.project(originOf(source));
+      // buffer=0: walk exactly to the first inside pixel — "where the
+      // cable lands" — not past it with the source-snap's clearance
+      // margin, which would shorten the corridor's coast end for no reason.
+      const landing = snapInside(projected, mask, preCorridorDistanceField, 0);
+      paintCapsule(mask.data, mask.width, mask.height, projected, landing, radius);
+    }
+  }
+
   const distanceField = buildDistanceField(mask);
   const geodesicField = buildGeodesicField(mask);
 
-  const sources: ResolvedSource[] = SOURCES.map((source) => {
+  const sources: ResolvedSource[] = sourceList.map((source) => {
     const origin = originOf(source);
     const projected = projection.project(origin);
     if (mask.isInside(projected[0], projected[1])) {

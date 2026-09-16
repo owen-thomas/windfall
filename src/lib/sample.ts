@@ -618,14 +618,14 @@ export const SAMPLE_CURTAILMENT: CurtailmentResponse = {
       "periodEnd": "2026-07-24T20:00:00.000Z"
     },
     "sampledAt": "2026-07-24T19:48:52.654Z",
-    "curtailedMW": 1841,
-    "unitsCurtailed": 15,
+    "curtailedMW": 2049.5,
+    "unitsCurtailed": 19,
     "units": [
       {
         "id": "SGRWO-6",
         "name": "Seagreen 6",
         "farm": "Seagreen",
-        "capacityMW": 525,
+        "capacityMW": 525.302,
         "curtailedMW": 316
       },
       {
@@ -660,7 +660,7 @@ export const SAMPLE_CURTAILMENT: CurtailmentResponse = {
         "id": "SGRWO-3",
         "name": "Seagreen 3",
         "farm": "Seagreen",
-        "capacityMW": 375,
+        "capacityMW": 374.618,
         "curtailedMW": 134
       },
       {
@@ -681,7 +681,7 @@ export const SAMPLE_CURTAILMENT: CurtailmentResponse = {
         "id": "BEATO-4",
         "name": "Beatrice 4",
         "farm": "Beatrice",
-        "capacityMW": 165.5,
+        "capacityMW": 165.526,
         "curtailedMW": 105
       },
       {
@@ -690,6 +690,13 @@ export const SAMPLE_CURTAILMENT: CurtailmentResponse = {
         "farm": "Moray West",
         "capacityMW": 143,
         "curtailedMW": 103
+      },
+      {
+        "id": "CREAW-1",
+        "name": "Creag Riabhach",
+        "farm": "Creag Riabhach",
+        "capacityMW": 93,
+        "curtailedMW": 76.5
       },
       {
         "id": "SGRWO-5",
@@ -704,6 +711,734 @@ export const SAMPLE_CURTAILMENT: CurtailmentResponse = {
         "farm": "Beatrice",
         "capacityMW": 166,
         "curtailedMW": 63
+      },
+      {
+        "id": "LIMKW-1",
+        "name": "Limekiln",
+        "farm": "Limekiln",
+        "capacityMW": 106,
+        "curtailedMW": 61
+      },
+      {
+        "id": "BEATO-1",
+        "name": "Beatrice 1",
+        "farm": "Beatrice",
+        "capacityMW": 184,
+        "curtailedMW": 55
+      },
+      {
+        "id": "GLNKW-1",
+        "name": "Glen Kyllachy",
+        "farm": "Glen Kyllachy",
+        "capacityMW": 52,
+        "curtailedMW": 48
+      },
+      {
+        "id": "HALSW-1",
+        "name": "Halsary",
+        "farm": "Halsary",
+        "capacityMW": 30,
+        "curtailedMW": 23
+      },
+      {
+        "id": "GORDW-2",
+        "name": "Gordonbush Ext",
+        "farm": "Gordonbush",
+        "capacityMW": 58.733,
+        "curtailedMW": 17
+      },
+      {
+        "id": "EDINW-1",
+        "name": "Edinbane (Skye)",
+        "farm": "Edinbane",
+        "capacityMW": 41.4,
+        "curtailedMW": 15
+      }
+    ],
+    "farms": [
+      {
+        "farm": "Seagreen",
+        "capacityMW": 1991.1,
+        "declaredMW": 631,
+        "instructedMW": 0,
+        "curtailedMW": 631,
+        "unitsDeclaring": 6,
+        "unitsCurtailed": 4
+      },
+      {
+        "farm": "Moray West",
+        "capacityMW": 860,
+        "declaredMW": 661,
+        "instructedMW": 84,
+        "curtailedMW": 577,
+        "unitsDeclaring": 4,
+        "unitsCurtailed": 4
+      },
+      {
+        "farm": "Moray East",
+        "capacityMW": 900,
+        "declaredMW": 444,
+        "instructedMW": 66,
+        "curtailedMW": 378,
+        "unitsDeclaring": 3,
+        "unitsCurtailed": 2
+      },
+      {
+        "farm": "Beatrice",
+        "capacityMW": 681.5,
+        "declaredMW": 391,
+        "instructedMW": 168,
+        "curtailedMW": 223,
+        "unitsDeclaring": 4,
+        "unitsCurtailed": 3
+      },
+      {
+        "farm": "Creag Riabhach",
+        "capacityMW": 93,
+        "declaredMW": 82.5,
+        "instructedMW": 6,
+        "curtailedMW": 76.5,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 1
+      },
+      {
+        "farm": "Limekiln",
+        "capacityMW": 106,
+        "declaredMW": 61,
+        "instructedMW": 0,
+        "curtailedMW": 61,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 1
+      },
+      {
+        "farm": "Glen Kyllachy",
+        "capacityMW": 52,
+        "declaredMW": 48,
+        "instructedMW": 0,
+        "curtailedMW": 48,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 1
+      },
+      {
+        "farm": "Halsary",
+        "capacityMW": 30,
+        "declaredMW": 23,
+        "instructedMW": 0,
+        "curtailedMW": 23,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 1
+      },
+      {
+        "farm": "Gordonbush",
+        "capacityMW": 145.5,
+        "declaredMW": 60,
+        "instructedMW": 43,
+        "curtailedMW": 17,
+        "unitsDeclaring": 2,
+        "unitsCurtailed": 1
+      },
+      {
+        "farm": "Edinbane",
+        "capacityMW": 41.4,
+        "declaredMW": 25,
+        "instructedMW": 10,
+        "curtailedMW": 15,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 1
+      },
+      {
+        "farm": "Aberdeen Offshore",
+        "capacityMW": 99,
+        "declaredMW": 16,
+        "instructedMW": 16,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Neart Na Gaoithe",
+        "capacityMW": 448,
+        "declaredMW": 448,
+        "instructedMW": 448,
+        "curtailedMW": 0,
+        "unitsDeclaring": 2,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Robin Rigg",
+        "capacityMW": 205.1,
+        "declaredMW": 30,
+        "instructedMW": 30,
+        "curtailedMW": 0,
+        "unitsDeclaring": 2,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Bad a Cheo",
+        "capacityMW": 270,
+        "declaredMW": 18,
+        "instructedMW": 18,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Beinneun",
+        "capacityMW": 108.8,
+        "declaredMW": 60,
+        "instructedMW": 60,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Bhlaraidh",
+        "capacityMW": 108,
+        "declaredMW": 81,
+        "instructedMW": 81,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Corriegarth",
+        "capacityMW": 69,
+        "declaredMW": 49,
+        "instructedMW": 49,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Corriemoillie",
+        "capacityMW": 48,
+        "declaredMW": 41.7,
+        "instructedMW": 41.7,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Dorenell",
+        "capacityMW": 313.8,
+        "declaredMW": 152,
+        "instructedMW": 152,
+        "curtailedMW": 0,
+        "unitsDeclaring": 2,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Dunmaglass",
+        "capacityMW": 100,
+        "declaredMW": 82,
+        "instructedMW": 82,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Farr",
+        "capacityMW": 184,
+        "declaredMW": 56.6,
+        "instructedMW": 56.6,
+        "curtailedMW": 0,
+        "unitsDeclaring": 2,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Kilbraur",
+        "capacityMW": 68.5,
+        "declaredMW": 17.9,
+        "instructedMW": 17.9,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Lochluichart",
+        "capacityMW": 69,
+        "declaredMW": 52.6,
+        "instructedMW": 52.6,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Millennium",
+        "capacityMW": 65,
+        "declaredMW": 33.5,
+        "instructedMW": 33.5,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Stronelairg",
+        "capacityMW": 324,
+        "declaredMW": 170,
+        "instructedMW": 170,
+        "curtailedMW": 0,
+        "unitsDeclaring": 3,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Strathy North",
+        "capacityMW": 70,
+        "declaredMW": 44,
+        "instructedMW": 44,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Viking",
+        "capacityMW": 487.2,
+        "declaredMW": 0,
+        "instructedMW": 0,
+        "curtailedMW": 0,
+        "unitsDeclaring": 4,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "A’Chruach",
+        "capacityMW": 42.6,
+        "declaredMW": 14.4,
+        "instructedMW": 14.4,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "An Suidhe",
+        "capacityMW": 19.4,
+        "declaredMW": 7.6,
+        "instructedMW": 7.6,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Carraig Gheal",
+        "capacityMW": 46,
+        "declaredMW": 0,
+        "instructedMW": 0,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Cour",
+        "capacityMW": 20.5,
+        "declaredMW": 9,
+        "instructedMW": 9,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Freasdail",
+        "capacityMW": 22.2,
+        "declaredMW": 7,
+        "instructedMW": 7,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Griffin",
+        "capacityMW": 206,
+        "declaredMW": 52,
+        "instructedMW": 52,
+        "curtailedMW": 0,
+        "unitsDeclaring": 2,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Black Law",
+        "capacityMW": 187,
+        "declaredMW": 53,
+        "instructedMW": 53,
+        "curtailedMW": 0,
+        "unitsDeclaring": 2,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Broken Cross",
+        "capacityMW": 48,
+        "declaredMW": 17.4,
+        "instructedMW": 17.4,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Clyde",
+        "capacityMW": 550,
+        "declaredMW": 260,
+        "instructedMW": 260,
+        "curtailedMW": 0,
+        "unitsDeclaring": 3,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Cumberhead",
+        "capacityMW": 178,
+        "declaredMW": 80,
+        "instructedMW": 80,
+        "curtailedMW": 0,
+        "unitsDeclaring": 2,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Dalquhandy",
+        "capacityMW": 42.8,
+        "declaredMW": 7,
+        "instructedMW": 7,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Douglas West",
+        "capacityMW": 110.5,
+        "declaredMW": 45.4,
+        "instructedMW": 45.4,
+        "curtailedMW": 0,
+        "unitsDeclaring": 2,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Galawhistle",
+        "capacityMW": 55.2,
+        "declaredMW": 8,
+        "instructedMW": 8,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Hagshaw Hill",
+        "capacityMW": 30.3,
+        "declaredMW": 15,
+        "instructedMW": 15,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Kennoxhead",
+        "capacityMW": 60,
+        "declaredMW": 31,
+        "instructedMW": 31,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Kype Muir",
+        "capacityMW": 156,
+        "declaredMW": 63,
+        "instructedMW": 63,
+        "curtailedMW": 0,
+        "unitsDeclaring": 2,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Middle Muir",
+        "capacityMW": 51,
+        "declaredMW": 10,
+        "instructedMW": 10,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Whitelee",
+        "capacityMW": 515,
+        "declaredMW": 115,
+        "instructedMW": 115,
+        "curtailedMW": 0,
+        "unitsDeclaring": 2,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Aikengall",
+        "capacityMW": 227.2,
+        "declaredMW": 123,
+        "instructedMW": 123,
+        "curtailedMW": 0,
+        "unitsDeclaring": 2,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Crystal Rig",
+        "capacityMW": 212.6,
+        "declaredMW": 167,
+        "instructedMW": 167,
+        "curtailedMW": 0,
+        "unitsDeclaring": 3,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Dun Law",
+        "capacityMW": 29.8,
+        "declaredMW": 14,
+        "instructedMW": 14,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Fallago Rig",
+        "capacityMW": 144,
+        "declaredMW": 89.6,
+        "instructedMW": 89.6,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Pogbie",
+        "capacityMW": 10,
+        "declaredMW": 5,
+        "instructedMW": 5,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Toddleburn",
+        "capacityMW": 31.6,
+        "declaredMW": 23,
+        "instructedMW": 23,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Afton",
+        "capacityMW": 50,
+        "declaredMW": 22,
+        "instructedMW": 22,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Arecleoch",
+        "capacityMW": 114,
+        "declaredMW": 8,
+        "instructedMW": 8,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Benbrack",
+        "capacityMW": 67,
+        "declaredMW": 26.4,
+        "instructedMW": 26.4,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Blackcraig",
+        "capacityMW": 56.2,
+        "declaredMW": 17.3,
+        "instructedMW": 17.3,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Crossdykes",
+        "capacityMW": 48,
+        "declaredMW": 26,
+        "instructedMW": 26,
+        "curtailedMW": 0,
+        "unitsDeclaring": 2,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Dersalloch",
+        "capacityMW": 70.9,
+        "declaredMW": 0,
+        "instructedMW": 0,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Enoch Hill",
+        "capacityMW": 70,
+        "declaredMW": 0,
+        "instructedMW": 0,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Ewe Hill",
+        "capacityMW": 38,
+        "declaredMW": 14,
+        "instructedMW": 14,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Glen App",
+        "capacityMW": 22,
+        "declaredMW": 1,
+        "instructedMW": 1,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Hadyard Hill",
+        "capacityMW": 130,
+        "declaredMW": 0,
+        "instructedMW": 0,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Harestanes",
+        "capacityMW": 142.3,
+        "declaredMW": 48,
+        "instructedMW": 48,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Kilgallioch",
+        "capacityMW": 252.7,
+        "declaredMW": 54,
+        "instructedMW": 54,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Keith Hill",
+        "capacityMW": 4.5,
+        "declaredMW": 2,
+        "instructedMW": 2,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Mark Hill",
+        "capacityMW": 53.8,
+        "declaredMW": 5,
+        "instructedMW": 5,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Minnygap",
+        "capacityMW": 25,
+        "declaredMW": 7,
+        "instructedMW": 7,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "North Kyle",
+        "capacityMW": 212,
+        "declaredMW": 0,
+        "instructedMW": 0,
+        "curtailedMW": 0,
+        "unitsDeclaring": 2,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Pencloe",
+        "capacityMW": 81,
+        "declaredMW": 0,
+        "instructedMW": 0,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Sandy Knowe",
+        "capacityMW": 87,
+        "declaredMW": 17.6,
+        "instructedMW": 17.6,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Sanquhar",
+        "capacityMW": 32.1,
+        "declaredMW": 20.3,
+        "instructedMW": 20.3,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "South Kyle",
+        "capacityMW": 426.9,
+        "declaredMW": 0,
+        "instructedMW": 0,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Tralorg",
+        "capacityMW": 18.7,
+        "declaredMW": 6,
+        "instructedMW": 6,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Twentyshilling",
+        "capacityMW": 37.8,
+        "declaredMW": 18.6,
+        "instructedMW": 18.6,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Windy Rig",
+        "capacityMW": 42.8,
+        "declaredMW": 34.3,
+        "instructedMW": 34.3,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Whiteside Hill",
+        "capacityMW": 27.5,
+        "declaredMW": 14.3,
+        "instructedMW": 14.3,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
+      },
+      {
+        "farm": "Windy Standard",
+        "capacityMW": 61.5,
+        "declaredMW": 26.3,
+        "instructedMW": 26.3,
+        "curtailedMW": 0,
+        "unitsDeclaring": 1,
+        "unitsCurtailed": 0
       }
     ]
   },
