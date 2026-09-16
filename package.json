@@ -14,11 +14,13 @@
     "narrate:eval": "npx tsx scripts/narrate-eval.ts",
     "flow:harness": "npx tsx scripts/flow-harness.ts",
     "farms:build": "npx tsx scripts/build-farms.ts",
-    "farms:check": "npx tsx scripts/check-farms.ts"
+    "farms:check": "npx tsx scripts/check-farms.ts",
+    "capture:map": "npx tsx scripts/capture-states.ts"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
     "@types/proj4": "^2.5.6",
+    "playwright": "^1.63.0",
     "proj4": "^2.22.0",
     "tsx": "^4.23.11",
     "typescript": "^5.8.0",

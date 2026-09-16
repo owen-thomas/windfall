@@ -14,16 +14,27 @@ import type { FarmSite, FarmMarkerState } from './farmSources';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 /** Radius per state, device px — held-down reads slightly larger as a shape carrier, not only a colour one. */
-const RADIUS: Record<FarmMarkerState, number> = {
+export const RADIUS: Record<FarmMarkerState, number> = {
   declaring: 3.5,
   'held-down': 5,
   silent: 3.5,
 };
 
-const HATCH_PATTERN_ID = 'map-farm-hatch';
+export const HATCH_PATTERN_ID = 'map-farm-hatch';
+
+/**
+ * Style one `.map__farm-marker` circle for a state — the single place this
+ * mapping lives, reused by both the main-stage layer below and the
+ * Shetland inset's own markers (step 3b Part A), which need exactly the
+ * same declaring/held-down/silent shape language, not a second convention.
+ */
+export function styleFarmMarker(circle: SVGCircleElement, state: FarmMarkerState): void {
+  circle.dataset.state = state;
+  circle.setAttribute('r', String(RADIUS[state]));
+}
 
 /** The hatch pattern is a page-level def, created once and reused by every held-down marker — matches tokens.css's `--hatch` convention (diagonal stripes) but as an SVG pattern, since a `fill` attribute can't reference a CSS background-image. */
-function ensureHatchDef(svg: SVGSVGElement): void {
+export function ensureHatchDef(svg: SVGSVGElement): void {
   if (svg.querySelector(`#${HATCH_PATTERN_ID}`)) return;
   let defs = svg.querySelector('defs');
   if (!defs) {
@@ -56,6 +67,14 @@ export interface FarmMarkerLayer {
   reposition(project: Projection['project']): void;
   /** Restyle every marker to its current state — call on every data landing (live refresh, fixture switch, [ / ] cycle). */
   setStates(statesByFarm: Map<string, FarmMarkerState>): void;
+  /**
+   * Hide the main-stage marker for any farm not part of the current
+   * projection's fit (step 3b Part A: a Shetland-archipelago farm in inset
+   * mode) rather than showing it wherever its true, off-canvas position
+   * happens to project to. The farm's marker still exists — it moves to the
+   * inset instead (main.ts's `drawInset`).
+   */
+  setHidden(hidden: ReadonlySet<string>): void;
 }
 
 export function createFarmMarkerLayer(svg: SVGSVGElement, sites: FarmSite[]): FarmMarkerLayer {
@@ -84,9 +103,12 @@ export function createFarmMarkerLayer(svg: SVGSVGElement, sites: FarmSite[]): Fa
     },
     setStates(statesByFarm) {
       for (const [farm, circle] of circles) {
-        const state = statesByFarm.get(farm) ?? 'silent';
-        circle.dataset.state = state;
-        circle.setAttribute('r', String(RADIUS[state]));
+        styleFarmMarker(circle, statesByFarm.get(farm) ?? 'silent');
+      }
+    },
+    setHidden(hidden) {
+      for (const [farm, circle] of circles) {
+        circle.style.display = hidden.has(farm) ? 'none' : '';
       }
     },
   };

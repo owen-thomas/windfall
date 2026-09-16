@@ -24,6 +24,7 @@ import { el, setAttr, setTextCrossfade, type View } from './dom';
 import { narrate } from '../lib/narrate';
 import { speaksOfNow, settlementOf, type AppState } from '../lib/state';
 import type { SettlementRef } from '../lib/settlement';
+import type { SouthernRegion } from '../lib/situation';
 
 /** The generated sentence, if it exists and names the period on screen. */
 function matchingGenerated(
@@ -37,7 +38,14 @@ function matchingGenerated(
   return generated;
 }
 
-export function narrationView(): View {
+/**
+ * `southernRegion` picks which region the fallback template (and the
+ * generated sentence it's checked against) describes — South England on `/`
+ * (the default, unchanged), England on `/map` (Windfall_Map_Spec.md step 3b
+ * Part B). The two pages show different figures under the word "England",
+ * so the region has to be a parameter here rather than assumed.
+ */
+export function narrationView(southernRegion: SouthernRegion = 'south-england'): View {
   const body = el('p', { class: 'narration__body' });
   const strap = el('p', { class: 'narration__strap' });
 
@@ -69,7 +77,7 @@ export function narrationView(): View {
         return;
       }
 
-      const fallback = narrate(state.grid, state.curtailment, present);
+      const fallback = narrate(state.grid, state.curtailment, present, southernRegion);
 
       if (!fallback && state.pending) {
         setAttr(root, 'data-provenance', 'none');

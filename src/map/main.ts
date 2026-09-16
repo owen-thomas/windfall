@@ -1,21 +1,27 @@
 /**
- * Boot for /map — Windfall_Map_Spec.md step 3: islands, composition fixes,
- * and the information layer for real.
+ * Boot for /map — Windfall_Map_Spec.md step 3 (DECISIONS 022/023/024) plus
+ * the step 3b correction pass (DECISIONS 025): the Shetland inset is now
+ * the default extent, with true extent behind the `t` toggle — the reverse
+ * of 024's own call, on the argument that a reader landing on `/map` should
+ * see the mainland at full size first, not a 20%-smaller one paid for by an
+ * island most visits never look at (§6 gate 3 of the plan). Viking, the only
+ * farm this currently affects, degrades to the spec's snap-with-connector
+ * fallback in inset mode rather than going off-canvas: see farmSources.ts's
+ * `isOffMainFit`/`buildFarmSources` for the rule and `drawInset` below for
+ * where its marker and landing caption move to.
  *
  * Step 1 proved the geometry (DECISIONS 022); step 2 replaced the seven
  * fictional /flow sources with the 76 real farms and wired the state
- * machinery (DECISIONS 023). This step draws the islands the gate 2 review
- * asked for, fixes the England-panel and border-caption composition, and
- * replaces every placeholder panel with the real `src/view` modules —
- * mastheadView, bandView, headlineView, narrationView, colophonView reused
- * verbatim (both their DOM and, via `../styles/app.css` imported below,
- * their CSS — map.css only ever overrides the composition/overlay layer and
- * the compact-card treatment, never redraws the component styles
- * themselves) — plus a new borderView that reuses constraintView's copy.
- * The whole DOM tree is built here rather than in map/index.html, mirroring
- * src/main.ts's own `app.replaceChildren(...)` pattern, because most of
- * what's on screen now comes from shared view modules rather than static
- * markup.
+ * machinery (DECISIONS 023); step 3 drew the islands and replaced every
+ * placeholder panel with the real `src/view` modules — mastheadView,
+ * bandView, headlineView, narrationView, colophonView reused verbatim (both
+ * their DOM and, via `../styles/app.css` imported below, their CSS —
+ * map.css only ever overrides the composition/overlay layer and the
+ * compact-card treatment, never redraws the component styles themselves) —
+ * plus a new borderView that reuses constraintView's copy. The whole DOM
+ * tree is built here rather than in map/index.html, mirroring src/main.ts's
+ * own `app.replaceChildren(...)` pattern, because most of what's on screen
+ * now comes from shared view modules rather than static markup.
  */
 
 import '../styles/tokens.css';
@@ -34,13 +40,15 @@ import {
   applyFarmRates,
   buildFarmSources,
   FARM_SITES,
+  isOffMainFit,
+  landingCaption,
   markerStateFor,
   type FarmMarkerState,
 } from './farmSources';
-import { createFarmMarkerLayer, type FarmMarkerLayer } from './markers';
+import { createFarmMarkerLayer, styleFarmMarker, type FarmMarkerLayer } from './markers';
 import { DEFAULT_RATE_PARAMS, type RateParams } from './rate';
 import { createMapControlPanel } from './controls';
-import { fetchCoreFeeds } from '../lib/client';
+import { fetchCoreFeeds, fetchNarration } from '../lib/client';
 import { scenarioByName, SCENARIOS } from '../lib/scenarios';
 import { emptyFeeds, type AppState } from '../lib/state';
 import type { FarmNow } from '../lib/types';
@@ -67,20 +75,22 @@ const BORDER_LINE = (gbCountries as unknown as { border: { line: [number, number
 const ALL_ISLANDS = (gbCountries as unknown as { islands: IslandRing[] }).islands;
 
 /**
- * Part A.2 (the extent decision): true extent draws Shetland where it
- * actually is, at the cost of shrinking the mainland to fit it in — the
- * whole reason to prefer it is that it's the only mode where Viking's
- * corridor is a real, connected, in-position thing rather than a decorative
- * aside. Inset is the documented fallback: Shetland (and its outlying isles,
- * Yell/Unst) drop out of the main stage's own projection fit and instead
- * render in a small, separately-projected box (buildInset below) — a static
- * comparison, not a second live map, since a corridor needs both its ends in
- * one coordinate space and the inset deliberately isn't. Toggle with 't' for
- * the gate screenshot pair; true extent is the shipped default (see
- * DECISIONS 024 for the measured mainland heights that decided it).
+ * Part A.2 (the extent decision, reversed in step 3b — DECISIONS 025): true
+ * extent draws Shetland where it actually is, at the cost of shrinking the
+ * mainland ~20% to fit it in; inset keeps the mainland at full size and
+ * shows Shetland in a small, separately-projected box (buildInset below) — a
+ * static comparison, not a second live map, since a corridor needs both its
+ * ends in one coordinate space and the inset deliberately isn't. 024 shipped
+ * true extent because only it keeps Viking's corridor a real, in-position
+ * thing; 025 accepts that cost is paid on every visit for one farm's
+ * corridor fidelity, and instead has Viking degrade honestly (its source
+ * emits from its landing, its marker and a one-line "enters the mainland
+ * at…" caption move into the inset — see `isOffMainFit`/`drawInset`) rather
+ * than shrink the whole page's mainland for it. Toggle with 't' for the gate
+ * screenshot pair; inset is the shipped default.
  */
 type ExtentMode = 'trueExtent' | 'inset';
-let extentMode: ExtentMode = 'trueExtent';
+let extentMode: ExtentMode = 'inset';
 const SHETLAND_ARCHIPELAGO = new Set(['Shetland Mainland', 'Yell', 'Unst']);
 
 function islandsForFit(): IslandRing[] {
@@ -149,18 +159,27 @@ const borderLeader = document.createElementNS(SVG_NS, 'line');
 borderLeader.setAttribute('class', 'map__border-caption-leader');
 svg.append(borderPath, borderLeader);
 
-// The inset (Part A.2's fallback path): a small, separately-projected SVG
-// box for Shetland, shown only in 'inset' mode. Built once; repositioned
-// and repopulated in rebuild().
+// The inset (Part A.2's default path, step 3b — DECISIONS 025): a small,
+// separately-projected SVG box for Shetland, shown only in 'inset' mode.
+// Built once; repositioned and repopulated in rebuild()/drawInset(). Every
+// off-fit farm (Part A.3's generic rule — currently just Viking) gets its
+// own marker, styled exactly like a main-stage marker (`styleFarmMarker`,
+// same declaring/held-down/silent language), plus a one-line landing
+// caption; both are rebuilt in `drawInset` since which farms are off-fit can
+// change when `extentMode` toggles.
 const insetSvg = document.createElementNS(SVG_NS, 'svg') as SVGSVGElement;
 insetSvg.setAttribute('class', 'map__inset');
 insetSvg.setAttribute('aria-hidden', 'true');
 const insetIslandPaths: SVGPathElement[] = [];
-const insetMarker = document.createElementNS(SVG_NS, 'circle');
-insetMarker.setAttribute('class', 'map__inset-marker');
-insetMarker.setAttribute('r', '3');
-insetSvg.append(insetMarker);
-const insetBox = el('div', { class: 'map__inset-box' }, insetSvg, el('p', { class: 'map__inset-label', text: 'Shetland' }));
+const insetMarkers = new Map<string, SVGCircleElement>();
+const insetCaptions = el('div', { class: 'map__inset-captions' });
+const insetBox = el(
+  'div',
+  { class: 'map__inset-box' },
+  insetSvg,
+  el('p', { class: 'map__inset-label', text: 'Shetland' }),
+  insetCaptions,
+);
 
 const stage = el('div', { class: 'map__stage', id: 'map-stage' }, svg, canvas, insetBox, windNote);
 
@@ -170,7 +189,10 @@ const scotlandBand = bandView(SCOTLAND);
 const englandBand = bandView(ENGLAND);
 const headline = headlineView();
 const border = borderView();
-const narration = narrationView();
+// Part B (step 3b, DECISIONS 025): /map shows England, not South England —
+// the template fallback and the generated sentence it's checked against
+// both have to describe the region this page actually draws.
+const narration = narrationView('england');
 const colophon = colophonView();
 
 const scotlandPanel = el('section', { class: 'panel panel--scotland' }, scotlandBand.el);
@@ -219,7 +241,12 @@ const palette = { ...LIGHT_PALETTE };
 const particleCount = 1400;
 const rateParams: RateParams = { ...DEFAULT_RATE_PARAMS };
 
-const farmSources: Source[] = buildFarmSources(FARM_SITES);
+// Rebuilt in rebuild() from the current extent's available islands — see
+// `isOffMainFit`'s docs — so the object identities (and hence which farms
+// are landing-only sources) always match what's actually drawn.
+let farmSources: Source[] = [];
+/** Farms currently rendered only in the inset, not on the main stage (step 3b Part A). */
+let offMainStageFarms = new Set<string>();
 let lastFarmsNow: FarmNow[] | null = null;
 
 let world: World;
@@ -297,7 +324,14 @@ function drawIslands(project: World['projection']['project']) {
   }
 }
 
-/** Part A.2's fallback: a small, independently-projected Shetland, static (no live flow — see the type's own docs above). */
+/**
+ * Part A.2's default path (step 3b — DECISIONS 025): a small,
+ * independently-projected Shetland box, static (no live flow — see the
+ * type's own docs above), carrying a marker and a landing caption for every
+ * farm `isOffMainFit` currently excludes from the main stage — Part A.3's
+ * generic rule, not a Viking-only path, though Viking is the only farm that
+ * qualifies today.
+ */
 function drawInset() {
   if (extentMode !== 'inset') {
     insetBox.style.display = 'none';
@@ -320,15 +354,27 @@ function drawInset() {
     const path = document.createElementNS(SVG_NS, 'path');
     path.setAttribute('class', 'map__island');
     path.setAttribute('d', ringToPath(island.ring, insetProjection.project));
-    insetSvg.insertBefore(path, insetMarker);
+    insetSvg.append(path);
     insetIslandPaths.push(path);
   }
 
-  const viking = FARM_SITES.find((s) => s.farm === 'Viking');
-  if (viking) {
-    const [vx, vy] = insetProjection.project(viking.latLon);
-    insetMarker.setAttribute('cx', vx.toFixed(1));
-    insetMarker.setAttribute('cy', vy.toFixed(1));
+  for (const circle of insetMarkers.values()) circle.remove();
+  insetMarkers.clear();
+  insetCaptions.replaceChildren();
+
+  const shetlandFarms = FARM_SITES.filter((s) => offMainStageFarms.has(s.farm));
+  for (const site of shetlandFarms) {
+    const circle = document.createElementNS(SVG_NS, 'circle');
+    circle.setAttribute('class', 'map__farm-marker');
+    circle.dataset.farm = site.farm;
+    const [x, y] = insetProjection.project(site.latLon);
+    circle.setAttribute('cx', x.toFixed(1));
+    circle.setAttribute('cy', y.toFixed(1));
+    styleFarmMarker(circle, markerStateFor(lastFarmsNow?.find((f) => f.farm === site.farm)));
+    insetSvg.append(circle);
+    insetMarkers.set(site.farm, circle);
+
+    insetCaptions.append(el('p', { class: 'map__inset-caption', text: landingCaption(site) }));
   }
 }
 
@@ -336,6 +382,7 @@ function drawGeometry() {
   drawIslands(world.projection.project);
   borderPath.setAttribute('d', lineToPath(BORDER_LINE, world.projection.project));
   markerLayer.reposition(world.projection.project);
+  markerLayer.setHidden(offMainStageFarms);
   drawInset();
 }
 
@@ -395,6 +442,15 @@ function rebuild() {
       ? [...ISLAND_RING, ...fitIslands.flatMap((i) => i.ring)]
       : ISLAND_RING;
 
+  // Part A.3: recomputed from the current extent's available islands, not
+  // built once — a farm can move between "on the main stage" and "in the
+  // inset" whenever extentMode toggles (isOffMainFit's own docs).
+  const availableIslandNames = new Set(fitIslands.map((i) => i.name));
+  farmSources = buildFarmSources(FARM_SITES, availableIslandNames);
+  offMainStageFarms = new Set(
+    FARM_SITES.filter((s) => isOffMainFit(s, availableIslandNames)).map((s) => s.farm),
+  );
+
   world = buildWorld(ISLAND_RING, farmSources, width, height, {
     corridorWidthPx: fieldParams.steerThreshold * 2,
     islands: ALL_ISLANDS,
@@ -422,6 +478,11 @@ function rebuild() {
   }
   if (!markerLayer) markerLayer = createFarmMarkerLayer(svg, FARM_SITES);
   debugCanvas = null;
+  // farmSources above is a fresh array of Source objects (new identities,
+  // rates reset to the floor) — reapply whatever the page already knows
+  // before the next paint, exactly as a live landing would. landFarms also
+  // drives the inset's marker states, which drawGeometry -> drawInset needs.
+  landFarms(lastFarmsNow);
   drawGeometry();
   positionOverlays();
   paintTransparent();
@@ -458,8 +519,9 @@ window.addEventListener('keydown', (e) => {
     console.log(`[map] Border caption -> ${borderCaptionCandidate}`);
     positionOverlays();
   } else if (e.key === 't') {
-    // Gate-review convenience (Part A.2): true extent vs. the inset
-    // fallback, side by side across two screenshots.
+    // Gate-review convenience (Part A.2, DECISIONS 025): the shipped inset
+    // default vs. the true-extent toggle, side by side across two
+    // screenshots.
     extentMode = extentMode === 'trueExtent' ? 'inset' : 'trueExtent';
     console.log(`[map] extent -> ${extentMode}`);
     rebuild();
@@ -582,6 +644,14 @@ function landFarms(farmsNow: FarmNow[] | null | undefined) {
     statesByFarm.set(site.farm, markerStateFor(now));
   }
   markerLayer.setStates(statesByFarm);
+
+  // Part A.3: the inset's own markers (built in drawInset, only for
+  // whichever farms are currently off-fit) need the same live state a
+  // main-stage marker gets — a rebuild isn't the only thing that lands new
+  // farm data.
+  for (const [farm, circle] of insetMarkers) {
+    styleFarmMarker(circle, statesByFarm.get(farm) ?? 'silent');
+  }
 }
 
 async function refresh() {
@@ -593,14 +663,28 @@ async function refresh() {
     render();
     return;
   }
-  const feeds = await fetchCoreFeeds();
-  if (feeds.grid) state.grid = feeds.grid;
-  state.gridError = feeds.gridError;
-  if (feeds.curtailment) state.curtailment = feeds.curtailment;
-  state.curtailmentError = feeds.curtailmentError;
-  state.pending = false;
-  landFarms(state.curtailment?.now?.farms);
-  render();
+
+  // Core and narration resolve independently — same reasoning as src/main.ts:
+  // a live generation can take several seconds, and awaiting it alongside
+  // grid/curtailment would make the first visitor of every settlement
+  // period wait longest for a screen that has nothing to do with the model.
+  const core = fetchCoreFeeds().then((feeds) => {
+    if (feeds.grid) state.grid = feeds.grid;
+    state.gridError = feeds.gridError;
+    if (feeds.curtailment) state.curtailment = feeds.curtailment;
+    state.curtailmentError = feeds.curtailmentError;
+    state.pending = false;
+    landFarms(state.curtailment?.now?.farms);
+    render();
+  });
+
+  const narration = fetchNarration('england').then((feed) => {
+    if (feed.narration) state.narration = feed.narration;
+    state.narrationError = feed.narrationError;
+    render();
+  });
+
+  await Promise.all([core, narration]);
 }
 
 function selectScenario(name: string) {
@@ -678,4 +762,5 @@ requestAnimationFrame(frame);
   getFarmSources: () => farmSources,
   getLastFarmsNow: () => lastFarmsNow,
   getExtentMode: () => extentMode,
+  getOffMainStageFarms: () => offMainStageFarms,
 };

@@ -21,6 +21,16 @@ import type { SettlementRef } from './settlement.js';
 export type ConstraintState = 'constrained' | 'clear' | 'unknown';
 export type ForecastDirection = 'rising' | 'falling' | 'flat' | null;
 
+/**
+ * Which southern region the narration describes — the map-page correction
+ * pass (Windfall_Map_Spec.md step 3b Part B, DECISIONS 025). `/` shows South
+ * England (unchanged); `/map` shows the whole of England, per DECISIONS 021.
+ * One screen cannot carry two gas figures for the same word "England" at
+ * once, so this has to be a parameter threaded through from the caller
+ * (which page is asking), not a fact this module can infer from the payload.
+ */
+export type SouthernRegion = 'south-england' | 'england';
+
 export interface RegionFigure {
   name: string;
   windPct: number;
@@ -81,10 +91,14 @@ function forecastDirectionOf(forecast: GridResponse['forecast']): ForecastDirect
 
 export function situationOf(
   grid: GridResponse | null,
-  curtailment: CurtailmentResponse | null
+  curtailment: CurtailmentResponse | null,
+  southernRegion: SouthernRegion = 'south-england'
 ): Situation {
   const northRegion = grid?.regions?.scotland ?? grid?.regions?.northScotland ?? null;
-  const southRegion = grid?.regions?.southEngland ?? grid?.regions?.southEastEngland ?? null;
+  const southRegion =
+    southernRegion === 'england'
+      ? (grid?.regions?.england ?? null)
+      : (grid?.regions?.southEngland ?? grid?.regions?.southEastEngland ?? null);
   const now = curtailment?.now ?? null;
 
   return {

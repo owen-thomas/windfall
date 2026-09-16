@@ -164,11 +164,14 @@ body {
   color: var(--text-muted);
 }
 
-/* --- Shetland inset (Part A.2's fallback, 't' to toggle) -------------------
+/* --- Shetland inset (Part A.2's default path, step 3b — DECISIONS 025;
+ * 't' toggles true extent instead) -------------------------------------
  * A small, separately-projected static box — outlined, per the plan — shown
  * only in 'inset' extent mode. Never carries live flow: a corridor needs
  * both ends in one coordinate space, and this box deliberately isn't in the
- * main stage's. */
+ * main stage's. Any off-fit farm's marker reuses .map__farm-marker's own
+ * declaring/held-down/silent styling above, so it reads identically to a
+ * main-stage marker. */
 .map__inset-box {
   position: absolute;
   /* Top-left, not top-right: the Scotland/headline panel column already
@@ -193,15 +196,24 @@ body {
   height: 110px;
 }
 
-.map__inset-marker {
-  fill: var(--fuel-wind);
-  stroke: #fff;
-  stroke-width: 1;
-}
-
 .map__inset-label {
   margin: 0.2rem 0 0;
   font-size: 0.6rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* Part A: "the inset carries a one-line label saying its output enters the
+ * mainland at [landing]" — one line per off-fit farm (currently just
+ * Viking), from farmSources.ts's landingCaption. */
+.map__inset-captions {
+  margin-top: 0.2rem;
+}
+
+.map__inset-caption {
+  margin: 0;
+  font-size: 0.58rem;
+  line-height: 1.35;
   text-align: center;
   color: var(--text-muted);
 }

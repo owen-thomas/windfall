@@ -81,6 +81,8 @@ export interface FarmSite {
   landingSource?: string;
   /** Name of a gb-countries.json `islands` ring this farm's own `latLon` sits on — set only for Viking and Edinbane. */
   island?: string;
+  /** Short place-name for `landing`, for on-map captions (step 3b Part A) — set only for Viking and Edinbane, the two island farms. */
+  landingName?: string;
 }
 
 // --- Landings for offshore and island farms (step 3, Part A.4) -------------
@@ -98,11 +100,14 @@ export interface FarmSite {
 interface Landing {
   latLon: [number, number];
   source: string;
+  /** Short place-name for on-map captions (step 3b Part A) — set only where a farm's landing may need naming in prose, currently the two island farms. */
+  name?: string;
 }
 
 const LANDING_POINTS: Record<string, Landing> = {
   Viking: {
     latLon: [58.479, -3.0509],
+    name: 'Noss Head',
     source:
       'Shetland HVDC Link: converter station at Kergord, Shetland, to a new switching station at ' +
       'Noss Head, near Wick, Caithness (SSEN Transmission project page, en.wikipedia.org/wiki/' +
@@ -110,6 +115,7 @@ const LANDING_POINTS: Record<string, Landing> = {
   },
   Edinbane: {
     latLon: [57.28, -5.65],
+    name: 'Kyle of Lochalsh',
     source:
       "Skye's own grid connection reaches the mainland via Kyle of Lochalsh — the same point used " +
       "as Edinbane's snap anchor in src/flow/sources.ts's fictional /flow source, kept identical here " +
@@ -541,6 +547,7 @@ async function main() {
       }
       site.landing = landing.latLon;
       site.landingSource = landing.source;
+      if (landing.name) site.landingName = landing.name;
     }
     const island = ISLAND_FARMS[site.farm];
     if (island) site.island = island;

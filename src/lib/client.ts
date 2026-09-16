@@ -19,6 +19,7 @@
 
 import type { CurtailmentResponse, GridResponse, NarrationResponse } from './types.js';
 import { settlementAt } from './settlement.js';
+import type { SouthernRegion } from './situation.js';
 
 const TIMEOUT_MS = 10_000;
 
@@ -69,13 +70,22 @@ export interface NarrationFeed {
   narrationError: string | null;
 }
 
-export async function fetchNarration(): Promise<NarrationFeed> {
+/**
+ * `region` picks which southern region the server describes — South
+ * England for `/` (the default), England for `/map` (Windfall_Map_Spec.md
+ * step 3b Part B). It is part of the cache key on the server (api/narration.ts)
+ * as well as the facts handed to the model, since one generated sentence
+ * cannot serve two pages showing different regions.
+ */
+export async function fetchNarration(region: SouthernRegion = 'south-england'): Promise<NarrationFeed> {
   // Ask for narration by the period our own clock says is current. The
-  // server treats this only as a cache key and a sanity bound (it always
-  // generates against its own clock) — see api/narration.ts.
+  // server treats date/period only as a cache key and a sanity bound (it
+  // always generates against its own clock) — see api/narration.ts.
   const { date, period } = settlementAt();
   try {
-    const narration = await getJson<NarrationResponse>(`/api/narration?date=${date}&period=${period}`);
+    const narration = await getJson<NarrationResponse>(
+      `/api/narration?date=${date}&period=${period}&region=${region}`
+    );
     return { narration, narrationError: null };
   } catch (err) {
     return { narration: null, narrationError: reason(err) };

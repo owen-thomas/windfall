@@ -1,8 +1,8 @@
 /**
- * GET /api/narration?date=YYYY-MM-DD&period=N
+ * GET /api/narration?date=YYYY-MM-DD&period=N&region=south-england|england
  *
- * One generated sentence per settlement period, shared by every visitor who
- * asks for that period.
+ * One generated sentence per settlement period *and region*, shared by
+ * every visitor asking for that period on that region's page.
  *
  * Caching this the way grid.ts and curtailment.ts do — a flat CDN TTL —
  * would cache a *sentence*, not a *fact*, so a cache miss mid-period would
@@ -13,6 +13,16 @@
  * always asks for the period its own clock currently names (client.ts); the
  * `date`/`period` params exist as a cache key and an abuse bound, not as a
  * way to request arbitrary history — see the validation below.
+ *
+ * `region` joined the key at the map-page correction pass (DECISIONS 025):
+ * `/` narrates South England, `/map` narrates England (021's reasoning —
+ * not a sub-region of it), and one cached sentence cannot describe both at
+ * once. The CDN keys on the full request URL already, so adding the param
+ * to every client request is the whole mechanism — no separate cache-key
+ * logic is needed here. Cost: this doubles generations per settlement
+ * period for as long as both `/` and `/map` ship (collapses back to one at
+ * step 7, when `/map` replaces `/`). Defaults to `south-england` so `/`'s
+ * existing requests (which don't send the param) are unchanged.
  *
  * Grid and curtailment are fetched by calling this project's own handlers
  * in-process rather than over HTTP, for the same reason vite.config.ts's dev
@@ -40,7 +50,7 @@ import type {
 import type { CurtailmentResponse, GridResponse, NarrationResponse } from '../src/lib/types.js';
 import gridHandler from './grid.js';
 import curtailmentHandler from './curtailment.js';
-import { situationOf } from '../src/lib/situation.js';
+import { situationOf, type SouthernRegion } from '../src/lib/situation.js';
 import { buildPrompt, validate } from './_lib/narration-prompt.js';
 import { msUntilRollover, previousPeriod, settlementAt, type SettlementRef } from '../src/lib/settlement.js';
 
@@ -78,6 +88,13 @@ function parsePeriodParam(req: ApiRequest): SettlementRef | null {
 
 function sameSettlement(a: Pick<SettlementRef, 'date' | 'period'>, b: Pick<SettlementRef, 'date' | 'period'>) {
   return a.date === b.date && a.period === b.period;
+}
+
+/** `undefined` (param absent) resolves to the default; an unrecognised value is invalid, same treatment as a malformed `period`. */
+function parseRegionParam(req: ApiRequest): SouthernRegion | null {
+  const raw = typeof req.query.region === 'string' ? req.query.region : null;
+  if (raw === null) return 'south-england';
+  return raw === 'south-england' || raw === 'england' ? raw : null;
 }
 
 async function generate(
@@ -128,13 +145,19 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
   }
 
+  const region = parseRegionParam(req);
+  if (region === null) {
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(400).json({ error: 'region must be "south-england" or "england"' });
+  }
+
   const [grid, curtailment] = await Promise.all([
     callInProcess<GridResponse>(gridHandler),
     callInProcess<CurtailmentResponse>(curtailmentHandler),
   ]);
 
   const settlement = grid.settlement;
-  const situation = situationOf(grid, curtailment);
+  const situation = situationOf(grid, curtailment, region);
 
   const body: NarrationResponse = {
     fetchedAt: new Date().toISOString(),

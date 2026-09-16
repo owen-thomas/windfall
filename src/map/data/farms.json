@@ -289,7 +289,8 @@
       -5.65
     ],
     "landingSource": "Skye's own grid connection reaches the mainland via Kyle of Lochalsh — the same point used as Edinbane's snap anchor in src/flow/sources.ts's fictional /flow source, kept identical here for consistency rather than independently re-sourced.",
-    "island": "Skye"
+    "island": "Skye",
+    "landingName": "Kyle of Lochalsh"
   },
   {
     "farm": "Enoch Hill",
@@ -714,7 +715,8 @@
       -3.0509
     ],
     "landingSource": "Shetland HVDC Link: converter station at Kergord, Shetland, to a new switching station at Noss Head, near Wick, Caithness (SSEN Transmission project page, en.wikipedia.org/wiki/Shetland_HVDC_Connection). Coordinate is Noss Head itself (58.479, -3.0509, Wikipedia).",
-    "island": "Shetland Mainland"
+    "island": "Shetland Mainland",
+    "landingName": "Noss Head"
   },
   {
     "farm": "Whitelee",

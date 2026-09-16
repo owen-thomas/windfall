@@ -12,7 +12,7 @@
  */
 
 import { formatMW, formatPct } from './format.js';
-import { situationOf } from './situation.js';
+import { situationOf, type SouthernRegion } from './situation.js';
 import type { CurtailmentResponse, GridResponse } from './types.js';
 
 export interface Narration {
@@ -46,9 +46,10 @@ function grams(value: number | null): string | null {
 export function narrate(
   grid: GridResponse | null,
   curtailment: CurtailmentResponse | null,
-  present = true
+  present = true,
+  southernRegion: SouthernRegion = 'south-england'
 ): Narration | null {
-  const situation = situationOf(grid, curtailment);
+  const situation = situationOf(grid, curtailment, southernRegion);
   if (!situation.north && !situation.south && situation.constraint === 'unknown') return null;
 
   const parts: string[] = [];
@@ -67,7 +68,7 @@ export function narrate(
   if (situation.south) {
     const intensity = grams(situation.south.intensity);
     parts.push(
-      `South England ${present ? 'is' : 'was'} at ${formatPct(situation.south.gasPct)} gas` +
+      `${situation.south.name} ${present ? 'is' : 'was'} at ${formatPct(situation.south.gasPct)} gas` +
         (intensity ? ` and ${intensity}.` : ', with no intensity reading.')
     );
   }
