@@ -31,6 +31,29 @@ export function formatIntensity(gco2: number | null): string {
   return gco2 === null ? 'unknown' : `${Math.round(gco2)} gCO₂/kWh`;
 }
 
+/**
+ * The spelled-out form used in the map's prose band sentences (Windfall_Map_
+ * Spec.md Part A.4/DECISIONS 026): "0 grams of carbon dioxide per
+ * kilowatt-hour", not the abbreviated "0 gCO₂/kWh" the header figure uses.
+ */
+export function formatIntensityWords(gco2: number | null): string {
+  if (gco2 === null) return 'unknown carbon intensity';
+  const rounded = Math.round(gco2);
+  return `${rounded} gram${rounded === 1 ? '' : 's'} of carbon dioxide per kilowatt-hour`;
+}
+
+/**
+ * Percentage rounded down, never to nearest (003/026's floor framing: "at
+ * least 6%" is a claim the floor cannot support when the true figure is
+ * 5.8%). Below 1% but above zero prints as "Less than 1%" rather than "0%",
+ * which would read as none.
+ */
+export function formatPctFloor(pct: number): string {
+  if (pct <= 0) return '0%';
+  if (pct < 1) return 'Less than 1%';
+  return `${Math.floor(pct)}%`;
+}
+
 /** Clock time in London local, 24-hour. */
 export function formatTime(iso: string | Date): string {
   return new Intl.DateTimeFormat('en-GB', {

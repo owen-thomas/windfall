@@ -793,3 +793,109 @@ Nothing found needed to go. The bug was never a stray string to grep away — `n
 ### What was rejected
 
 Keeping true extent as the default and instead shrinking the corridor-fidelity argument's cost some other way (e.g. a smaller inset overlay on top of the true-extent map) — considered and dropped, because it would mean carrying *both* the mainland-height cost 024 measured *and* Shetland's own true-extent screen space, for no honesty gain over the inset already built and judged in 024; a Viking-only conditional in `main.ts` rather than `isOffMainFit`/`buildFarmSources`'s data-driven rule (the plan explicitly asks for the rule, not the farm, to be Shetland-generic); silently re-routing Viking's off-fit source through the corridor's buffer-0 snap to suppress the new console warning (would special-case one farm's coordinate resolution against the shared `world.ts` path every source goes through, for a warning a real visitor never sees); a `region` field on `NarrationResponse` to let the client cross-check which region a cached response describes (unnecessary — each page's own `AppState.narration` is a separate object populated only by that page's own region-scoped fetch, so there is no cross-page value to protect against); adding `england` landing names for the seven offshore farms alongside Viking/Edinbane's (out of scope — only farms whose *island* membership can change with the fit are ever off-stage, and no offshore farm sits on an island).
+
+## 026 — The simplified page: one headline, two mixes, no generative element
+
+**Date:** 2026-09-17
+**Phase:** Map page, ahead of step 4
+**Decision:** The map page's information layer is cut to the elements below, per Owen's Figma exploration (16–17 Sept). Everything else moves to the method note or goes. Recorded here with the reasoning; the anatomy in [Windfall_Map_Spec.md](Windfall_Map_Spec.md) §3 is rewritten to match.
+
+**What stays, and where:**
+
+- **Masthead.** "Windfall ≈ Scotland wind tracker", top left. Settlement period and reading age top right, with the notice slot and the hollow/amber/red freshness rules from 010, 016 and 017 unchanged. The strapline is dropped: the headline introduces the product.
+- **Headline.** One sentence in the largest type on the page, the page's whole argument: "At least 16% of Scotland's tracked wind is currently being held off the grid." / "None of Scotland's tracked wind is currently being held off the grid." / an unavailable form when Elexon does not answer. Tense follows freshness as it does now.
+- **Breakdown under the headline.** The share bar, "2,134 of the 8,400 MW Scotland is making", and the held-down farm list. Kept because it is the only place a reader can check the headline against another tracker.
+- **Two mixes.** Scotland to the right of Scotland, England to the left over the sea, each with its intensity figure, its bar in fixed fuel order, its legend, and one template sentence beneath it in the three voices (constrained, clear, unknown), tense-aware.
+- **The border**, drawn as the bottleneck, with the constraint sentence on hover or tap rather than as a paragraph on the map. The sentence also lives in the method note so touch and screen-reader users can reach it.
+- **Method note, source health, colophon**, at the foot. The settled MWh figure moves here from the main screen.
+
+**The headline percentage.** It is curtailed output over declared output for the tracked farms at the sampled instant: the share of the wind Scotland is making, not the share of installed capacity. On the curtailing fixture that is roughly 25% rather than the 16% the capacity denominator gives, because capacity counts every farm standing idle for lack of wind. The bar and the line beneath the headline use the same denominator, so the three figures cannot disagree. Rounding is always down: 5.8% prints as "at least 5%", because "at least 6%" is a claim the floor cannot support (003).
+
+**No generative element.** The Claude-written narration is cut from the map page. Owen's call, made knowingly: the product does not need it, and the two template sentences under the mixes say what the narration said. Consequence for the case study, stated plainly: the project plan's first proof ("AI in the product loop") and the headline claim "AI narrates Britain's grid" are no longer supported by the product as it will ship. The narration exists in the codebase (018, 019, 020) and ran against fixtures, but was never keyed in production — the live endpoint reports "no API key configured" on 17 September, so windfall.scot has shown the template sentence since launch. The case study can describe the narration as built and validated, not as shipped. The narration function and `narrate.ts` stay in the repo for `/` until step 7 and are then removed or archived.
+
+**Type.** Eczar for display, Mukta for body, both self-hosted through fontsource. This closes 011's provisional DM Sans.
+
+**Colour.** The light palette is rebuilt as a system from the roles the dark palette was built on: wind the one saturated hue (the flow's blue), gas its warm opposite, everything else receding into the ground. Owen's inverted version of the dark palette proved the roles hold on cream; the provisional light tokens from step 1 were never composed as a system and are replaced.
+
+**What was rejected:** keeping the generated sentence as the headline's standfirst (proposed, declined: the page reads complete without it); making the two mix captions generated in one call (proposed, declined for the same reason); a percentage of installed capacity (understates the share on every windy day); the constraint as a caption box on the map (covers coast, and the border's own treatment can carry the state).
+
+---
+
+## 027 — Step 4 built: the simplified layer, and a role-based palette checked against AA
+
+**Date:** 2026-09-17
+**Phase:** Map page, step 4
+**Decision:** Step 4 is built per 026 and Windfall_Map_Spec.md §3/§6. Recorded here: the headline's denominator and rounding as implemented, the percentage on each fixture, the palette values with their contrast ratios, the card-vs-wash call, the tooltip's implementation and its fallbacks, and what was removed.
+
+### The headline denominator and rounding
+
+`src/map/views/headline.ts` — a new, leaner view, not a reskin of `../view/headline.ts` (which `/` keeps unchanged) — computes the percentage as `curtailedMW / declaredMW × 100`, where `declaredMW` is `curtailment.now.farms[].declaredMW` summed across every tracked farm at the sampled instant. The bar's fill width and the breakdown line (`"{curtailed} of the {declared} MW Scotland is making."`) read the same `declaredMW` sum, so the three can never disagree (§4.3). Rounding is always down via a new `formatPctFloor` (`src/lib/format.ts`): below 1% but above zero prints "Less than 1%"; otherwise `Math.floor`. The capacity-denominator percentage (16% on the same fixture, per 026's own worked example) no longer appears anywhere on the headline — capacity moves to the method note, which already carried it via `colophonView`'s existing coverage line and needed no change.
+
+Percentage on each fixture, live-captured at the step 4 gate:
+
+| Fixture | Headline reads |
+|---|---|
+| `curtailing` | "At least **38%** of Scotland's tracked wind is currently being held off the grid." (2,050 of 5,363 MW declared) |
+| `calm` | "**None** of Scotland's tracked wind is currently being held off the grid." |
+| `stale` | Same 38%, past tense: "…was being held off the grid when this was last read." |
+| `degraded` | "**Unavailable.** Elexon's balancing data did not answer this time. The generation mix above is unaffected." |
+| `offline` | "**Unavailable.** Windfall could not reach its own reading of the balancing mechanism." |
+| `waiting` | "Reading. Windfall is asking Elexon what is being held down this half-hour…" (muted, not wind-hue — nothing has been claimed yet) |
+| `live` (capture time) | 51% (4,266 of 8,259 MW) — cited to show the mechanism works against real data, not as a fixture figure |
+
+Note the fixture figure differs from 026's own worked example (25% on an earlier capture of the same `curtailing` fixture) — the fixture is a live capture rebased onto the clock (012), so its absolute figures drift release to release; the mechanism (declared-output denominator, floor rounding) is what 026 fixed, not a specific percentage.
+
+### The palette: built as a role system, checked against AA
+
+`src/styles/tokens-light.css` replaces the step-1 provisional palette outright. Wind (`#0f5fd6`) is unchanged — lifted from the flow's own `LIGHT_PALETTE.baseHue` (216) so the page's protagonist hue and the flow's stroke are the same by construction. Every other value was chosen with a WCAG contrast calculator open, not eyeballed, and re-tuned where the first pick fell short. Full table (`bg` = the cream ground `#e9e5dc`; `label` = the on-segment text colour that token actually gets, per the rule below):
+
+| Token | Value | vs cream | Label pairing | Ratio |
+|---|---|---|---|---|
+| `--text-primary` | `#1c1f16` | 13.29:1 | — | — |
+| `--text-secondary` | `#4a4d40` | 6.88:1 | — | — |
+| `--text-muted` | `#65624f` | 4.89:1 | — | — |
+| `--fuel-wind` | `#0f5fd6` | 4.60:1 | cream text | 4.60:1 |
+| `--fuel-gas` | `#a34518` | 4.88:1 | cream text | 4.88:1 |
+| `--fuel-coal` | `#6b5f56` | 4.92:1 | cream text | 4.92:1 |
+| `--fuel-nuclear` | `#847e9c` | 3.07:1 | dark-ink text | 4.33:1 |
+| `--fuel-solar` | `#a37c30` | 3.05:1 | dark-ink text | 4.36:1 |
+| `--fuel-hydro` | `#5f86a3` | 3.08:1 | dark-ink text | 4.32:1 |
+| `--fuel-biomass` | `#71845a` | 3.24:1 | dark-ink text | 4.10:1 |
+| `--fuel-imports` | `#7d786a` | 3.50:1 | dark-ink text | 3.79:1 |
+| `--fuel-other` | `#8a8272` | 3.03:1 | dark-ink text | 4.39:1 |
+| `--signal-ok` | `#0f5fd6` | 4.60:1 | — | — |
+| `--signal-ageing` | `#7d5f1c` | 4.74:1 | — | — |
+| `--signal-stale` | `#943e15` | 5.65:1 | — | — |
+| `--signal-failed` | `#b13d2c` | 4.68:1 | — | — |
+| `--curtailed` (fill) | `#b9cdf0` | 1.28:1 | n/a — decorative fill, never text | — |
+| `--curtailed-edge` | `#0f5fd6` | — | vs `--curtailed` fill: 3.60:1 | — |
+
+`--text-muted` was darkened from a step-1 `#7a7768` (3.58:1, failing AA) to `#65624f` (4.89:1) — the one ground/text token that needed correcting rather than just measuring.
+
+**The disclosed trade-off.** Wind, gas and coal are dark/saturated enough to clear 4.5:1 against cream on their own — the reverse of `app.css`'s dark-theme override list (`imports`/`coal`/`other` get light labels there), so `src/map/map.css` scopes a new `.map-band .mix__seg[data-fuel='wind'|'gas'|'coal'] .mix__label` rule to invert it for the light palette, rather than editing `app.css`'s selector and risking `/`'s dark bars. The other six fuels sit between 3.0:1 and 3.5:1 against cream — below AA's 4.5:1 text threshold, at or just above its 3:1 large-text/UI-component threshold. This is the deliberate "recede toward the ground" instruction in tension with AA, and it is resolved by where the colour carries meaning: the swatch itself is never the only reading of a fuel's share — the legend's `dt`/`dd` text sits at `--text-secondary`/`--text-primary` against cream (6.88:1 / 13.29:1, comfortably AA) right beside every swatch, and the on-segment inline label (only shown above a 20% share — raised from the dashboard's 12%, since the map's panels are much narrower) still clears 4.1–4.4:1 in dark ink. No figure on the map depends on a receding swatch's contrast to be read.
+
+### Type
+
+`--font-display: 'Eczar Variable'` (masthead wordmark, headline, region names) and `--font-body: 'Mukta'` (everything else), both self-hosted via `@fontsource-variable/eczar`/`@fontsource/mukta`, imported from `src/map/main.ts` only — `/` and `/flow` keep DM Sans untouched. Type scale, recorded as tokens rather than ad hoc `clamp()`s scattered through the CSS: `--type-display` (headline), `--type-region` (Scotland/England), `--type-body`, `--type-small`, `--type-caption` — see `tokens-light.css`'s own per-token comments for what actually renders at each. First pass, set against the real overlay panels rather than a formula; a strict modular scale fought the ~22–33rem panel widths at both ends.
+
+### Card vs wash
+
+Built both, toggled with `c` for comparison (`capture/case-study/map/step-4/panels-{wash,card}.png`). **Wash — a translucent cream scrim, `rgb(233 229 220 / 0.6)`, no border, no inset shadow — is the shipped default.** The headline and both mixes stay fully legible over the flow at this alpha, and the softer edge reads as the type and spacing carrying the panel rather than a card doing it, which is what §6 step 4 asked to judge by looking rather than argue. Card (`rgb(245 242 234 / 0.92)`, `inset 0 0 0 1px var(--ink-line)`) is kept as the named alternative — Owen can flip the default in Figma against the pair if the wash reads as too little separation on a busier live capture.
+
+### The border: tooltip, not a caption card
+
+`src/view/border.ts` is repurposed from a permanently visible caption box into a pure tooltip-content view (`borderView` now renders `.map__border-tooltip`, state-and-tense-resolved by a new exported `constraintSentenceOf(state)` — the one place both the tooltip and the method note's constraint line call from, so they can't drift). `src/map/main.ts` builds the interactive part directly: a wide (`stroke-width: 28`), transparent `<path>` (`.map__border-hit`) sharing the visible border's own `d`, `tabindex="0"`, `role="button"`, an `aria-label` naming it, wired to `mouseenter`/`mouseleave`/`focus`/`blur`/`click` (click toggles, for tap). Alongside it, a tiny always-on decorative label (`aria-hidden`, `pointer-events: none`) reading "The constraint" so the affordance is discoverable before anyone touches it. Both sit at the border line's own geometric midpoint (`BORDER_LINE[⌊length/2⌋]`), not an offshore point — step 3b's offshore caption candidates existed to give a *large* permanently-visible card clearance from the coast; a small pill and an on-demand tooltip don't need that, and putting the discoverable label anywhere other than on top of the actual hit target would separate the two spatially for no reason.
+
+**Two bugs found wiring this up, worth keeping because they'll recur:** (1) the flow canvas paints over the SVG (§7.2) and, with no `pointer-events` rule of its own, silently absorbed every hover/click meant for the border hit-path underneath it — fixed with `pointer-events: none` on `.map__canvas`, which never needs to receive one. (2) `.map__border-overlay`, the positioning wrapper around the label and tooltip, has no visible background but is still a hit-testable box — its transparent area between the two children was shadowing the SVG path below it. Fixed the same way: `pointer-events: none` on the wrapper, with the exception carved back in for the open tooltip (`.is-open .map__border-tooltip { pointer-events: auto }`) in case its own text ever needs to be interacted with. Both are the same species of mistake — an invisible element still occupies its box for hit-testing — and both were only caught by checking `document.elementFromPoint` against the intended target, not by looking at the screen.
+
+**Fallback for touch and screen readers:** the same sentence `constraintSentenceOf` produces for the tooltip is always printed as a plain paragraph in the method note (`methodConstraint`, `src/map/main.ts`), regardless of whether the tooltip has ever been opened — per 026's own requirement, no one is dependent on discovering the affordance.
+
+### What was removed
+
+The narration view and its fetch (`narrationView`, `fetchNarration`) — `/map` no longer imports either; `narrate.ts` and `../view/narration.ts` are untouched and still serve `/`. The floating "wind note" (`.map__wind-note`) — its "declared output, not metered" content is already load-bearing in the method note's `methodFlowScope` line, which stays. Every eyebrow heading (`THE WIND IS HERE`, etc.) — the map's own `mapBandView`/`mapHeadlineView`/`mapMastheadView` simply never render one, rather than hiding the dashboard's via CSS. The border's caption card and its leader line. The dashboard masthead's standfirst — `mapMastheadView` (`src/map/views/masthead.ts`) keeps only the *warning* half of that slot (stale/failed/rollover notices), now positioned under the clock, top right, rather than sharing a slot with an introductory sentence that no longer exists on this page.
+
+### Also fixed in this pass, found while building
+
+The headline panel and the Scotland panel were sharing one CSS rule (`position: absolute; right: var(--gap-lg)`) inherited from step 3, when 026's own anatomy puts the headline top-left and Scotland top-right — an artefact of the step-3 layout never having been revisited when the anatomy was rewritten. Split into `.panel--headline` (`left`) and `.panel--scotland` (`right`); the Shetland inset, which used to sit top-left, moved to bottom-left to stay clear of the headline's new position. `.composition`'s `min-height` was `100svh` in step 3 and briefly regressed to `80svh` while drafting this step's CSS from scratch — caught by the headline's own evidence (the farm list) clipping off the bottom of the viewport, restored to `100svh`.
+
+**What was rejected:** editing `app.css`'s dashboard classes to carry a light-theme variant (would have coupled `/`'s dark bars to `/map`'s light ones through shared, conditionally-themed selectors — exactly the drift 010/017's "one place, both consumers" pattern exists to prevent); a second `BORDER_CAPTION_CANDIDATES`-style toggle for the tooltip's position (the ambiguity that motivated step 3's two candidates was about clearing a large card from the coast, which no longer exists); raising every receding fuel to 4.5:1 by darkening them further (would have stopped them receding at all, defeating the point of the role system for the sake of a ratio the legend text already satisfies).
