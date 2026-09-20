@@ -20,6 +20,14 @@ export interface Projection {
 export interface ProjectionOptions {
   /** Fraction of the shorter viewport dimension reserved as padding on each side. */
   padding?: number;
+  /**
+   * Padding on each side as an absolute pixel count, in the same units as the
+   * viewport passed to buildProjection (device px on the map). Wins over
+   * `padding` when both are given. Map step 4b (spec §5.3): the map page needs
+   * its 24px inset to be exact at every cell size, which a fraction of the
+   * shorter side cannot be.
+   */
+  paddingPx?: number;
 }
 
 export function buildProjection(
@@ -48,7 +56,7 @@ export function buildProjection(
   const spanX = (maxLon - minLon) * lonScale;
   const spanY = maxLat - minLat;
 
-  const padPx = padding * Math.min(viewportWidth, viewportHeight);
+  const padPx = options.paddingPx ?? padding * Math.min(viewportWidth, viewportHeight);
   const availW = viewportWidth - 2 * padPx;
   const availH = viewportHeight - 2 * padPx;
 

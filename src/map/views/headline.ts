@@ -1,22 +1,32 @@
 /**
- * The map's headline (Windfall_Map_Spec.md §3 Part A.2, DECISIONS 026):
- * one sentence, the largest type on the page, the page's whole argument —
- * not `../../view/headline.ts`'s three-part eyebrow/figure/predicate stack,
- * which `/` still uses unchanged.
+ * The map's headline (Windfall_Map_Spec.md §3 Part A.2, DECISIONS 026, re-cut
+ * for the Figma frames in Windfall_Map_Spec_4b.md / DECISIONS 028): one
+ * sentence, the largest and heaviest type on the page, the page's whole
+ * argument — not `../../view/headline.ts`'s three-part eyebrow/figure/
+ * predicate stack, which `/` still uses unchanged.
  *
- * The percentage is curtailed output over *declared* output for the tracked
- * farms at the sampled instant — the share of the wind Scotland is making,
- * not the share of installed capacity (026's own reasoning: capacity counts
- * every farm idle for lack of wind, which understates the share on a windy
- * day). `declaredMW` is the sum of `curtailment.now.farms[].declaredMW` —
- * the same field the breakdown line and the bar below both read, so the
- * headline, the bar and the line can never disagree (§4.3). Rounding is
- * always down (formatPctFloor, format.ts) — 003's floor framing applied to
- * the display, not just the derivation.
+ * Step 4b turned the figure over. The sentence now leads with the megawatts —
+ * "At least 2,134 MW of Scotland's tracked wind…" — and the percentage moved
+ * into the solid breakdown bar beneath it, printed inline as "13% of 13,105
+ * MW". Both are still one payload: `curtailedMW` is `curtailment.now.
+ * curtailedMW`, `declaredMW` the sum of `curtailment.now.farms[].declaredMW`,
+ * and the percentage is curtailed over *declared* output for the tracked farms
+ * at the sampled instant — the share of the wind Scotland is making, not of
+ * installed capacity (026's own reasoning: capacity counts every farm idle for
+ * lack of wind, which understates the share on a windy day). The sentence, the
+ * bar's fill and the bar's label all read those same two numbers, so they can
+ * never disagree (§4.3). Rounding is always down — formatMWFloor,
+ * formatPctFloor — 003's floor framing applied to the display, since "at
+ * least" is a claim a rounded-up figure cannot support.
+ *
+ * The line that used to sit under the bar ("2,134 of the 13,105 MW Scotland
+ * is making.") is gone from the screen — the headline and the bar now carry
+ * both of its numbers — but stays in the DOM, visually hidden, as the one
+ * plain sentence a screen reader gets for the bar (which is aria-hidden).
  */
 
 import { clear, el, setAttr, setText, setTextCrossfade, type View } from '../../view/dom';
-import { formatMW, formatMWh, formatPctFloor, formatPeriodSpan, joinList } from '../../lib/format';
+import { formatMW, formatMWFloor, formatMWh, formatPctFloor, formatPeriodSpan, joinList } from '../../lib/format';
 import type { CurtailedUnit, CurtailmentResponse } from '../../lib/types';
 import { speaksOfNow, type AppState } from '../../lib/state';
 
@@ -35,8 +45,17 @@ export function mapHeadlineView(): View {
     tail
   );
 
+  // Where main.ts seats the settlement-period / "Read N ago" row. That row is
+  // rendered and kept fresh by the masthead view (its freshness and notice
+  // rules are the masthead's, 010/016/017), but the Figma frames put it here,
+  // between the sentence and the bar.
+  const meta = el('div', { class: 'map-headline__meta' });
+
   const shareFill = el('div', { class: 'share__fill' });
-  const shareBar = el('div', { class: 'share', 'aria-hidden': 'true' }, shareFill);
+  const sharePct = el('strong', { class: 'share__pct' });
+  const shareOf = el('span', { class: 'share__of' });
+  const shareLabel = el('span', { class: 'share__label' }, sharePct, shareOf);
+  const shareBar = el('div', { class: 'share', 'aria-hidden': 'true' }, shareFill, shareLabel);
   const breakdown = el('p', { class: 'map-headline__breakdown' });
   const farms = el('p', { class: 'headline__farms' });
 
@@ -44,8 +63,16 @@ export function mapHeadlineView(): View {
     'section',
     { class: 'map-headline', 'data-state': 'ok', 'aria-labelledby': 'map-headline-sentence' },
     sentence,
+    meta,
     el('div', { class: 'map-headline__evidence' }, shareBar, breakdown, farms)
   );
+
+  /** The bar says nothing until there is something to say: no label, and CSS greys the track. */
+  function setShare(pct: number, label: { pct: string; of: string } | null) {
+    shareFill.style.width = `${Math.min(100, Math.max(0, pct))}%`;
+    setText(sharePct, label?.pct ?? '');
+    setText(shareOf, label?.of ?? '');
+  }
 
   return {
     el: root,
@@ -62,7 +89,7 @@ export function mapHeadlineView(): View {
           ' Windfall is asking Elexon what is being held down this half-hour. Nothing is claimed ' +
             'until it answers.'
         );
-        shareFill.style.width = '0%';
+        setShare(0, null);
         setText(breakdown, '');
         setText(farms, '');
         return;
@@ -78,7 +105,7 @@ export function mapHeadlineView(): View {
             ? ' Windfall could not reach its own reading of the balancing mechanism.'
             : ' Elexon’s balancing data did not answer this time. The generation mix above is unaffected.'
         );
-        shareFill.style.width = '0%';
+        setShare(0, null);
         setText(breakdown, '');
         setText(farms, '');
         return;
@@ -97,7 +124,7 @@ export function mapHeadlineView(): View {
             ? " of Scotland's tracked wind is currently being held off the grid."
             : " of Scotland's tracked wind was being held off the grid when this was last read."
         );
-        shareFill.style.width = '0%';
+        setShare(0, { pct: '0%', of: ` of ${formatMW(declaredMW)}` });
         setText(breakdown, `0 of the ${formatMW(declaredMW)} Scotland is making.`);
         setText(farms, '');
         return;
@@ -106,7 +133,7 @@ export function mapHeadlineView(): View {
       setAttr(root, 'data-state', 'curtailing');
       const pct = declaredMW > 0 ? (curtailedMW / declaredMW) * 100 : 0;
       setTextCrossfade(lead, 'At least ');
-      setTextCrossfade(figure, formatPctFloor(pct));
+      setTextCrossfade(figure, formatMWFloor(curtailedMW));
       setTextCrossfade(
         tail,
         present
@@ -114,14 +141,12 @@ export function mapHeadlineView(): View {
           : " of Scotland's tracked wind was being held off the grid when this was last read."
       );
 
-      shareFill.style.width = `${Math.min(100, pct)}%`;
-      // Spec's exact phrasing (026): "{curtailed} of the {declared} MW
-      // Scotland is making" — the first figure is bare (curtailedMW,
-      // formatted without its own unit) because the second figure's "MW"
-      // covers both, the same construction the decision's own example uses.
+      setShare(pct, { pct: formatPctFloor(pct), of: ` of ${formatMW(declaredMW)}` });
+      // The plain sentence for the aria-hidden bar (026's exact phrasing): the
+      // first figure is bare because the second's "MW" covers both.
       setText(
         breakdown,
-        `${Math.round(curtailedMW).toLocaleString('en-GB')} of the ${formatMW(declaredMW)} Scotland is making.`
+        `${Math.floor(curtailedMW).toLocaleString('en-GB')} of the ${formatMW(declaredMW)} Scotland is making.`
       );
 
       clear(farms);
@@ -150,7 +175,7 @@ function farmNodes(units: CurtailedUnit[]): Node[] {
   const nodes: Node[] = [];
 
   named.forEach((entry, index) => {
-    if (index > 0) nodes.push(el('span', { class: 'farms__sep', text: '·' }));
+    if (index > 0) nodes.push(el('span', { class: 'farms__sep', text: '•' }));
     nodes.push(
       el(
         'span',
@@ -162,7 +187,7 @@ function farmNodes(units: CurtailedUnit[]): Node[] {
   });
 
   if (rest.length > 0) {
-    nodes.push(el('span', { class: 'farms__sep', text: '·' }));
+    nodes.push(el('span', { class: 'farms__sep', text: '•' }));
     const names = rest.map((r) => r.farm);
     nodes.push(
       el('span', {
@@ -170,7 +195,7 @@ function farmNodes(units: CurtailedUnit[]): Node[] {
         text:
           names.length <= 3
             ? joinList(names)
-            : `and ${names.length} more, ${joinList(names.slice(0, 2))} among them`,
+            : `and ${names.length} more`,
       })
     );
   }

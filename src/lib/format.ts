@@ -54,6 +54,17 @@ export function formatPctFloor(pct: number): string {
   return `${Math.floor(pct)}%`;
 }
 
+/**
+ * MW rounded down, for a figure printed as "at least N MW" (map step 4b: the
+ * headline now leads with the megawatts, not the percentage). Same reasoning
+ * as formatPctFloor — 2,133.6 MW printed as "at least 2,134" claims more than
+ * the floor supports. `formatMW` rounds to nearest and stays for every figure
+ * that isn't a lower bound.
+ */
+export function formatMWFloor(mw: number): string {
+  return `${Math.floor(Math.max(0, mw)).toLocaleString('en-GB')} MW`;
+}
+
 /** Clock time in London local, 24-hour. */
 export function formatTime(iso: string | Date): string {
   return new Intl.DateTimeFormat('en-GB', {

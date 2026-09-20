@@ -1,0 +1,207 @@
+/*
+ * The 12-column grid and the four breakpoint tiers for /map
+ * (Windfall_Map_Spec_4b.md §5, DECISIONS 028).
+ *
+ * This file is the *only* place a pixel breakpoint is written. A media query
+ * cannot read a custom property, so the tier boundaries live here as
+ * literals; everything that varies by tier — margins, the two-column flip,
+ * which grid columns the text block and the map occupy, how wide a mix panel
+ * is, the headline's type size, where the mix panels sit against the
+ * coastline — is set here as a token, and map.css / main.ts read the tokens
+ * and contain no media queries of their own. To move a breakpoint, or to
+ * change a margin, this is the one file to open.
+ *
+ * Tiers (Windfall_Map_Spec_4b.md §5.1). Boundaries are in rem so the flip
+ * scales with the reader's own font size; at the default 16px they are the
+ * spec's pixel values.
+ *
+ *   Desktop L   ≥1440px (90rem)      two-column
+ *   Desktop M   1280–1439px (80rem)  two-column — same layout, one type step down
+ *   Tablet      744–1279px (46.5rem) stacked
+ *   Mobile      ≤743px               stacked   (the defaults below)
+ *
+ * The layout flips at exactly 1280px.
+ *
+ * Grid: 12 columns and a 24px gutter at every tier. Widths are column-based,
+ * never fixed px, so blocks hold their ratios within a tier. The mix panels
+ * span 2 columns on desktop, 3 on tablet, 4 on mobile — read off the Figma
+ * frames, where they measure 172/199px, 136px and 99px, which is exactly
+ * those column spans on the frame grids.
+ */
+
+:root {
+  /* --- Constant across tiers ------------------------------------------------ */
+  --grid-cols: 12;
+  --grid-gutter: 1.5rem; /* 24px */
+  /* Past this the page centres and the margins grow, rather than the layout
+     stretching: the Figma frames stop at 1440. */
+  --page-max: 90rem;
+  /* The map's padding on every side, inside its cell. Unitless-px on purpose:
+     main.ts reads it and hands the same number to the projection, so the
+     island's 24px inset is exact at every size and DPR (spec §5.3). */
+  --map-pad: 24px;
+
+  /* --- Mobile (≤743px) — the defaults ---------------------------------------- */
+  --tier: mobile;
+  --layout: stacked;
+  --page-margin: 1.5rem; /* 24px */
+  --page-top: 1.5rem;
+  --page-bottom: 1.25rem;
+
+  /* Where each block sits on the 12 columns. Stacked: everything is full
+     width, and the map takes row 3 — whatever height is left on the screen
+     once the text block above it has been laid out. */
+  --col-text: 1 / -1;
+  --col-map: 1 / -1;
+  --row-map: 3;
+  --row-foot: 4;
+  /* The map cell's own inner grid. It is exactly the parent's columns
+     (6 of the 12 on desktop, all 12 stacked), so a panel spanning N of them
+     is the same width as N page columns. */
+  --map-cols: 12;
+  --mix-span: 4;
+
+  /* The page's rows: masthead / text / map / footer. Stacked, the map row takes
+     whatever screen is left under the text and above the footer (never less
+     than 32rem, so a landscape tablet still gets a usable map and scrolls
+     instead). Two-column, the footer is row 3 under the text column and the map
+     spans all three. */
+  --page-rows: auto auto minmax(32rem, 1fr) auto;
+  --map-position: relative;
+  --map-align: stretch;
+  --map-height: auto;
+  --text-align: start; /* the text block sits under the masthead, not centred on the screen */
+  --text-lift: 1.5rem; /* stacked: the gap between the text block and the map */
+  --text-bleed: 0rem;
+  --gap-masthead: 1.9rem;
+
+  /* Vertical gap between the rows inside the headline block. */
+  --gap-group: 0.5rem;
+
+  /* Type that steps by tier. */
+  --type-display: 1.25rem; /* 20px */
+  --lh-display: 1.2;
+  --type-wordmark: 0.75rem; /* 12px */
+  --type-legend: 0.6875rem; /* 11px — the mobile legend */
+
+  /* --- The mix panel, tier by tier ---------------------------------------------
+     What differs between tiers is arrangement, not content, so it is all
+     tokens the panel's one rule set reads. Desktop: region name and
+     intensity share a line, the legend flows two to a row. Tablet and mobile
+     (panels only 3–4 columns wide): name, bar, then the intensity beneath it,
+     and the legend a single-column stack. Mobile only: the caption sentence
+     is taken off the screen (max-height 0 — still read aloud, never
+     display:none), and the Scotland panel is right-aligned against the
+     margin with its swatch trailing, as the Mobile frame has it. */
+  --band-cols: minmax(0, 1fr);
+  --band-areas: 'place' 'bar' 'intensity' 'legend' 'caption';
+  --legend-flow: column;
+  --caption-max-h: 0;
+  --caption-overflow: hidden;
+  --caption-gap: 0;
+  --scotland-align: end;
+  --scotland-swatch-order: 2;
+  --legend-gap: 1rem; /* stacked: the frames put 24px between the header group and the legend */
+  --bar-gap: 0rem;
+  --source-detail-display: none; /* the feed descriptors ("NESO · mix, regions, forecast") wait for the room desktop has */
+
+  /* Mix panels: the latitude (°N) of the panel's *top edge*. Horizontal
+     position is the grid columns above; vertical position tracks the
+     projected coastline, so the panel stays level with the country it is
+     about at every fit. Stacked layouts hang Scotland from the top of the
+     map cell (a latitude above the island's, clamped to the cell) and put
+     England beside the north of England; the two-column layout reads them
+     off the 1440 and 1280 frames (Scotland level with Aberdeen, England level
+     with Morecambe Bay). */
+  --anchor-scotland-lat: 59.9; /* above the island's top edge: the panel hangs from the top of the map cell */
+  --anchor-england-lat: 54.4;
+}
+
+/* --- Tablet (744–1279px): stacked, wider margins, 3-column mix panels ------- */
+@media (min-width: 46.5rem) {
+  :root {
+    --tier: tablet;
+    --page-margin: 4rem; /* 64px — the Tablet frame's margin (spec §5.1 says 24px; DECISIONS 028) */
+    --page-top: 3.375rem; /* 54px: the frames' masthead cap-height sits at y=54 */
+    --page-bottom: 3.5rem;
+    --gap-masthead: 2.875rem;
+    --mix-span: 3;
+    --gap-group: 0.75rem;
+    --type-display: 2rem; /* 32px */
+    --lh-display: 1.125;
+    --type-wordmark: 1rem; /* 16px */
+    --type-legend: 0.75rem; /* 12px */
+    --caption-max-h: none;
+    --caption-overflow: visible;
+    --caption-gap: 0.5rem;
+    --scotland-align: start;
+    --scotland-swatch-order: 0;
+    --anchor-england-lat: 55.1;
+  }
+}
+
+/* --- Desktop M (1280–1439px): two columns ---------------------------------- */
+@media (min-width: 80rem) {
+  :root {
+    --tier: desktop-m;
+    --layout: two-col;
+    /* Text: columns 1–5. Column 6: the gap. Map: columns 7–12, the full
+       height of the viewport. */
+    --col-text: 1 / span 5;
+    --col-map: 7 / -1;
+    --row-map: 1 / span 3;
+    --row-foot: 3;
+    --map-cols: 6;
+    --mix-span: 2;
+    --anchor-scotland-lat: 57.52;
+    --anchor-england-lat: 54.72;
+
+    /* The map is pinned to the viewport, full height, so it stays put and
+       keeps its fit however long the text column grows (the method note
+       opening, say). The text block is centred on the *screen*, not in
+       whatever is left between masthead and footer — the two outer rows
+       share the spare height equally, so a taller footer cannot pull the
+       block off-centre — and never smaller than their content. */
+    --page-rows: minmax(min-content, 1fr) auto minmax(min-content, 1fr);
+    --map-position: sticky;
+    --map-align: start;
+    --map-height: max(100svh, 36rem);
+    --text-align: center;
+    --text-lift: 2.25rem; /* padding that lifts the centred block 18px: the frames sit it above true centre */
+
+    /* Name and intensity on one line; the legend flows. */
+    --band-cols: minmax(0, 1fr) auto;
+    --band-areas: 'place intensity' 'bar bar' 'legend legend' 'caption caption';
+    --legend-flow: row;
+    --legend-gap: 0rem;
+    --bar-gap: 0.25rem;
+    --source-detail-display: inline;
+  }
+}
+
+/* --- Desktop L (≥1440px): the same layout, one type step up ------------------ */
+@media (min-width: 90rem) {
+  :root {
+    --tier: desktop-l;
+    --type-display: 2.5rem; /* 40px */
+    --lh-display: 1.1;
+    /* The 1440 frame's text block is columns 1–5 plus the gutter after them
+       (557px; the 1280 frame is exactly 1–5). It is what lets the headline
+       hold its three lines at 40px. DECISIONS 028. */
+    --text-bleed: var(--grid-gutter);
+    --anchor-scotland-lat: 57.33;
+    --anchor-england-lat: 54.44;
+  }
+}
+
+/* --- The primitive ------------------------------------------------------------ */
+
+/* A 12-column container with the tier's margins and gutters. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(var(--grid-cols), minmax(0, 1fr));
+  column-gap: var(--grid-gutter);
+  max-width: var(--page-max);
+  margin-inline: auto;
+  padding-inline: var(--page-margin);
+}

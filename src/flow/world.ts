@@ -3,7 +3,7 @@ import { buildDistanceField, type DistanceField } from './distanceField';
 import { buildDivergentField, type DivergentField } from './divergentField';
 import { buildGeodesicField, type GeodesicField } from './geodesicField';
 import { buildRasterMask, paintCapsule, scanlineFillMask, type RasterMask } from './mask';
-import { buildProjection, type Projection } from './projection';
+import { buildProjection, type Projection, type ProjectionOptions } from './projection';
 import { originOf } from './sources';
 import type { Source, Vec2 } from './types';
 
@@ -89,6 +89,12 @@ export interface WorldBuildOptions {
    * existing, pre-step-3 behaviour) when omitted.
    */
   projectionRing?: [number, number][];
+  /**
+   * Overrides the Projection's padding — see `ProjectionOptions`. Map step 4b
+   * passes an exact `paddingPx`; /flow and the harness omit it and keep the
+   * fractional default.
+   */
+  projectionOptions?: ProjectionOptions;
 }
 
 /**
@@ -148,7 +154,12 @@ export function buildWorld(
   viewportHeight: number,
   options: WorldBuildOptions = {},
 ): World {
-  const projection = buildProjection(options.projectionRing ?? ring, viewportWidth, viewportHeight);
+  const projection = buildProjection(
+    options.projectionRing ?? ring,
+    viewportWidth,
+    viewportHeight,
+    options.projectionOptions,
+  );
   const mask = buildRasterMask(ring, projection, viewportWidth, viewportHeight);
 
   // Step 3 Part A.4: fold in the island a source sits on, for every source

@@ -27,16 +27,19 @@
 
   /*
    * The page's type scale, one size per role (spec Part B.1). Comments
-   * record what each step actually renders, not just a ratio, since the
-   * scale was set against the real overlay panels rather than derived from
-   * a formula — a strict modular scale fought the ~22rem panel width at both
-   * ends. Step 4 (DECISIONS 027): first pass, over the real proportions.
+   * record what each step actually renders, not just a ratio. Step 4b
+   * (DECISIONS 028) re-cut the scale against the Figma frames, which use
+   * exactly two body sizes: 16px Eczar for every display-ink label and 12px
+   * Mukta for everything small.
+   *
+   * --type-display (the headline — the largest, heaviest type on the page)
+   * is the one size that steps by breakpoint tier, 40/32/32/20px, so it is
+   * set in grid.css with the other tier tokens, not here.
    */
-  --type-display: clamp(2.5rem, 5vw, 3.75rem); /* the headline — largest type on the page, Eczar */
-  --type-region: clamp(1.5rem, 2.2vw, 2rem); /* region name (Scotland/England), Eczar */
-  --type-body: 1rem; /* the breakdown line, band sentences, tooltip body — Mukta */
-  --type-small: 0.85rem; /* masthead clock, farm list, legend, border label — Mukta */
-  --type-caption: 0.72rem; /* method note, source health, byline, inset captions — Mukta */
+  --type-region: 1rem; /* wordmark, region name + intensity, the breakdown bar's label — Eczar */
+  --type-body: 0.75rem; /* band sentences, tooltip body, method note — Mukta */
+  --type-small: 0.75rem; /* settlement row, farm list, legend, toggle, byline, border label — Mukta */
+  --type-caption: 0.6875rem; /* inset captions, the mobile legend — Mukta */
 
   /* --- Ground ------------------------------------------------------------ */
   --ink-void: #e9e5dc;
@@ -45,30 +48,41 @@
   --ink-line: #d8d2c4;
   --ink-line-strong: #b8b0a0;
 
-  --text-primary: #1c1f16;
+  /* Step 4b (DECISIONS 028): the display ink is navy, not near-black — the
+     masthead wordmark, the headline, region names and the bar label all read
+     from this one token. */
+  --text-primary: #152767;
   --text-secondary: #4a4d40;
   /* Darkened from the step-1 provisional #7a7768 (3.58:1) to clear AA's
-     4.5:1 for normal text — DECISIONS 027. */
+     4.5:1 for normal text — DECISIONS 027. The 4b Figma frames still carry
+     the old #7a7769 on the settlement row, legend names and byline; it is
+     deliberately not re-adopted (DECISIONS 028). */
   --text-muted: #65624f;
 
   /*
    * --- Fuels ---------------------------------------------------------------
    * A role system, not nine independent picks. Wind is the one saturated,
-   * protagonist hue — lifted verbatim from the flow's own LIGHT_PALETTE
-   * (baseHue 216) so the page's wind colour and the flow's stroke colour are
-   * the same hue by construction. Gas is its warm opposite. Every other fuel
-   * recedes toward the cream ground: desaturated, mid-value, ordered only by
-   * the fixed FUEL_ORDER sequence rather than by how loud its colour is.
+   * protagonist hue; gas is its warm opposite. Every other fuel recedes toward
+   * the cream ground: desaturated, mid-value, ordered only by the fixed
+   * FUEL_ORDER sequence rather than by how loud its colour is.
    *
    * Every value below was checked with a WCAG contrast calculator against
    * the cream ground and against the ink used for its on-segment label; the
-   * full table is DECISIONS 027. Three fuels (wind, gas, coal) are dark/
-   * saturated enough that their on-segment label takes light ink instead of
-   * dark — the inverse of app.css's own dark-theme override list — handled
-   * in map.css since app.css's hardcoded selector serves the dark theme's
-   * opposite split.
+   * full table is DECISIONS 027 (wind re-measured in 028). Wind and gas
+   * clear 4.5:1 on their own; the receding fuels trade a little vs-cream
+   * contrast for staying receded, disclosed there. Since 4b the mix bars are
+   * 8px slivers with no inline label, so the swatch is only ever read
+   * alongside its legend text.
+   *
+   * Wind now has two blues (DECISIONS 028). --fuel-wind is the indigo the
+   * Figma frames use for the wind segment and legend swatch (#2E469A, read
+   * off the frame fills); --wind-live is the brighter blue sampled from the
+   * flow's stroke cores (#2141BF), used only where wind is *on the map* —
+   * the farm markers and the curtailed edge — so the markers keep matching
+   * the flow, which is untouched.
    */
-  --fuel-wind: #0f5fd6;
+  --fuel-wind: #2e469a;
+  --wind-live: #2141bf;
   --fuel-gas: #a34518;
   --fuel-nuclear: #847e9c;
   --fuel-solar: #a37c30;
@@ -79,20 +93,40 @@
   --fuel-other: #8a8272;
 
   /* Curtailed wind is wind, extinguished: a pale, washed-out wind hue for
-     the fill, the wind hue itself for the edge — never a warning colour. */
+     the marker's hatch fill, the live wind blue for the edge — never a
+     warning colour. */
   --curtailed: #b9cdf0;
-  --curtailed-edge: #0f5fd6;
+  --curtailed-edge: var(--wind-live);
+
+  /* --- Link / accent --------------------------------------------------------
+   * The MW figures in the farm list and the freshness dot. The Figma value is
+   * #4865CB (4.18:1 on cream — below AA for 12px text); this is the same hue
+   * two lightness points darker, the smallest step that clears 4.5:1
+   * (4.56:1). DECISIONS 028.
+   */
+  --link: #405ec9;
+
+  /* --- The breakdown bar (spec 4b §6.5) -------------------------------------
+   * One solid 32px bar: the whole bar is the declared output (track), the
+   * curtailed share is the lighter left-hand run (share). Read off the Figma
+   * frame fills — the spec's "#2E469A fill on #E9ECF8 track" had the two
+   * colours the wrong way round (DECISIONS 028). White label on either: 8.54:1
+   * on the track, 5.25:1+ on the share.
+   */
+  --bar-track: #2e469a;
+  --bar-share: var(--link);
+  --bar-label: #ffffff;
 
   /* --- Signal -------------------------------------------------------------
    * Tuned to read as text on cream (masthead clock, staleness notices) at
    * AA, not just as a dot fill — DECISIONS 027's contrast table. `ok` is
-   * the wind hue: the calm/healthy reading is the same protagonist colour
-   * as the fuel, not a separate green.
+   * the link blue (the Figma frames draw the freshness dot in it): the
+   * calm/healthy reading stays inside the blue family, not a separate green.
    */
-  --signal-ok: #0f5fd6;
+  --signal-ok: var(--link);
   --signal-ageing: #7d5f1c;
   --signal-stale: #943e15;
   --signal-failed: #b13d2c;
 
-  --hatch: repeating-linear-gradient(-45deg, transparent 0 3px, rgb(15 95 214 / 0.22) 3px 4px);
+  --hatch: repeating-linear-gradient(-45deg, transparent 0 3px, rgb(33 65 191 / 0.22) 3px 4px);
 }

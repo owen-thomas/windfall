@@ -1,8 +1,9 @@
 /*
- * /map — step 4: the simplified information layer and foundations
- * (Windfall_Map_Spec.md §3, DECISIONS 026/027).
+ * /map — step 4b: a 12-column grid, two layouts, the navy palette
+ * (Windfall_Map_Spec_4b.md, DECISIONS 028; built on step 4's information layer,
+ * Windfall_Map_Spec.md §3, DECISIONS 026/027).
  *
- * Light-only (021, 022): cream ground, white island, inky wind. Loaded
+ * Light-only (021, 022): cream ground, white island, indigo wind. Loaded
  * *after* ../styles/app.css (see main.ts's import order), so the generic
  * building blocks the map's own views still reuse verbatim — `.mix`,
  * `.mix__seg`, `.mix__label`, `.legend`, `.share`, `.share__fill`, the
@@ -14,6 +15,11 @@
  * which render different DOM to app.css's dashboard sections on purpose
  * (Part A's brief: give the map its own view rather than reskinning the
  * dashboard's chrome in place).
+ *
+ * No media query appears in this file. Every value that differs by
+ * breakpoint tier — margins, which columns a block occupies, how the mix
+ * panels are arranged, the headline's size — is a token set once in
+ * ../styles/grid.css, and the rules here only read it.
  */
 
 html {
@@ -31,13 +37,27 @@ body {
   font-feature-settings: var(--figures);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* `clip`, not `hidden`: a tooltip that overshoots the edge must never
+     mint a sideways scrollbar, and `hidden` would also stop the map's
+     `position: sticky` from sticking. */
+  overflow-x: clip;
 }
 
+/* --- The page ---------------------------------------------------------------
+ * `#map-app` is a `.grid` (styles/grid.css): 12 columns, 24px gutters, the
+ * tier's margins. Three rows — masthead, text, map — with every block placed
+ * explicitly, so the DOM order (masthead, text, map, footer) is just reading
+ * order and the two layouts are only a matter of which tokens are set:
+ *
+ *   two-column  masthead + text + footer in columns 1–5, the map in 7–12
+ *               spanning all three rows
+ *   stacked     everything the full 12 columns; the map is row 3, the footer
+ *               overlaid on its bottom-left corner
+ */
 #map-app {
-  display: block;
-  max-width: 92rem;
-  margin-inline: auto;
-  padding: var(--gap-md) var(--page-x) var(--gap-lg);
+  min-height: 100svh;
+  grid-template-rows: var(--page-rows);
+  align-content: stretch;
 }
 
 /* --- Landing stagger for the map's own view classes ------------------------
@@ -47,15 +67,12 @@ body {
  * same mechanism (read --i from the nearest ancestor, .is-swapping toggles
  * opacity, both defined once in app.css/tokens.css) is re-declared here
  * against the map's own classes. Reading order: headline 0, breakdown 1,
- * Scotland 2, border 3, England 4 (Part A.8) — the headline sentence and its
- * breakdown line get their --i set directly in views/headline.ts since
- * they're two stagger steps inside one view's root; Scotland/border/England
- * get theirs from main.ts's composition loop, same as step 3.
+ * Scotland 2, border 3, England 4 (Part A.8); Scotland/border/England get
+ * theirs from main.ts's composition loop, same as step 3.
  */
 .map-headline__figure,
 .map-headline__lead,
 .map-headline__tail,
-.map-headline__breakdown,
 .map-band__caption,
 .map-band__intensity,
 .map__border-tooltip-body {
@@ -63,42 +80,127 @@ body {
 }
 
 /* --- Masthead (Part A.1) --------------------------------------------------
- * Leaner than the dashboard's: no strapline, ever — the headline introduces
- * the product instead. The clock keeps its freshness dot and gains its own
- * notice line underneath for the warning copy the dashboard used to put in
- * the standfirst slot (views/masthead.ts's own docs).
+ * Just the wordmark now: the settlement row that used to sit opposite it
+ * moved into the headline block (main.ts) as the Figma frames have it.
+ * "Windfall" is bold, the rest regular — one Eczar family, weight only.
  */
 .map-masthead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--gap-md);
-  padding-bottom: var(--gap-sm);
+  grid-column: var(--col-text);
+  grid-row: 1;
+  /* The page's top margin lives here, not on #map-app: in the two-column
+     layout the map cell must start at the very top of the screen. */
+  padding-block: var(--page-top) var(--gap-masthead);
 }
 
 .map-masthead__wordmark {
   margin: 0;
-  max-width: 40ch;
   font-family: var(--font-display);
-  font-size: var(--type-region);
-  font-weight: var(--wt-medium);
+  font-size: var(--type-wordmark);
+  font-weight: var(--wt-regular);
+  line-height: 1.25;
   letter-spacing: -0.01em;
+  color: var(--text-primary);
 }
 
-.map-masthead__clock {
+.map-masthead__name {
+  font-weight: var(--wt-bold);
+}
+
+/* --- The text block --------------------------------------------------------
+ * Headline, settlement row, the bar, the farm list and the method toggle, in
+ * one column of the grid with no map behind it. In the two-column layout it
+ * is centred in the space between masthead and footer (and lifted by
+ * --text-lift, which is how the frames sit it); stacked, it just follows the
+ * masthead.
+ */
+.map-text {
+  grid-column: var(--col-text);
+  grid-row: 2;
+  align-self: var(--text-align);
   display: grid;
-  justify-items: end;
-  gap: 0.15rem;
-  max-width: 22rem;
-  font-size: var(--type-small);
-  text-align: right;
+  /* minmax(0, …), not the implicit `auto`: an auto track will not shrink below
+     its widest item's min-content, and at 345px that pushed the whole block
+     (and the page) 100px sideways. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+  padding-bottom: var(--text-lift);
+  /* Desktop L: the frame's text block is columns 1–5 *and* the gutter after
+     them (557px on the 1440 frame, where columns 1–5 alone are 533). */
+  margin-right: calc(-1 * var(--text-bleed));
 }
 
+/* --- The headline (Part A.2) -------------------------------------------------
+ * One sentence, Eczar, the largest and the heaviest type on the page — the
+ * deliberate focal point (spec 4b §6.5). Regular weight with the figure in
+ * bold: the megawatts are the claim, the rest of the sentence is its frame.
+ * "At least "/the figure/"None"/"Unavailable" flow inline rather than sitting
+ * in a separate eyebrow+figure+predicate stack (../../view/headline.ts's
+ * dashboard layout) — see views/headline.ts's own docs.
+ */
+.map-headline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--gap-group);
+}
+
+.map-headline__sentence {
+  margin: 0 0 calc(1.5rem - var(--gap-group));
+  font-family: var(--font-display);
+  font-size: var(--type-display);
+  font-weight: var(--wt-regular);
+  line-height: var(--lh-display);
+  letter-spacing: -0.01em;
+  /* Not `balance`: the frames break at the natural width and let the last
+     line run short; `pretty` only guards against a lone-word last line. */
+  text-wrap: pretty;
+  color: var(--text-primary);
+}
+
+.map-headline__figure {
+  font-weight: var(--wt-bold);
+}
+
+/* Pending's "Reading" is not a claim yet, so it stays muted. */
+.map-headline[data-state='pending'] .map-headline__figure {
+  color: var(--text-muted);
+}
+
+/* The settlement-period / "Read N ago" row, seated here by main.ts. The
+   masthead view still owns it and its notice (010/016/017); this only lays
+   it out: the period and its span left, the freshness dot and age right. */
+.map-headline__meta .map-masthead__clock {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-items: unset;
+  column-gap: 0.5rem;
+  row-gap: 0.15rem;
+  max-width: none;
+  font-size: var(--type-small);
+  line-height: 1.15;
+  text-align: left;
+}
+
+.map-headline__meta .clock__period {
+  font-weight: var(--wt-bold);
+  color: var(--text-muted);
+}
+
+.map-headline__meta .clock__span {
+  color: var(--text-muted);
+}
+
+.map-headline__meta .clock__age {
+  margin-left: auto;
+}
+
+/* The warning half of the old standfirst slot (views/masthead.ts): a full
+   row of its own under the settlement line, in the signal colour. */
 .map-masthead__notice {
-  margin: 0.2rem 0 0;
-  font-size: var(--type-caption);
-  font-weight: var(--wt-light);
+  flex-basis: 100%;
+  margin: 0.35rem 0 0;
+  font-size: var(--type-small);
+  font-weight: var(--wt-regular);
   line-height: 1.4;
   color: var(--signal-stale);
 }
@@ -107,19 +209,183 @@ body {
   display: none;
 }
 
-/* --- Composition: the map, full-bleed -------------------------------------
- * Unchanged from step 3: the island fills the viewport below the masthead,
- * every panel an absolutely-positioned overlay on top of it.
+.map-headline__evidence {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--gap-group);
+}
+
+/* --- The breakdown bar (spec 4b §6.5) ------------------------------------------
+ * One solid 32px bar in place of step 4's thin hatched track: the whole bar
+ * is the declared output (the indigo track), the curtailed share the lighter
+ * run at its left, and the figures sit inside it — "13% of 13,105 MW" — so
+ * the headline block has real graphic weight and outweighs the mixes. The
+ * fill's width is set inline by the view and still transitions (app.css).
+ * Colour never carries the reading alone: the label does.
  */
-.composition {
+.map-headline .share {
   position: relative;
-  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  height: 2rem;
+  border-radius: 0;
+  background: var(--bar-track);
+  box-shadow: none;
   overflow: hidden;
 }
 
-.map__stage {
+.map-headline .share__fill {
   position: absolute;
-  inset: 0;
+  inset: 0 auto 0 0;
+  height: auto;
+  background-color: var(--bar-share);
+  background-image: none;
+  box-shadow: none;
+}
+
+.map-headline .share__label {
+  position: relative;
+  padding-inline: 0.5rem;
+  font-family: var(--font-display);
+  font-size: var(--type-region);
+  font-weight: var(--wt-regular);
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--bar-label);
+}
+
+.map-headline .share__pct {
+  font-weight: var(--wt-bold);
+}
+
+/* No reading, nothing to show: the bar becomes an empty gauge rather than
+   assert a total. */
+.map-headline[data-state='pending'] .share,
+.map-headline[data-state='failed'] .share {
+  background: var(--ink-raised);
+  box-shadow: inset 0 0 0 1px var(--ink-line);
+}
+
+/* The plain sentence for the bar (aria-hidden), visually removed but never
+   display:none — a screen reader still gets the reading. */
+.map-headline__breakdown {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* A plain paragraph (not a flex row, as app.css has it) so it wraps like text
+   and can be cap-trimmed below; each farm and its figure stay together. */
+.map-headline .headline__farms {
+  display: block;
+  margin: 0;
+  font-size: var(--type-small);
+  line-height: 1.33;
+}
+
+/* Inline-blocks, so the line may break between one farm and the next (the view
+   emits no whitespace between them) but never inside a name and its figure. */
+.map-headline .farms__item {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.map-headline .farms__mw {
+  margin-left: 0.4em;
+}
+
+.map-headline .farms__sep {
+  display: inline-block;
+  margin-inline: 0.5em;
+}
+
+.map-headline .farms__name {
+  font-weight: var(--wt-regular);
+  color: var(--text-secondary);
+}
+
+.map-headline .farms__mw {
+  color: var(--link);
+}
+
+.map-headline .farms__sep,
+.map-headline .farms__rest {
+  color: var(--text-secondary);
+}
+
+/* --- The method toggle -----------------------------------------------------------
+ * colophonView's own <details>, seated last in the text block. "► How this
+ * number is worked out", bold, as the frames have it; the ► turns to point
+ * down when it is open. The paragraphs were styled by `.colophon` in the
+ * footer and no longer sit under it, so their size and colour are restated.
+ */
+.map-text .method {
+  font-size: var(--type-body);
+  color: var(--text-muted);
+}
+
+.map-text .method__summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: var(--type-small);
+  font-weight: var(--wt-bold);
+  line-height: 1.17;
+  color: var(--text-secondary);
+}
+
+.map-text .method__summary::-webkit-details-marker {
+  display: none;
+}
+
+.map-text .method__summary::before {
+  content: '►';
+  display: inline-block;
+  margin-right: 0.5em;
+  transition: transform var(--dur-quick) var(--ease-in-out);
+}
+
+.map-text .method[open] .method__summary::before {
+  transform: rotate(90deg);
+}
+
+/* --- The map cell ------------------------------------------------------------
+ * A real grid cell now, not the viewport: columns 7–12 and the full height of
+ * the screen in the two-column layout (pinned there, so it holds its fit
+ * however long the text grows), the last row of the page stacked. Its own
+ * inner grid is the parent's columns — 6 of them or all 12 — so a panel that
+ * spans N of them is the same width as N page columns.
+ *
+ * The stage fills it. The projection fits the island to the stage by whichever
+ * dimension is more limited, with --map-pad (24px) all round, and the overlays
+ * below are placed against the same fit.
+ */
+.composition {
+  grid-column: var(--col-map);
+  grid-row: var(--row-map);
+  position: var(--map-position);
+  top: 0;
+  align-self: var(--map-align);
+  height: var(--map-height);
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(var(--map-cols), minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  column-gap: var(--grid-gutter);
+}
+
+/* Sticky needs a positioned box that is not `relative` to pin; the border
+   overlay, though, needs `.composition` as its containing block either way —
+   sticky and relative both provide it. */
+.map__stage {
+  position: relative;
+  grid-area: 1 / 1 / -1 / -1;
+  min-width: 0;
+  min-height: 0;
 }
 
 .map__svg,
@@ -165,7 +431,7 @@ body {
 
 .map__border-hit:focus-visible {
   outline: none;
-  stroke: rgb(15 95 214 / 0.18);
+  stroke: rgb(33 65 191 / 0.18);
 }
 
 /* --- Farm markers (unchanged treatment, step 4 tokens) --------------------- */
@@ -174,8 +440,10 @@ body {
   pointer-events: none;
 }
 
+/* Markers are wind *on the map*, so they take the live wind blue, which
+   matches the (untouched) flow — not the indigo the mix bars use. */
 .map__farm-marker[data-state='declaring'] {
-  fill: var(--fuel-wind);
+  fill: var(--wind-live);
   stroke: rgb(255 255 255 / 0.7);
 }
 
@@ -192,33 +460,37 @@ body {
   stroke-dasharray: 1.5 1.5;
 }
 
+/* The overlays are laid out by main.ts's positionOverlays() and stay hidden
+   until it has run once, so none ever shows at the wrong place. */
 .map__overlay {
-  position: absolute;
   z-index: 2;
   visibility: hidden;
 }
 
-/* --- Shetland inset (unchanged from step 3) -------------------------------- */
+/* --- Shetland inset -------------------------------------------------------------
+ * Step 4b moved it from the map's bottom-left corner to the foot of the Scotland
+ * panel (main.ts): it is Scotland's — the Viking farm and its landing — and the
+ * sea to the east of Scotland is the one place free at every tier, where the
+ * corners are not (the island fills the width on a phone; England's tall panel
+ * owns the left). It takes the panel's width up to its natural 150px, ranges
+ * the way the panel does, and its caption goes the way the mix captions do on
+ * mobile. Hidden entirely in true-extent mode (main.ts sets display).
+ */
 .map__inset-box {
-  position: absolute;
-  /* Bottom-left, not top: the headline now claims the top-left corner
-   * (Part A.2) — step 3b put the inset there when that corner was free. */
-  bottom: var(--gap-sm);
-  left: var(--gap-sm);
-  z-index: 2;
-  width: 150px;
+  width: min(150px, 100%);
+  margin-top: 1rem;
   padding: 0.3rem;
   border: 1px solid var(--ink-line-strong);
   border-radius: 3px;
   background: rgb(245 242 234 / 0.92);
-  backdrop-filter: blur(4px);
   display: none;
 }
 
 .map__inset {
   display: block;
   width: 100%;
-  height: 110px;
+  height: auto;
+  aspect-ratio: 150 / 110;
 }
 
 .map__inset-label {
@@ -229,6 +501,8 @@ body {
 }
 
 .map__inset-captions {
+  max-height: var(--caption-max-h);
+  overflow: var(--caption-overflow);
   margin-top: 0.2rem;
 }
 
@@ -251,213 +525,208 @@ body {
 }
 
 /* --- Panel treatment (Part B.3, DECISIONS 027) -----------------------------
- * Two variants tried at the gate: 'wash', a translucent cream scrim with no
- * border, versus 'card', the step 3 opaque-ish bordered box. Toggle with 'c'
- * for the comparison pair; the body's own default (set in main.ts) is the
- * one carried forward — see DECISIONS 027 for which and why.
+ * The mix panels carry no padding now — their edges are grid columns, and the
+ * text sits flush to them as in the frames. The 'wash' scrim (the shipped
+ * default) therefore extends *outside* the box as a ring, so it can still
+ * keep the legend legible if a panel ever brushes the coast without moving the
+ * text off the grid. 'card' is kept as the named alternative ('c' toggles).
  */
 .panel {
   display: block;
-  padding: var(--gap-sm) var(--gap-md);
   border-radius: 4px;
 }
 
-body[data-panel-style='wash'] .panel,
+body[data-panel-style='wash'] .panel {
+  background: rgb(233 229 220 / 0.6);
+  backdrop-filter: blur(3px);
+  box-shadow: 0 0 0 0.375rem rgb(233 229 220 / 0.6);
+}
+
 body[data-panel-style='wash'] .map__border-tooltip {
   background: rgb(233 229 220 / 0.6);
   backdrop-filter: blur(3px);
   box-shadow: none;
 }
 
-body[data-panel-style='card'] .panel,
+body[data-panel-style='card'] .panel {
+  background: rgb(245 242 234 / 0.92);
+  box-shadow: 0 0 0 0.375rem rgb(245 242 234 / 0.92), 0 0 0 calc(0.375rem + 1px) var(--ink-line);
+  backdrop-filter: blur(6px);
+}
+
 body[data-panel-style='card'] .map__border-tooltip {
   background: rgb(245 242 234 / 0.92);
   box-shadow: inset 0 0 0 1px var(--ink-line);
   backdrop-filter: blur(6px);
 }
 
-/* Scotland to the right of Scotland (the mix panels keep step 3's overlay
- * corner); the headline is its own top-left block (spec §3's anatomy) —
- * these used to share a right-hand column, which is a step-3ism this step
- * corrects, not a shared position. */
-.panel--scotland {
-  position: absolute;
-  top: var(--gap-lg);
-  right: var(--gap-lg);
-  max-width: 23rem;
+/* The mix panels: columns from the grid (Scotland the last --mix-span of the
+   map cell's, England the first), top edge from the projected coastline
+   (main.ts sets --anchor-y). Row 1 is the whole cell; the panel just hangs
+   from its anchor. */
+.panel--scotland,
+.panel--england {
+  position: relative;
+  grid-row: 1;
+  align-self: start;
+  margin-top: var(--anchor-y, 0px);
+  min-width: 0;
 }
 
-.panel--headline {
-  position: absolute;
-  top: var(--gap-lg);
-  left: var(--gap-lg);
-  max-width: 33rem;
+.panel--scotland {
+  grid-column: span var(--mix-span) / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: var(--scotland-align);
+}
+
+.panel--scotland .map-band {
+  justify-self: stretch;
 }
 
 .panel--england {
-  max-width: 15rem;
-  transform: translate(-50%, -50%);
-}
-
-/* --- The map headline (Part A.2) -------------------------------------------
- * One sentence, Eczar, the largest type on the page. "At least "/percentage/
- * "None"/"Unavailable" flow inline rather than sitting in a separate
- * eyebrow+figure+predicate stack (../../view/headline.ts's dashboard
- * layout) — see views/headline.ts's own docs for why the map needed its own
- * view rather than a reskin.
- */
-.map-headline__sentence {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--type-display);
-  font-weight: var(--wt-medium);
-  line-height: 1.05;
-  letter-spacing: -0.01em;
-  text-wrap: balance;
-  color: var(--text-primary);
-}
-
-/* The percentage, "None" and "Unavailable" are the one figure the reader has
- * to find fast — put in the wind hue regardless of which of the three words
- * it is (spec Part A.2). Pending's "Reading" is not a claim yet, so it stays
- * muted rather than joining the wind-hue set. */
-.map-headline__figure {
-  color: var(--fuel-wind);
-}
-
-.map-headline[data-state='pending'] .map-headline__figure {
-  color: var(--text-muted);
-}
-
-.map-headline__evidence {
-  margin-top: var(--gap-sm);
-  display: grid;
-  gap: 0.3rem;
-}
-
-.map-headline .share {
-  height: 0.5rem;
-  border-radius: 2px;
-  background: var(--ink-raised);
-  box-shadow: inset 0 0 0 1px var(--ink-line);
-  overflow: hidden;
-}
-
-.map-headline .share__fill {
-  height: 100%;
-  background-color: var(--curtailed);
-  background-image: var(--hatch);
-  box-shadow: inset -1px 0 0 var(--curtailed-edge);
-}
-
-.map-headline[data-state='none'] .share__fill,
-.map-headline[data-state='failed'] .share__fill,
-.map-headline[data-state='pending'] .share__fill {
-  box-shadow: none;
-}
-
-.map-headline__breakdown {
-  margin: 0;
-  font-size: var(--type-body);
-  font-weight: var(--wt-regular);
-  color: var(--text-secondary);
-}
-
-.map-headline .headline__farms {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.3rem 0.5rem;
-  margin: 0.1rem 0 0;
-  font-size: var(--type-small);
-}
-
-.map-headline .farms__name {
-  font-weight: var(--wt-medium);
-  color: var(--text-secondary);
-}
-
-.map-headline .farms__mw {
-  color: var(--curtailed-edge);
-}
-
-.map-headline .farms__sep,
-.map-headline .farms__rest {
-  color: var(--ink-line-strong);
-}
-
-.map-headline .farms__rest {
-  color: var(--text-muted);
+  grid-column: 1 / span var(--mix-span);
 }
 
 /* --- The two mixes (Part A.4) -----------------------------------------------
- * Region name and intensity on one line, the bar, a *visible* legend (no
- * more visually-hidden pattern — spec: "Legends are visible again"), then
- * one two-clause sentence.
+ * Region name and intensity, the bar, a *visible* legend, then one two-clause
+ * sentence — as an 8px sliver of a bar with no inline label (the legend
+ * carries every figure), all of it laid out by the tier's --band-areas: on
+ * desktop name and intensity share a line; stacked, the intensity drops under
+ * the bar. `.map-band__head` is `display: contents` so its two children are
+ * grid items of the band itself.
  */
-.map-band__head {
-  display: flex;
+.map-band {
+  display: grid;
+  grid-template-columns: var(--band-cols);
+  grid-template-areas: var(--band-areas);
   align-items: baseline;
-  justify-content: space-between;
-  gap: var(--gap-sm);
-  margin-bottom: 0.35rem;
+  row-gap: 0.5rem;
+  column-gap: 0.75rem;
+  text-align: start;
+}
+
+.map-band__head {
+  display: contents;
 }
 
 .map-band__place {
+  grid-area: place;
   margin: 0;
   font-family: var(--font-display);
   font-size: var(--type-region);
-  font-weight: var(--wt-medium);
-  letter-spacing: -0.01em;
-  line-height: 1;
+  font-weight: var(--wt-bold);
+  line-height: 1.2;
 }
 
 .map-band__intensity {
-  font-size: var(--type-small);
-  font-weight: var(--wt-medium);
-  color: var(--text-secondary);
+  grid-area: intensity;
+  font-family: var(--font-display);
+  font-size: var(--type-region);
+  font-weight: var(--wt-regular);
+  line-height: 1.2;
   white-space: nowrap;
-}
-
-.map-band .mix {
-  height: 1.4rem;
-  border-radius: 2px;
-}
-
-.map-band .mix__label {
-  font-size: 0.62rem;
-  padding-inline: 0.3rem;
   color: var(--text-primary);
 }
 
-/* Wind, gas and coal are the three dark/saturated fuels on this palette —
- * the inverse of app.css's own dark-theme override list (imports/coal/
- * other) — so their on-segment label takes the light ink instead
- * (DECISIONS 027's contrast table). Scoped to .map-band so `/`'s dashboard
- * bars, still on the dark palette, are untouched. */
-.map-band .mix__seg[data-fuel='wind'] .mix__label,
-.map-band .mix__seg[data-fuel='gas'] .mix__label,
-.map-band .mix__seg[data-fuel='coal'] .mix__label {
-  color: var(--ink-ground);
+/* Pending and failed: the intensity slot carries a sentence ("Waiting for
+   Carbon Intensity"), not a figure — far too long for the side-by-side head
+   and for a 99px mobile panel. It gets its own row and is allowed to wrap. */
+.map-band:not([data-state='ok']) {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'place' 'intensity' 'bar' 'legend' 'caption';
 }
 
-.map-band .legend {
-  margin-top: 0.4rem;
-  font-size: var(--type-caption);
-}
-
-.map-band__caption {
-  margin: 0.5rem 0 0;
+.map-band:not([data-state='ok']) .map-band__intensity {
+  white-space: normal;
   font-size: var(--type-body);
-  font-weight: var(--wt-regular);
-  line-height: 1.45;
+  line-height: 1.3;
   color: var(--text-secondary);
 }
 
-.panel--england .map-band__head {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.1rem;
+.map-band .mix {
+  grid-area: bar;
+  align-self: stretch;
+  height: 0.5rem;
+  margin-top: var(--bar-gap);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.map-band .mix__seg {
+  box-shadow: none;
+}
+
+/* The bar is too thin for an inline label; the legend below says every share. */
+.map-band .mix__label {
+  display: none;
+}
+
+.map-band .legend {
+  grid-area: legend;
+  flex-direction: var(--legend-flow);
+  gap: 0 0.8rem;
+  margin: var(--legend-gap) 0 0;
+  font-size: var(--type-legend);
+  line-height: 1rem;
+}
+
+.map-band .legend__item,
+.map-band .legend dt {
+  gap: 0.4rem;
+}
+
+.map-band .legend dt {
+  color: var(--text-muted);
+}
+
+.map-band .legend dd {
+  font-weight: var(--wt-regular);
+  color: var(--text-secondary);
+}
+
+.map-band .legend__swatch {
+  width: 0.5rem;
+  height: 0.5rem;
+}
+
+.map-band__caption {
+  grid-area: caption;
+  max-height: var(--caption-max-h);
+  overflow: var(--caption-overflow);
+  margin: var(--caption-gap) 0 0;
+  font-size: var(--type-body);
+  font-weight: var(--wt-regular);
+  line-height: 1.17;
+  color: var(--text-secondary);
+}
+
+/* Scotland's panel, right-aligned against the margin on mobile (--scotland-align
+   is `end` there and `start` everywhere else): the text ranges right, and the
+   legend's swatch trails its label. */
+.panel--scotland .map-band {
+  text-align: var(--scotland-align);
+}
+
+.panel--scotland .legend {
+  align-items: var(--scotland-align);
+}
+
+.panel--scotland .legend__item {
+  justify-content: var(--scotland-align);
+}
+
+.panel--scotland .legend dt {
+  display: contents;
+}
+
+.panel--scotland .legend__swatch {
+  order: var(--scotland-swatch-order);
+}
+
+.panel--scotland .legend dd {
+  order: 1;
 }
 
 /* --- The border: label + tooltip (Part A.5) --------------------------------
@@ -467,12 +736,11 @@ body[data-panel-style='card'] .map__border-tooltip {
  * or keyboard focus of the (wider, invisible) hit area drawn over the border
  * line itself. Both positioned by the same Projection-driven math as step 3
  * (main.ts's positionOverlays) — a fixed CSS position doesn't track a
- * reprojected border.
+ * reprojected border. Unchanged by 4b: still placed by the projection alone,
+ * on both axes, in both layouts.
  */
 .map__border-overlay {
   position: absolute;
-  z-index: 2;
-  visibility: hidden;
   transform: translate(-50%, -50%);
   display: grid;
   justify-items: center;
@@ -489,7 +757,7 @@ body[data-panel-style='card'] .map__border-tooltip {
   border-radius: 999px;
   background: rgb(233 229 220 / 0.85);
   box-shadow: inset 0 0 0 1px var(--ink-line-strong);
-  font-size: var(--type-caption);
+  font-size: var(--type-small);
   font-weight: var(--wt-medium);
   letter-spacing: 0.02em;
   color: var(--text-secondary);
@@ -498,18 +766,20 @@ body[data-panel-style='card'] .map__border-tooltip {
 }
 
 .map__border-tooltip {
-  max-width: 22rem;
+  width: max-content;
+  max-width: min(22rem, calc(100vw - 2 * var(--page-margin)));
   padding: var(--gap-xs) var(--gap-sm);
   border-radius: 4px;
   opacity: 0;
-  transform: translateY(2px);
+  /* --tip-dx: main.ts's shift that keeps the tooltip inside the page margins. */
+  transform: translate(var(--tip-dx, 0px), 2px);
   pointer-events: none;
   transition: opacity var(--dur-quick) var(--ease-in-out), transform var(--dur-quick) var(--ease-in-out);
 }
 
 .map__border-overlay.is-open .map__border-tooltip {
   opacity: 1;
-  transform: translateY(0);
+  transform: translate(var(--tip-dx, 0px), 0);
   /* Stays pointer-events: none even when open — the border runs diagonally,
    * so the open tooltip's own box can sit over a *different* point on the
    * same line/hit-path than the one being hovered. Read-only text never
@@ -520,22 +790,77 @@ body[data-panel-style='card'] .map__border-tooltip {
 
 .map__border-tooltip-body {
   margin: 0;
-  font-size: var(--type-small);
+  font-size: var(--type-body);
   font-weight: var(--wt-regular);
   line-height: 1.5;
   text-align: center;
   color: var(--text-secondary);
 }
 
-/* --- Narration & colophon --------------------------------------------------
- * The narration section is removed from /map entirely (Part A.7) — nothing
- * to style here. Colophon reused verbatim from app.css; the map's two extra
- * method-note lines (main.ts) fall under the existing `.method p` rule.
+/* --- Optical trimming ------------------------------------------------------------
+ * The Figma frames measure every gap from cap-height to baseline, not from the
+ * edges of a line box: "24px below the headline" is 24px below its last
+ * baseline. `text-box` reproduces that, so the frames' gaps (24 / 12 / 12 / 24)
+ * land as drawn. Progressive: a browser without it (Firefox, today) gets the
+ * same layout with each gap a few pixels looser, which costs nothing.
  */
+@supports (text-box: trim-both cap alphabetic) {
+  .map-masthead__wordmark,
+  .map-headline__sentence,
+  .map-headline .headline__farms,
+  .map-text .method__summary,
+  .map-band__place,
+  .map-band__intensity,
+  .map-band__caption,
+  .map-foot .colophon__byline {
+    text-box: trim-both cap alphabetic;
+  }
+}
+
+/* --- The footer -----------------------------------------------------------------
+ * Source health and the byline, bottom-left: the foot of the text column in the
+ * two-column layout, its own row under the map when stacked (the spec's §4.2
+ * wireframe puts "Built by Owen Thomas" last). The dev state toggle rides in it
+ * so scaffolding never adds a row of its own. The narration section is removed
+ * from /map entirely (Part A.7). Colophon reused verbatim from app.css minus its
+ * rule and padding, which the frames don't have.
+ */
+.map-foot {
+  grid-column: var(--col-text);
+  grid-row: var(--row-foot);
+  align-self: end;
+  justify-self: start;
+  display: grid;
+  gap: var(--gap-xs);
+  max-width: 100%;
+  /* The page's bottom margin, for the same reason as the masthead's top. */
+  padding-bottom: var(--page-bottom);
+}
+
 .colophon,
 .method__summary,
 .method p {
   font-family: var(--font-body);
+}
+
+.map-foot .colophon {
+  padding-top: 0;
+  border-top: 0;
+  font-size: var(--type-small);
+}
+
+.map-foot .sources {
+  gap: 0.15rem 1rem;
+}
+
+.map-foot .source__detail {
+  display: var(--source-detail-display);
+}
+
+.map-foot .sources .colophon__byline {
+  margin-left: 0;
+  flex-basis: 100%;
+  color: var(--text-muted);
 }
 
 /* --- State toggle --------------------------------------------------------- */
@@ -662,64 +987,36 @@ body.plate-mode {
   color: var(--text-muted);
 }
 
-/* --- Mobile stack -----------------------------------------------------------
- * Below ~768px the island fills the width and the panels stack beneath it in
- * reading order: Scotland, headline, border, England. Deferred refinement is
- * step 4b — this keeps it working, nothing more (spec: "spend no time on
- * it").
- */
-@media (max-width: 48rem) {
-  #map-app {
-    padding: var(--gap-sm) var(--gap-sm) var(--gap-lg);
-  }
+.plate__contrast {
+  border-collapse: collapse;
+  font-size: var(--type-small);
+}
 
-  .composition {
-    display: flex;
-    flex-direction: column;
-    gap: var(--gap-md);
-    min-height: 0;
-    overflow: visible;
-  }
+.plate__contrast td {
+  padding: 0.3rem 0.9rem 0.3rem 0;
+  border-bottom: 1px solid var(--ink-line);
+  vertical-align: middle;
+}
 
-  .map__stage {
-    position: static;
-    order: 1;
-    min-height: 20rem;
-  }
+.plate__contrast-chip {
+  display: inline-block;
+  min-width: 2.6rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px var(--ink-line-strong);
+  font-weight: var(--wt-bold);
+  text-align: center;
+}
 
-  .map__overlay,
-  .map__border-overlay,
-  .map__inset-box,
-  .panel--scotland,
-  .panel--headline {
-    position: static;
-    visibility: visible;
-    transform: none;
-    max-width: none;
-    margin-top: var(--gap-sm);
-  }
+.plate__contrast-row[data-verdict='pass'] .plate__contrast-verdict {
+  color: var(--text-secondary);
+}
 
-  .map__border-overlay.is-open .map__border-tooltip,
-  .map__border-tooltip {
-    opacity: 1;
-    transform: none;
-    pointer-events: auto;
-    position: static;
-  }
+.plate__contrast-row[data-verdict='FAIL'] .plate__contrast-verdict {
+  font-weight: var(--wt-bold);
+  color: var(--signal-failed);
+}
 
-  .panel--scotland {
-    order: 2;
-  }
-
-  .panel--headline {
-    order: 3;
-  }
-
-  .map__border-overlay {
-    order: 4;
-  }
-
-  .panel--england {
-    order: 5;
-  }
+.plate__contrast-row[data-verdict='disclosed'] .plate__contrast-verdict {
+  color: var(--signal-ageing);
 }

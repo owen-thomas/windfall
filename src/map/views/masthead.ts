@@ -1,6 +1,8 @@
 /**
  * The map's own masthead (Windfall_Map_Spec.md §3 Part A.1, DECISIONS 026):
  * leaner than `../../view/masthead.ts`'s, which `/` still uses unchanged.
+ * Step 4b (DECISIONS 028) carries the Figma wordmark: "Windfall" bold, then
+ * "≋ Scotland wind energy tracker" regular.
  *
  * The dashboard masthead carries a standfirst slot that is either the
  * product's introductory sentence or, per DECISIONS 010/017, a staleness/
@@ -32,10 +34,19 @@ export function mapMastheadView(): View {
     notice
   );
 
+  // The clock is built and kept fresh here, but the Figma frames seat it in the
+  // headline block (between the sentence and the bar), so main.ts re-parents
+  // `.map-masthead__clock` there after both views exist. Left in the header it
+  // would still work — the masthead view does not know or care where it sits.
   const root = el(
     'header',
     { class: 'map-masthead' },
-    el('h1', { class: 'map-masthead__wordmark', text: "Windfall ≈ Scotland wind tracker" }),
+    el(
+      'h1',
+      { class: 'map-masthead__wordmark' },
+      el('strong', { class: 'map-masthead__name', text: 'Windfall' }),
+      ' ≋ Scotland wind energy tracker'
+    ),
     clock
   );
 
