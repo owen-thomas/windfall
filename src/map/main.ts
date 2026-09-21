@@ -38,6 +38,14 @@
  * and track the projected coastline vertically; the border label is still
  * placed by the projection alone. What moved in the DOM, and why, is noted
  * where it happens below.
+ *
+ * Step 4c (Windfall_Map_Spec_4c.md, DECISIONS 029) changes what the page says
+ * and does rather than how it is laid out. 4c.1, here: the border becomes a
+ * passive line (no hit area, label, tooltip or pointer logic), the Shetland
+ * inset moves above the Scotland mix and loses its caption (its square, with
+ * a 1px outline and the name in the corner, is the frame's), the freshness dot
+ * pulses between the bar's two blues, and the colophon and byline are re-cut. The headline reframe, the source list and the
+ * consolidated disclosure follow in 4c.2–4c.4.
  */
 
 import '../styles/tokens.css';
@@ -63,7 +71,6 @@ import {
   buildFarmSources,
   FARM_SITES,
   isOffMainFit,
-  landingCaption,
   markerStateFor,
   type FarmMarkerState,
 } from './farmSources';
@@ -78,13 +85,14 @@ import type { FarmNow } from '../lib/types';
 
 import { el, setText, type View } from '../view/dom';
 import { SCOTLAND, ENGLAND } from '../view/band';
-import { borderView, constraintSentenceOf } from '../view/border';
+import { constraintSentenceOf } from '../view/border';
 import { colophonView } from '../view/colophon';
 import { toggleView } from '../view/toggle';
 import { mapMastheadView } from './views/masthead';
 import { mapHeadlineView, settledLine } from './views/headline';
 import { mapBandView } from './views/band';
 import { buildProjection } from '../flow/projection';
+import { extendToCoast } from './borderLine';
 
 const params = new URLSearchParams(location.search);
 
@@ -104,8 +112,12 @@ function bootMap(): void {
 
   const ISLAND_RING = (gbCountries as unknown as { island: { ring: [number, number][] } }).island
     .ring;
-  const BORDER_LINE = (gbCountries as unknown as { border: { line: [number, number][] } }).border
-    .line;
+  // 4c: a plain divider drawn coast to coast — the source line stops short of
+  // the drawn coast at both ends (borderLine.ts).
+  const BORDER_LINE = extendToCoast(
+    (gbCountries as unknown as { border: { line: [number, number][] } }).border.line,
+    ISLAND_RING,
+  );
   const ALL_ISLANDS = (gbCountries as unknown as { islands: IslandRing[] }).islands;
 
   /**
@@ -125,21 +137,6 @@ function bootMap(): void {
       : ALL_ISLANDS.filter((i) => !SHETLAND_ARCHIPELAGO.has(i.name));
   }
 
-  /**
-   * Where the border's small label + tooltip sit (Part A.5): the border
-   * line's own midpoint, not an offshore point. Step 3b's
-   * BORDER_CAPTION_CANDIDATES deliberately sat offshore, connected to the
-   * line by a leader, because a large permanently-visible caption *card*
-   * needed clearance from the coast. That card — and its leader — are gone
-   * (026): what replaces it is a small pill sitting directly on the line and
-   * a hit area that *is* the line (just wider), so the discoverable label
-   * and the actual hover/tap target have to be the same place, or hovering
-   * the label wouldn't trigger the tooltip beneath it.
-   */
-  function borderMidpoint(): [number, number] {
-    return BORDER_LINE[Math.floor(BORDER_LINE.length / 2)];
-  }
-
   // --- Build the whole page from here (src/main.ts's own pattern), rather
   // than from static markup — most of what's on screen is a reused or
   // map-specific view module now, not bespoke HTML. -------------------------
@@ -156,25 +153,14 @@ function bootMap(): void {
   const ctx = canvas.getContext('2d')!;
 
   // Island paths (mainland + every drawn island) are rebuilt per rebuild()
-  // since which islands are in play depends on extentMode; the border line and
-  // its hit area are stable elements reused across rebuilds.
+  // since which islands are in play depends on extentMode; the border line is
+  // a stable element reused across rebuilds. It is passive (4c, DECISIONS 029):
+  // no hit area, label or tooltip — its explanation lives in the one disclosure.
   let islandPaths: SVGPathElement[] = [];
   const borderPath = document.createElementNS(SVG_NS, 'path');
   borderPath.setAttribute('class', 'map__border-line');
   borderPath.setAttribute('aria-hidden', 'true');
-
-  /**
-   * Part A.5: the hit area is a separate, wider, transparent path sharing the
-   * border's own "d" — a hover/click/focus target the visible line alone
-   * would be too thin to reliably carry. Focusable so the affordance works
-   * from the keyboard, not just the mouse or touch.
-   */
-  const borderHit = document.createElementNS(SVG_NS, 'path');
-  borderHit.setAttribute('class', 'map__border-hit');
-  borderHit.setAttribute('tabindex', '0');
-  borderHit.setAttribute('role', 'button');
-  borderHit.setAttribute('aria-label', 'The constraint — Scotland and England’s transmission link');
-  svg.append(borderPath, borderHit);
+  svg.append(borderPath);
 
   // The inset (step 3b's default path — DECISIONS 025): a small, separately-
   // projected SVG box for Shetland, shown only in 'inset' extent mode.
@@ -183,13 +169,11 @@ function bootMap(): void {
   insetSvg.setAttribute('aria-hidden', 'true');
   const insetIslandPaths: SVGPathElement[] = [];
   const insetMarkers = new Map<string, SVGCircleElement>();
-  const insetCaptions = el('div', { class: 'map__inset-captions' });
   const insetBox = el(
     'div',
     { class: 'map__inset-box' },
     insetSvg,
     el('p', { class: 'map__inset-label', text: 'Shetland' }),
-    insetCaptions,
   );
 
   const stage = el('div', { class: 'map__stage', id: 'map-stage' }, svg, canvas);
@@ -199,48 +183,37 @@ function bootMap(): void {
   const scotlandBand = mapBandView(SCOTLAND);
   const englandBand = mapBandView(ENGLAND);
   const headline = mapHeadlineView();
-  const border = borderView();
   const colophon = colophonView();
 
   // The two mix panels are grid items of the map cell (map.css): their columns
   // come from the grid tokens, their vertical position from positionOverlays()
   // below. Hidden until that has run, so neither ever flashes at row 0.
-  // The Shetland inset (built above, drawn by drawInset) is the last thing in the
-  // Scotland panel, not a corner of the map — see map.css's inset section.
+  // The Shetland inset (built above, drawn by drawInset) is the *first* thing in
+  // the Scotland panel — above the mix, since 4c (DECISIONS 029) — not a corner
+  // of the map; see map.css's inset section.
   const scotlandPanel = el(
     'section',
     { class: 'map__overlay panel panel--scotland' },
-    scotlandBand.el,
-    insetBox
+    insetBox,
+    scotlandBand.el
   );
   const englandPanel = el('section', { class: 'map__overlay panel panel--england' }, englandBand.el);
 
-  /**
-   * Part A.5: the always-on discoverable label plus the on-demand tooltip,
-   * positioned together at BORDER_LABEL_POINT. The label is decorative
-   * (aria-hidden) — the accessible name for the affordance lives on
-   * `borderHit` itself, and the sentence is always available to assistive
-   * tech via the method note regardless of whether the tooltip is ever
-   * opened.
-   */
-  const borderLabel = el('p', { class: 'map__border-label', 'aria-hidden': 'true', text: 'The constraint' });
-  const borderOverlay = el('div', { class: 'map__overlay map__border-overlay' }, borderLabel, border.el);
-
   // Part A.8: stagger, headline 0/breakdown 1 (set inside views/headline.ts
-  // itself, two steps within one view's root), Scotland 2, border 3, England 4.
-  [scotlandPanel, borderOverlay, englandPanel].forEach((node, i) => {
+  // itself, two steps within one view's root), Scotland 2, England 3 (the
+  // border, which used to be 3, is a plain line now and takes no part).
+  [scotlandPanel, englandPanel].forEach((node, i) => {
     node.style.setProperty('--i', String(i + 2));
   });
 
-  // The map cell: the stage plus the three geography-anchored overlays. It is
+  // The map cell: the stage plus the two geography-anchored overlays. It is
   // the containing block positionOverlays() measures against.
   const composition = el(
     'div',
     { class: 'composition', id: 'composition' },
     stage,
     englandPanel,
-    scotlandPanel,
-    borderOverlay
+    scotlandPanel
   );
 
   // --- Step 4b: three pieces of the old chrome move into the text column. ------
@@ -261,11 +234,25 @@ function bootMap(): void {
   const methodEl = colophon.el.querySelector<HTMLElement>('.method')!;
   const textBlock = el('div', { class: 'map-text' }, headline.el, methodEl);
 
-  // 3. The byline reads as the Figma frames have it. The "figures are lower
-  //    bounds" clause is dropped from the screen — the headline's "At least"
-  //    and the method note already say it — not from colophon.ts, which `/`
-  //    still uses unchanged.
-  setText(colophon.el.querySelector('.colophon__byline')!, 'Built by Owen Thomas');
+  // 3. The byline reads as the Figma frames have it: "Built by Owen Thomas ✺
+  //    owenthomas.work", the domain a link. The "figures are lower bounds"
+  //    clause is dropped from the screen (the method note says it), not from
+  //    colophon.ts, which `/` still uses unchanged. The glyph is U+273A and its
+  //    clear space is CSS on the separator (`.byline__sep`), not literal spaces
+  //    a browser would collapse; it is decorative, so hidden from assistive tech.
+  colophon.el
+    .querySelector('.colophon__byline')!
+    .replaceChildren(
+      'Built by Owen Thomas',
+      el('span', { class: 'byline__sep', 'aria-hidden': 'true', text: '✺' }),
+      el('a', { class: 'byline__link', href: 'https://owenthomas.work', text: 'owenthomas.work' }),
+    );
+
+  // 4. The coloured source squares go on /map. Health is still stated in words
+  //    beside each source ("answering", "not answering", …) — the mark was
+  //    only ever a second, redundant cue — so nothing is lost. Removed here,
+  //    not in colophon.ts, which `/` uses unchanged.
+  colophon.el.querySelectorAll('.source__mark').forEach((mark) => mark.remove());
 
   // The footer sits in the same grid row as the map and overlays its bottom-
   // left corner, as the Figma frames do; the dev state toggle rides in it so
@@ -386,12 +373,15 @@ function bootMap(): void {
     const shetlandIslands = ALL_ISLANDS.filter((i) => SHETLAND_ARCHIPELAGO.has(i.name));
     if (shetlandIslands.length === 0) return;
 
-    const INSET_WIDTH = 150;
-    const INSET_HEIGHT = 110;
+    // The drawing area is the 120px square less the strip kept for the name
+    // (map.css's --inset-label-band); the svg scales to whatever width it is
+    // given, so a phone's narrower square shrinks the island, never the name.
+    const INSET_WIDTH = 120;
+    const INSET_HEIGHT = 90;
     insetSvg.setAttribute('viewBox', `0 0 ${INSET_WIDTH} ${INSET_HEIGHT}`);
 
     const allPoints = shetlandIslands.flatMap((i) => i.ring);
-    const insetProjection = buildProjection(allPoints, INSET_WIDTH, INSET_HEIGHT, { padding: 0.12 });
+    const insetProjection = buildProjection(allPoints, INSET_WIDTH, INSET_HEIGHT, { padding: 0.08 });
 
     for (const p of insetIslandPaths) p.remove();
     insetIslandPaths.length = 0;
@@ -405,7 +395,6 @@ function bootMap(): void {
 
     for (const circle of insetMarkers.values()) circle.remove();
     insetMarkers.clear();
-    insetCaptions.replaceChildren();
 
     const shetlandFarms = FARM_SITES.filter((s) => offMainStageFarms.has(s.farm));
     for (const site of shetlandFarms) {
@@ -418,16 +407,12 @@ function bootMap(): void {
       styleFarmMarker(circle, markerStateFor(lastFarmsNow?.find((f) => f.farm === site.farm)));
       insetSvg.append(circle);
       insetMarkers.set(site.farm, circle);
-
-      insetCaptions.append(el('p', { class: 'map__inset-caption', text: landingCaption(site) }));
     }
   }
 
   function drawGeometry() {
     drawIslands(world.projection.project);
-    const borderD = lineToPath(BORDER_LINE, world.projection.project);
-    borderPath.setAttribute('d', borderD);
-    borderHit.setAttribute('d', borderD);
+    borderPath.setAttribute('d', lineToPath(BORDER_LINE, world.projection.project));
     markerLayer.reposition(world.projection.project);
     markerLayer.setHidden(offMainStageFarms);
     drawInset();
@@ -440,13 +425,11 @@ function bootMap(): void {
   }
 
   /**
-   * The mix panels and the border's label+tooltip sit in the map's own
-   * coordinate space (the same Projection that draws the coast), not a
-   * hand-placed CSS position — so they track the map cell's actual fit rather
-   * than an assumed one.
+   * The mix panels sit in the map's own coordinate space (the same Projection
+   * that draws the coast), not a hand-placed CSS position — so they track the
+   * map cell's actual fit rather than an assumed one.
    *
-   * The border label is placed by the projection alone, both axes, as it has
-   * been since step 4. The two mix panels split the job with the grid
+   * The two mix panels split the job with the grid
    * (spec 4b §4): *which columns* they occupy is CSS — Scotland the last N of
    * the map cell's, England the first N, N being the tier's `--mix-span` — and
    * only the *vertical* position is the projection's, the panel's top edge
@@ -454,34 +437,34 @@ function bootMap(): void {
    * That is what the Figma frames do: the panels are flush to the columns but
    * level with the country they describe, at every fit.
    *
+   * It is the *mix band's* top edge that sits at the anchor, not the panel's:
+   * since 4c the Shetland inset is the first thing in Scotland's panel, above the
+   * band, and hangs above the anchor (`lead-in` below) rather than pushing the
+   * band down off the latitude the frames put it at. With the inset hidden
+   * (true-extent mode) the lead-in is 0 and nothing changes.
+   *
    * Measured against `.composition` rather than `.map__stage` itself via
    * getBoundingClientRect, in css px (world.projection deals in device px).
    */
   function positionOverlays() {
     const stageRect = stage.getBoundingClientRect();
     const compRect = composition.getBoundingClientRect();
-    const offsetX = stageRect.left - compRect.left;
     const offsetY = stageRect.top - compRect.top;
 
-    /** Top edge of a panel at a latitude, kept inside the cell so a low anchor on a short map never clips it. */
-    function panelTop(panel: HTMLElement, lat: number): number {
+    /** Top edge of a panel whose band starts `leadIn` px below it, so the band sits at a latitude; kept inside the cell so a low anchor on a short map never clips it. */
+    function panelTop(panel: HTMLElement, lat: number, leadIn: number): number {
       const [, y] = world.projection.project([lat, 0]);
-      const wanted = offsetY + y / currentDpr;
+      const wanted = offsetY + y / currentDpr - leadIn;
       return Math.max(0, Math.min(wanted, compRect.height - panel.offsetHeight));
     }
 
-    for (const [panel, token, fallback] of [
-      [scotlandPanel, '--anchor-scotland-lat', 57.2],
-      [englandPanel, '--anchor-england-lat', 54.4],
+    for (const [panel, band, token, fallback] of [
+      [scotlandPanel, scotlandBand.el, '--anchor-scotland-lat', 57.2],
+      [englandPanel, englandBand.el, '--anchor-england-lat', 54.4],
     ] as const) {
-      panel.style.setProperty('--anchor-y', `${panelTop(panel, tokenNumber(token, fallback))}px`);
+      panel.style.setProperty('--anchor-y', `${panelTop(panel, tokenNumber(token, fallback), band.offsetTop)}px`);
       panel.style.visibility = 'visible';
     }
-
-    const [bx, by] = world.projection.project(borderMidpoint());
-    borderOverlay.style.left = `${offsetX + bx / currentDpr}px`;
-    borderOverlay.style.top = `${offsetY + by / currentDpr}px`;
-    borderOverlay.style.visibility = 'visible';
   }
 
   function paintTransparent() {
@@ -548,68 +531,6 @@ function bootMap(): void {
     resizeTimer = window.setTimeout(rebuild, 200);
   }).observe(stage);
 
-  // --- The border's hover/tap/focus affordance (Part A.5) --------------------
-  //
-  // Step 4b fixes tap. The old mobile layout forced the tooltip permanently
-  // visible, which hid a bug that the new overlaid layout exposes: a tap
-  // focuses the hit path (or fires a compat `mouseenter`), which opens the
-  // tooltip, and then the tap's own `click` *toggled it shut again* in the same
-  // gesture — so on a phone it never showed. Now:
-  //   - hover opens/closes for a mouse only (pointer events, not the compat
-  //     mouse events a tap also fires);
-  //   - a mouse click keeps it open (pins it);
-  //   - a tap toggles it — except the tap that just opened it via focus, which
-  //     is the same gesture and must not undo itself;
-  //   - a tap anywhere else closes it, since a finger has no `mouseleave`.
-  let borderTooltipOpen = false;
-  let borderOpenedAt = 0;
-
-  /** Keep the open tooltip inside the page margins: it is centred on the border, which on a narrow screen can be within half a tooltip of an edge. */
-  function clampBorderTooltip() {
-    const tip = borderOverlay.querySelector<HTMLElement>('.map__border-tooltip');
-    if (!tip) return;
-    tip.style.setProperty('--tip-dx', '0px');
-    const rect = tip.getBoundingClientRect();
-    const margin = 12;
-    let dx = 0;
-    if (rect.left < margin) dx = margin - rect.left;
-    else if (rect.right > window.innerWidth - margin) dx = window.innerWidth - margin - rect.right;
-    tip.style.setProperty('--tip-dx', `${dx}px`);
-  }
-
-  function openBorderTooltip() {
-    borderTooltipOpen = true;
-    borderOpenedAt = performance.now();
-    borderOverlay.classList.add('is-open');
-    clampBorderTooltip();
-  }
-  function closeBorderTooltip() {
-    borderTooltipOpen = false;
-    borderOverlay.classList.remove('is-open');
-  }
-  borderHit.addEventListener('pointerenter', (e) => {
-    if (e.pointerType === 'mouse') openBorderTooltip();
-  });
-  borderHit.addEventListener('pointerleave', (e) => {
-    if (e.pointerType === 'mouse' && document.activeElement !== borderHit) closeBorderTooltip();
-  });
-  borderHit.addEventListener('focus', openBorderTooltip);
-  borderHit.addEventListener('blur', closeBorderTooltip);
-  borderHit.addEventListener('click', (e) => {
-    e.preventDefault();
-    if ((e as PointerEvent).pointerType === 'mouse') {
-      openBorderTooltip();
-    } else if (!borderTooltipOpen) {
-      openBorderTooltip();
-    } else if (performance.now() - borderOpenedAt > 400) {
-      closeBorderTooltip();
-    }
-  });
-  document.addEventListener('pointerdown', (e) => {
-    if (e.pointerType === 'mouse' || !borderTooltipOpen) return;
-    if (e.target !== borderHit) closeBorderTooltip();
-  });
-
   window.addEventListener('keydown', (e) => {
     if (e.key === 'd') {
       debugVisible = !debugVisible;
@@ -650,6 +571,9 @@ function bootMap(): void {
   document.body.dataset.panelStyle = 'wash';
 
   rebuild();
+  // The panels' vertical position reads their own heights (positionOverlays);
+  // those are a font's to decide, so settle them again once the faces are in.
+  void document.fonts?.ready.then(() => positionOverlays());
 
   const controlPanel = createMapControlPanel({
     rateParams,
@@ -671,7 +595,7 @@ function bootMap(): void {
     pending: true,
   };
 
-  const views: View[] = [masthead, scotlandBand, englandBand, headline, border, colophon];
+  const views: View[] = [masthead, scotlandBand, englandBand, headline, colophon];
 
   function render() {
     state.now = new Date();

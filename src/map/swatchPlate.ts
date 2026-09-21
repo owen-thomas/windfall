@@ -28,7 +28,7 @@ const TYPE_TOKENS: { token: string; label: string; sample: string; font: 'displa
 ];
 
 const COLOUR_GROUPS: { title: string; tokens: string[] }[] = [
-  { title: 'Ground & text', tokens: ['--ink-void', '--ink-ground', '--ink-raised', '--ink-line', '--ink-line-strong', '--text-primary', '--text-secondary', '--text-muted'] },
+  { title: 'Ground & text', tokens: ['--ink-void', '--ink-ground', '--ink-raised', '--ink-line', '--ink-line-strong', '--ink-box', '--text-primary', '--text-secondary', '--text-muted'] },
   { title: 'Fuels (wind: indigo in the bars and legend; --wind-live on the map itself)', tokens: ['--fuel-wind', '--wind-live', '--fuel-gas', '--fuel-nuclear', '--fuel-solar', '--fuel-hydro', '--fuel-biomass', '--fuel-imports', '--fuel-coal', '--fuel-other'] },
   { title: 'Curtailed', tokens: ['--curtailed', '--curtailed-edge'] },
   { title: 'Link & the breakdown bar', tokens: ['--link', '--bar-track', '--bar-share', '--bar-label'] },
@@ -54,7 +54,9 @@ const CONTRAST_ROWS: ContrastRow[] = [
   { fg: '--text-primary', bg: '--ink-ground', kind: 'text', use: 'wordmark, headline, region names' },
   { fg: '--text-secondary', bg: '--ink-ground', kind: 'text', use: 'sentences, farm names, legend values' },
   { fg: '--text-muted', bg: '--ink-ground', kind: 'text', use: 'settlement row, legend names, byline' },
-  { fg: '--link', bg: '--ink-ground', kind: 'text', use: 'MW figures in the farm list' },
+  { fg: '--link', bg: '--ink-ground', kind: 'text', use: 'the old farm list\'s MW figures (until 4c.3)' },
+  { fg: '--text-secondary', bg: '--ink-box', kind: 'text', use: 'settlement row and bar chevron, on the filled box' },
+  { fg: '--text-primary', bg: '--ink-box', kind: 'text', use: 'display ink on the filled box' },
   { fg: '--bar-label', bg: '--bar-track', kind: 'text', use: 'bar label on the track' },
   { fg: '--bar-label', bg: '--bar-share', kind: 'text', use: 'bar label on the curtailed share' },
   { fg: '--signal-ageing', bg: '--ink-ground', kind: 'text', use: 'ageing notice' },
@@ -63,13 +65,16 @@ const CONTRAST_ROWS: ContrastRow[] = [
   { fg: '--fuel-wind', bg: '--ink-ground', kind: 'graphic', use: 'wind bar segment, legend swatch' },
   { fg: '--wind-live', bg: '--ink-ground', kind: 'graphic', use: 'farm markers' },
   { fg: '--wind-live', bg: '--curtailed', kind: 'graphic', use: 'held-down marker edge on its fill' },
-  { fg: '--signal-ok', bg: '--ink-ground', kind: 'graphic', use: 'freshness dot' },
+  { fg: '--signal-ok', bg: '--ink-ground', kind: 'graphic', use: 'freshness dot, at rest (the bar navy)' },
+  { fg: '--bar-share', bg: '--ink-ground', kind: 'graphic', use: 'freshness dot, the light end of its pulse' },
+  { fg: '--signal-ok', bg: '--ink-box', kind: 'graphic', use: 'freshness dot, at rest, on the settlement box' },
+  { fg: '--bar-share', bg: '--ink-box', kind: 'graphic', use: 'freshness dot, light end, on the settlement box' },
   { fg: '--fuel-gas', bg: '--ink-ground', kind: 'graphic', use: 'gas segment' },
   { fg: '--fuel-nuclear', bg: '--ink-ground', kind: 'graphic', use: 'nuclear segment' },
-  { fg: '--fuel-solar', bg: '--ink-ground', kind: 'graphic', use: 'solar segment' },
+  { fg: '--fuel-solar', bg: '--ink-ground', kind: 'graphic', use: 'solar segment', disclosed: 'Misses by 0.02. The frame\'s own hex, adopted as drawn (DECISIONS 029). Read beside its legend name and figure, never alone.' },
   { fg: '--fuel-hydro', bg: '--ink-ground', kind: 'graphic', use: 'hydro segment' },
-  { fg: '--fuel-biomass', bg: '--ink-ground', kind: 'graphic', use: 'biomass segment' },
-  { fg: '--fuel-imports', bg: '--ink-ground', kind: 'graphic', use: 'imports segment' },
+  { fg: '--fuel-biomass', bg: '--ink-ground', kind: 'graphic', use: 'biomass segment', disclosed: 'The frame\'s own hex, adopted as drawn (DECISIONS 029). Read beside its legend name and figure, never alone.' },
+  { fg: '--fuel-imports', bg: '--ink-ground', kind: 'graphic', use: 'imports segment', disclosed: 'The frame\'s own hex, adopted as drawn (DECISIONS 029). Read beside its legend name and figure, never alone.' },
   { fg: '--fuel-coal', bg: '--ink-ground', kind: 'graphic', use: 'coal segment' },
   { fg: '--fuel-other', bg: '--ink-ground', kind: 'graphic', use: 'other segment' },
   {
@@ -78,7 +83,7 @@ const CONTRAST_ROWS: ContrastRow[] = [
     kind: 'graphic',
     use: 'the share run against the track',
     disclosed:
-      'Two fills of one bar, read by the label inside it ("38% of 5,363 MW"), never by the boundary between them. The Figma pair, kept as drawn (it is 1.63:1 at the frame\'s own #4865CB).',
+      'Two fills of one bar, read by the label inside it ("38% of 5,363 MW"), never by the boundary between them. The Figma pair, kept as drawn: --bar-share is the frame\'s own #4865CB since 4c.',
   },
 ];
 

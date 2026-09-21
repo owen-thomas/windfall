@@ -100,6 +100,11 @@
   --caption-overflow: hidden;
   --caption-gap: 0;
   --scotland-align: end;
+  /* The Shetland label sits in the top corner of its square, 12px in from the
+     edge (11px + the 1px outline): top-right on mobile, where the panel ranges
+     right, top-left from tablet up. */
+  --inset-label-left: auto;
+  --inset-label-right: 0.6875rem;
   --scotland-swatch-order: 2;
   --legend-gap: 1rem; /* stacked: the frames put 24px between the header group and the legend */
   --bar-gap: 0rem;
@@ -136,6 +141,8 @@
     --caption-gap: 0.5rem;
     --scotland-align: start;
     --scotland-swatch-order: 0;
+    --inset-label-left: 0.6875rem;
+    --inset-label-right: auto;
     --anchor-england-lat: 55.1;
   }
 }
@@ -189,7 +196,10 @@
        (557px; the 1280 frame is exactly 1–5). It is what lets the headline
        hold its three lines at 40px. DECISIONS 028. */
     --text-bleed: var(--grid-gutter);
-    --anchor-scotland-lat: 57.33;
+    /* The band's top edge, not the panel's: since 4c the Shetland inset hangs
+       above it. 57.58 puts the "Scotland" heading at y=191 on a 1440x1024
+       screen, as the Desktop HD frame (49:747) has it (57.33 through 4b). */
+    --anchor-scotland-lat: 57.58;
     --anchor-england-lat: 54.44;
   }
 }

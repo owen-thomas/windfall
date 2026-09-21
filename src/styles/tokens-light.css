@@ -14,6 +14,11 @@
  * trade a little vs-cream contrast for staying visually "receded" per the
  * spec, with the reasoning for why that is an acceptable, disclosed
  * trade-off rather than an oversight.
+ *
+ * Step 4c (DECISIONS 029) re-matches the fuel, ink and bar values to the
+ * Desktop HD frame (Figma 49:747), read from a 1x export of it. Where that
+ * moves a value below the AA line the plate says so, per pair, rather than
+ * passing it quietly.
  */
 
 :root {
@@ -47,12 +52,16 @@
   --ink-raised: #f5f2ea;
   --ink-line: #d8d2c4;
   --ink-line-strong: #b8b0a0;
+  /* The frame's filled box: the settlement-period row and the bar's chevron
+     button (4c.3 / 4c.4). Text on it is --text-primary or --text-secondary;
+     --text-muted is 4.14:1 here, so never that. */
+  --ink-box: #dbd3c4;
 
   /* Step 4b (DECISIONS 028): the display ink is navy, not near-black — the
      masthead wordmark, the headline, region names and the bar label all read
      from this one token. */
   --text-primary: #152767;
-  --text-secondary: #4a4d40;
+  --text-secondary: #4a4d41; /* the frame's value (was #4a4d40); the one-unit difference is invisible */
   /* Darkened from the step-1 provisional #7a7768 (3.58:1) to clear AA's
      4.5:1 for normal text — DECISIONS 027. The 4b Figma frames still carry
      the old #7a7769 on the settlement row, legend names and byline; it is
@@ -61,34 +70,38 @@
 
   /*
    * --- Fuels ---------------------------------------------------------------
-   * A role system, not nine independent picks. Wind is the one saturated,
-   * protagonist hue; gas is its warm opposite. Every other fuel recedes toward
-   * the cream ground: desaturated, mid-value, ordered only by the fixed
-   * FUEL_ORDER sequence rather than by how loud its colour is.
+   * Step 4c (DECISIONS 029): the six fuels the Desktop HD frame draws — wind,
+   * solar, nuclear, biomass, imports, gas — are the frame's exact hexes, read
+   * off its mix bars and legend swatches. That set is not the role system 027
+   * built (wind the one hue, gas its warm opposite, everything else receding
+   * toward the cream): nuclear is a teal and biomass a green, both saturated
+   * enough to be hues in their own right. It is the frame's, so it is the
+   * page's. Hydro, coal and other are not in the frame and keep their 027
+   * values; hydro (#5f86a3) sits close to the new nuclear teal, so check the
+   * two apart if hydro ever appears on /map.
    *
-   * Every value below was checked with a WCAG contrast calculator against
-   * the cream ground and against the ink used for its on-segment label; the
-   * full table is DECISIONS 027 (wind re-measured in 028). Wind and gas
-   * clear 4.5:1 on their own; the receding fuels trade a little vs-cream
-   * contrast for staying receded, disclosed there. Since 4b the mix bars are
-   * 8px slivers with no inline label, so the swatch is only ever read
-   * alongside its legend text.
+   * Contrast against the cream ground, computed live on `?plate=tokens`: wind
+   * 6.79, gas 4.85, nuclear 3.74 clear the 3:1 graphic line; solar 2.98,
+   * biomass 2.56 and imports 2.11 do not, and are marked as disclosed rather
+   * than passed (each swatch is only ever read beside its legend name and
+   * figure). The smallest same-hue steps that would clear 3:1 are in
+   * DECISIONS 029.
    *
-   * Wind now has two blues (DECISIONS 028). --fuel-wind is the indigo the
-   * Figma frames use for the wind segment and legend swatch (#2E469A, read
-   * off the frame fills); --wind-live is the brighter blue sampled from the
-   * flow's stroke cores (#2141BF), used only where wind is *on the map* —
-   * the farm markers and the curtailed edge — so the markers keep matching
-   * the flow, which is untouched.
+   * Wind has two blues (DECISIONS 028). --fuel-wind is the indigo the Figma
+   * frames use for the wind segment and legend swatch (#2E469A); --wind-live
+   * is the brighter blue sampled from the flow's stroke cores (#2141BF), used
+   * only where wind is *on the map* — the farm markers and the curtailed edge
+   * — so the markers keep matching the flow, which is untouched. The frame's
+   * own inset marker samples as #2241BF, i.e. --wind-live, so nothing drifts.
    */
   --fuel-wind: #2e469a;
   --wind-live: #2141bf;
-  --fuel-gas: #a34518;
-  --fuel-nuclear: #847e9c;
-  --fuel-solar: #a37c30;
+  --fuel-gas: #9a4c2e;
+  --fuel-nuclear: #2e7c9a;
+  --fuel-solar: #9a822e;
   --fuel-hydro: #5f86a3;
-  --fuel-biomass: #71845a;
-  --fuel-imports: #7d786a;
+  --fuel-biomass: #7c9a2e;
+  --fuel-imports: #a89e8c;
   --fuel-coal: #6b5f56;
   --fuel-other: #8a8272;
 
@@ -99,34 +112,53 @@
   --curtailed-edge: var(--wind-live);
 
   /* --- Link / accent --------------------------------------------------------
-   * The MW figures in the farm list and the freshness dot. The Figma value is
-   * #4865CB (4.18:1 on cream — below AA for 12px text); this is the same hue
-   * two lightness points darker, the smallest step that clears 4.5:1
-   * (4.56:1). DECISIONS 028.
+   * Text-size blue. The Figma value is #4865CB (4.18:1 on cream — below AA for
+   * 12px text); this is the same hue two lightness points darker, the smallest
+   * step that clears 4.5:1 (4.56:1). DECISIONS 028. Its uses have gone one by
+   * one: the freshness dot (4c.1, now the bar blues), the byline's domain (4c.1,
+   * now the byline's own muted colour) and, at 4c.3, the farm list's MW figures
+   * (the frame draws them in the wind navy). What is left is the old farm list
+   * until 4c.3 replaces it, after which this token has no user on /map.
    */
   --link: #405ec9;
 
-  /* --- The breakdown bar (spec 4b §6.5) -------------------------------------
-   * One solid 32px bar: the whole bar is the declared output (track), the
-   * curtailed share is the lighter left-hand run (share). Read off the Figma
-   * frame fills — the spec's "#2E469A fill on #E9ECF8 track" had the two
-   * colours the wrong way round (DECISIONS 028). White label on either: 8.54:1
-   * on the track, 5.25:1+ on the share.
+  /* --- The breakdown bar (spec 4b §6.5, 4c §4c.2) ----------------------------
+   * Two fills of one solid bar, read off the Figma frame (DECISIONS 028): the
+   * navy #2E469A and the lighter #4865CB. Step 4c re-matched --bar-share to the
+   * frame's exact #4865CB rather than the AA-darkened --link (it carries no
+   * text of its own; white on it is 5.25:1). 4c.2 turns the bar over — the
+   * on-grid share is the navy run and the remainder the lighter one — and the
+   * two tokens' roles are renamed there. White label: 8.54:1 on the navy.
    */
   --bar-track: #2e469a;
-  --bar-share: var(--link);
+  --bar-share: #4865cb;
   --bar-label: #ffffff;
 
   /* --- Signal -------------------------------------------------------------
    * Tuned to read as text on cream (masthead clock, staleness notices) at
    * AA, not just as a dot fill — DECISIONS 027's contrast table. `ok` is
-   * the link blue (the Figma frames draw the freshness dot in it): the
-   * calm/healthy reading stays inside the blue family, not a separate green.
+   * the tracked-wind bar's navy, and the freshness dot pulses between that and
+   * the bar's lighter blue (--bar-share) while the reading is fresh — Owen's
+   * call at the 4c.1 gate, in place of the frame's static green. Both blues
+   * clear 3:1 on cream (6.79, 4.18) and on the settlement box (5.75, 3.53).
+   * DECISIONS 029.
    */
-  --signal-ok: var(--link);
+  --signal-ok: var(--bar-track);
+
+  /* The freshness dot's pulse: one full breath, navy to light blue and back.
+     Reduced motion sets the iteration count to 0 (below), the same way
+     tokens.css collapses the durations, so the dot simply holds --signal-ok. */
+  --dur-pulse: 2.4s;
+  --pulse-iterations: infinite;
   --signal-ageing: #7d5f1c;
   --signal-stale: #943e15;
   --signal-failed: #b13d2c;
 
   --hatch: repeating-linear-gradient(-45deg, transparent 0 3px, rgb(33 65 191 / 0.22) 3px 4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --pulse-iterations: 0;
+  }
 }

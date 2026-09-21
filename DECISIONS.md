@@ -973,3 +973,79 @@ Two things change on 027's table by construction. The held-down marker's edge ag
 - Whether tablet wants 24px margins after all, and whether the farm list should keep "and N more" or go back to naming two of them.
 
 **What was rejected:** `postcss-custom-media` or lightningcss for the breakpoints (a build dependency for four numbers, when one file of tokens serves); container style queries on `--tier` (not in Firefox); `text-wrap: balance` on the headline (it re-breaks the frame's three lines into different, more even ones); a JS-set `data-tier` attribute so `map.css` could style by tier (a second source of truth for what the tokens already say); sizing the stacked map from the island's aspect (the frames fill the remaining screen, and an aspect-derived height made the page taller than the frame on a tablet); overlaying the stacked footer on the map's corner, as the frames do with the bare byline (the source-health rows collide with Cornwall and the inset); keeping the inset in a corner, on the evidence above; reverting to the step 4 mobile stack (Owen's call: overlaid).
+
+
+---
+
+## 029 — Step 4c: the positive reframe, the source list, the passive border
+
+**Date:** 2026-09-21
+**Phase:** Map page, step 4c ([Windfall_Map_Spec_4c.md](Windfall_Map_Spec_4c.md))
+**Decision:** The headline turns from the megawatts held off the grid to the share of tracked wind that is on it; the farm list becomes an always-present, interactive source panel; every explanation moves into one disclosure; the border becomes a passive line. Built in gated stages 4c.1–4c.4, with windspeed (4c.5) as a follow-on. **This entry is written as each stage lands, so it is incomplete until 4c.4 closes.**
+
+### Confirmed with Owen before building (21 Sept)
+
+- **Windspeed source (4c.5): Open-Meteo**, as the spec assumed: free, no key, km/h, and it batches all 76 farm coordinates in one cacheable call.
+- **Source-row MW: on-grid MW (`instructedMW`), not declared output.** The spec assumed declared. The consequence: the row's figure is the numerator of the same ratio its mini-bar draws, and it agrees with the big bar's `{onGrid} of {declared} MW` reading. The bar still carries the share, so there is no percentage in the row (spec decision 4). The visible row text carries only one of the two numbers, so a row's accessible name should state both.
+- **`--highlight`: start at `#0a7cff`, tune on the live map at the 4c.3 gate.** About 211° hue against `--wind-live`'s ~227°; 3.13:1 on the cream ground, which clears the 3:1 graphic bar. Against `--wind-live` itself it is only ~2.1:1, which is why dimming the rest of the field, not the hue, is what makes the selection legible; that stays whatever the hue ends up. Rejected: `#0091ff`, which separates more from `--wind-live` but is 2.57:1 on cream, below the graphic threshold.
+- **Palette source: PNG exports of frame `49:747` from Owen** (the curtailed and not-curtailed states, 1440×1024) **plus the Figma "Selection colors" list** (13 hexes). The cloud Figma connector answered `get_screenshot` and `get_metadata` for the frame with its Starter-plan tool-call limit. The desktop bridge was not used: Owen said not to, and the spec records that it errors on this file. Flat fills sample exactly from a 1x export, and every one of the 13 hexes was found in the frame.
+
+### 4c.1 — quick wins (built)
+
+- **The border is passive.** Removed: the hit path, "The constraint" label, overlay, tooltip view (`borderView` is deleted from `view/border.ts`; `constraintSentenceOf` stays and still feeds the method note), the pointer/tap/focus handling in `main.ts` (62 lines), and the CSS for all of it. The line is `--text-primary` at full opacity and `pointer-events: none`, so nothing about it is hoverable, focusable or clickable. The landing stagger loses the border's step: Scotland 2, England 3.
+- **It is drawn coast to coast.** New `src/map/borderLine.ts` joins each end of the source line to the nearest point on the coast ring (only if within 15 km, and more than 0.3 km away). The west end was ~10 km short (the Solway), the east ~1.5 km. *Rejected:* carrying the end segment on until it meets the coast. The landing point moved between 24 km and 60 km, or missed altogether, depending on how many points the direction was read from, because the source line's tail is a staircase. The nearest point does not depend on that. *Checked at 1440:* each end tests as on the drawn coast edge (inside the fill at the end and 4 device px back, outside 4 px beyond), and the close crops show the line stopping at the Solway inlet and at the North Sea edge.
+- **Shetland.** Swapped to first in Scotland's panel. The "…output enters the mainland at…" caption removed (the `landingCaption` rendering and the `.map__inset-captions` block). *Box and label as first built (outline removed, 16px label under the island) were superseded at the gate; see "Owen's calls at the 4c.1 gate" below.*
+  - *Where the band sits, checked against the frame.* It is the mix **band's** top edge that hangs from the latitude anchor, as 4b's frames measured it, and the inset hangs **above** it: `positionOverlays` subtracts the band's offset within the panel from the anchor. The alternative, the inset taking the anchor and the band being pushed down, moved Scotland's mix down 157px at 1440. Measured against `49:747` at 1440×1024, the England panel and masthead land within 1–2px, but Scotland's heading sat 27px lower than the frame's (y=218 against 191), so the frame moved the band up when the inset arrived. `--anchor-scotland-lat` at Desktop L is retuned **57.33 → 57.58** (with a comment saying why). The heading now measures y=190 against the frame's 191, and the inset's top y=42 against the frame placeholder's 40. Desktop M, tablet and mobile are unchanged: there is no new frame for them, so the 4b anchors stand.
+  - Where the anchor is too high for the inset to fit above it, the panel clamps to the top of the cell and the band sits below its anchor. That happens at 1280×720 (band 149px) and would at 1440×800 or shorter; it is a mechanism, not a measurement, and unverified against any frame.
+  - Two robustness fixes on the way: the label has `line-height: 1.25` (a number, so its box is the same height in any face), and `positionOverlays` runs again on `document.fonts.ready`. The lead-in was first measured before Eczar loaded and put the band ~9px off its anchor.
+- **The landing disclosure has nowhere to live yet.** With the caption gone, nothing on screen says that Viking's flow is drawn entering the mainland at its landing rather than at the farm. *Proposal for 4c.4:* one line for it in the consolidated disclosure. `landingCaption` is kept in `farmSources.ts` for that.
+- **Colophon.** `.source__mark` is removed from the DOM on `/map` (in `main.ts`; `colophon.ts` is shared with `/`). Health is still stated in words beside each source. The source rows lose their row gap (was 0.15rem) and the byline takes `margin-top: var(--gap-md)` (1.25rem) so it stands clear of them.
+- **Byline.** "Built by Owen Thomas ✺ owenthomas.work": the glyph is U+273A in its own span, `aria-hidden`, with `0.25em` either side set in CSS (the frame measures 4px each side; my first `0.75em` was 10px), and the domain is a link (see the gate calls below: it takes the byline's own colour). It keeps an underline. With those gaps the byline's ink box is (65,959)–(283,970) at 1440×1024, identical to the frame's. The glyph is not in Mukta, so it draws from a system fallback font and will vary by OS.
+
+### 4c.1 palette — re-matched to Desktop HD
+
+Sampled from the PNG exports and cross-checked against the Figma list. New value against old, contrast on the cream ground (`#E9E5DC`) computed live on `?plate=tokens`:
+
+| Token | Frame | Was | On cream | Plate |
+|---|---|---|---|---|
+| `--fuel-wind` | `#2E469A` | same | 6.79 | pass |
+| `--fuel-nuclear` | `#2E7C9A` teal | `#847e9c` | 3.74 | pass |
+| `--fuel-gas` | `#9A4C2E` | `#a34518` | 4.85 | pass |
+| `--fuel-solar` | `#9A822E` | `#a37c30` | **2.98** | disclosed |
+| `--fuel-biomass` | `#7C9A2E` | `#71845a` | **2.56** | disclosed |
+| `--fuel-imports` | `#A89E8C` | `#7d786a` | **2.11** | disclosed |
+| `--signal-ok` (freshness dot) | frame: `#7C9A2E` green; **built: `var(--bar-track)` `#2E469A`, pulsing to `--bar-share`** | `var(--link)` blue | 6.79 at rest, 4.18 at the light end (5.75 / 3.53 on the box) | pass |
+| `--text-primary` | `#152767` | same | 11.01 | pass |
+| `--text-secondary` | `#4A4D41` | `#4a4d40` | 6.88 | pass |
+| `--bar-share` | `#4865CB` | `var(--link)` `#405ec9` | 4.18 (white on it 5.25) | pass; vs track 1.63 disclosed as in 028 |
+| `--ink-box` (new) | `#DBD3C4` | — | — | secondary 5.82, primary 9.31 on it |
+
+Plate totals: **23 pass, 4 disclosed, 0 fail.** Three of the four are new (solar, biomass, imports). The fourth is 028's `--bar-share` against `--bar-track`, now 1.63 because the token is the frame's exact value.
+
+- **The frame's fuel set is not the role system 027 built** (wind the one hue, gas its warm opposite, everything else receding toward cream). Nuclear is a teal and biomass a green. It is the frame, so it is the page; the `tokens-light.css` comment now says so.
+- **Adopted as drawn, disclosed, not darkened, and accepted by Owen at the gate ("Colour looks good").** 028 darkened the link blue and kept muted text darker than the frame to clear AA, but those are text; these are 8px swatches always read beside a legend name and figure. The AA-clearing versions were offered, not built, and stay as an option: solar `#99812e` (one unit, invisible), biomass `#728d2a`, imports `#8e826c` (visibly browner).
+- **Kept against the frame:** `--text-muted` stays `#65624f` (the frame's `#7A7769` is 3.58:1, the 027/028 exception re-confirmed) and `--link` stays `#405ec9`.
+- **Not in the frame, unchanged:** `--fuel-hydro`, `--fuel-coal`, `--fuel-other`. Hydro (`#5f86a3`) sits close to the new nuclear teal, so check the two apart if hydro ever appears on `/map`.
+- **The map raster is not a palette source.** The frame's map is a flattened render. Its inset marker samples as `#2241BF`, which is `--wind-live` (`#2141BF`), so nothing drifts; the hatched marker (`#C5D7F1` against `--curtailed` `#b9cdf0`) is left alone.
+- **`--ink-box` is added ahead of its use** by the bar's chevron button (4c.3) and the settlement row (4c.4), so the plate shows every colour the frame carries.
+- **Border colour.** The frame's border line samples as a dark warm grey (about `#41433B`); built in the navy the spec calls for (`--text-primary`), and Owen confirmed at the gate that it looks good.
+
+### Owen's calls at the 4c.1 gate
+
+- **Colours accepted as drawn** (fuels, ink, bars), including the three sub-3:1 fuel swatches above. **Border colour** stays the navy `--text-primary`.
+- **The freshness dot pulses between the tracked-wind bar's two blues** (`--bar-track` `#2E469A` and `--bar-share` `#4865CB`), in place of the frame's static green. `--signal-ok` is now `var(--bar-track)`, which is also the dot's resting colour. The pulse is a 2.4s ease-in-out `alternate` colour animation on the dot's `::before` (`--dur-pulse`), and only while `data-freshness='fresh'`: the ageing, stale, failed and pending dots keep the looks 010/016/017 gave them (an animation would override their backgrounds), which I checked on the stale, waiting and offline fixtures. Under `prefers-reduced-motion` the iteration count token `--pulse-iterations` is 0, the same pattern `tokens.css` uses for the durations, so the dot holds the navy. This removes the dot's two disclosed contrast exceptions: both blues clear 3:1 on cream and on the settlement box. 020's rule that no *figure* is ever tweened is untouched: this is a status pip, not a number.
+- **The byline's domain takes the byline's own colour** (`--text-muted`), still underlined, as the frame draws it. `--link` has no user on `/map` other than the old farm list, which 4c.3 replaces; after that it can go.
+- **Shetland is a square with a 1px `#DBD3C4` outline** (`--ink-box`), as the frame's placeholder is: square corners, no fill, 120px where the panel allows and the panel's width where it does not (99px on a phone). This reverses the spec's "remove the box outline" for the outline only; the caption stays gone. The name is **Eczar regular 12px** in its top corner, **12px** in from the top and the side, on the left from tablet up and on the right on mobile (two tier tokens in `grid.css`, `--inset-label-left/right`). Owen wrote "12pt"; the frame's label is 44px of ink, which is Eczar at exactly 12px (16px would be 60px, and CSS 12pt is 16px), so it is built as 12px. *The spec had 16px for this label; the frame and Owen's 12 supersede it.*
+  - The island is drawn in a 120×90 area below a 30px strip kept for the name (`--inset-label-band`), scaled to the square's width, so a phone's narrower square shrinks the island and never runs it under the name. Box-to-band gap is 2rem (the frame's is 31px). At 1440×1024 the box's top is y=39 (the frame's is 40), the band 191 (the frame's 191).
+  - The band's lead-in is now 152px (120 + 32), which `positionOverlays` handles as before.
+
+### Verification so far (4c.1)
+
+- **Against the frame** at 1440×1024, dev toggle hidden, ink bounding boxes compared pixel row by pixel row: masthead within 1px; England heading within 1px vertically (2px in x, as in 4b); Scotland heading 1px vertically and 2px in x; byline identical. The England bar's six fuel hexes match the frame's one for one.
+- All seven `?state=` fixtures load at 1440×1024 with no page errors, no `.source__mark`, and no border hit/label/tooltip elements in the DOM. `?plate=tokens` loads with no errors. The production bundle builds (`vite build`, to a scratch folder). Band and inset positions measured at 1440×1024, 1440×900, 1280×720, 744 and 393.
+- **Baseline:** `tsc --noEmit` reports 17 errors, all in the untracked `scripts/export-map-svg.ts` and none in `src/` or `api/`, both before and after this stage. That means `npm run build` (`tsc && vite build`) fails on `main` today; I did not touch it.
+
+### Not verifiable against the frame
+
+- The two source rows (Carbon Intensity, Elexon Insights) are not in the frame at all, so their gap and the byline's clear space above them are my reading of the spec, not a measurement. The frame's Shetland is a placeholder box with an outline and a small label; built to the spec (no box, Eczar 16px) instead.
+- `scripts/capture-step4.ts` still hovers and clicks `.map__border-hit` for its step-4 tooltip plates, so those steps will fail now. Left alone: it is a historical capture script and not part of 4c.

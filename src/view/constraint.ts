@@ -28,8 +28,8 @@ import { speaksOfNow, type AppState } from '../lib/state';
  */
 /**
  * Exported for src/view/border.ts (step 3, Windfall_Map_Spec.md Part C.3):
- * the map's borderView reuses this exact three-state copy and the same
- * tense/state logic, rather than restating it, so the two pages can never
+ * the map's `constraintSentenceOf` reuses this exact three-state copy and the
+ * same tense/state logic, rather than restating it, so the two pages can never
  * drift into describing the same constraint differently.
  */
 export const CONSTRAINED = {
