@@ -20,7 +20,7 @@ import { mapHeadlineView } from './views/headline';
 import { SCOTLAND, ENGLAND } from '../view/band';
 
 const TYPE_TOKENS: { token: string; label: string; sample: string; font: 'display' | 'body' }[] = [
-  { token: '--type-display', label: 'display — the headline (steps by tier: 40 / 32 / 32 / 20px)', sample: 'At least 2,134 MW', font: 'display' },
+  { token: '--type-display', label: 'display — the headline (steps by tier: 40 / 32 / 32 / 20px)', sample: '83% on the grid', font: 'display' },
   { token: '--type-region', label: 'region — wordmark, Scotland / England, bar label', sample: 'Scotland', font: 'display' },
   { token: '--type-body', label: 'body — mix sentences, tooltip, method note', sample: 'Held off the grid, right now.', font: 'body' },
   { token: '--type-small', label: 'small — settlement row, farm list, legend, byline', sample: 'Read 2 minutes ago', font: 'body' },
@@ -31,7 +31,7 @@ const COLOUR_GROUPS: { title: string; tokens: string[] }[] = [
   { title: 'Ground & text', tokens: ['--ink-void', '--ink-ground', '--ink-raised', '--ink-line', '--ink-line-strong', '--ink-box', '--text-primary', '--text-secondary', '--text-muted'] },
   { title: 'Fuels (wind: indigo in the bars and legend; --wind-live on the map itself)', tokens: ['--fuel-wind', '--wind-live', '--fuel-gas', '--fuel-nuclear', '--fuel-solar', '--fuel-hydro', '--fuel-biomass', '--fuel-imports', '--fuel-coal', '--fuel-other'] },
   { title: 'Curtailed', tokens: ['--curtailed', '--curtailed-edge'] },
-  { title: 'Link & the breakdown bar', tokens: ['--link', '--bar-track', '--bar-share', '--bar-label'] },
+  { title: 'Link & the breakdown bar', tokens: ['--link', '--bar-on', '--bar-off', '--bar-label'] },
   { title: 'Signal', tokens: ['--signal-ok', '--signal-ageing', '--signal-stale', '--signal-failed'] },
 ];
 
@@ -54,11 +54,11 @@ const CONTRAST_ROWS: ContrastRow[] = [
   { fg: '--text-primary', bg: '--ink-ground', kind: 'text', use: 'wordmark, headline, region names' },
   { fg: '--text-secondary', bg: '--ink-ground', kind: 'text', use: 'sentences, farm names, legend values' },
   { fg: '--text-muted', bg: '--ink-ground', kind: 'text', use: 'settlement row, legend names, byline' },
-  { fg: '--link', bg: '--ink-ground', kind: 'text', use: 'the old farm list\'s MW figures (until 4c.3)' },
+  { fg: '--link', bg: '--ink-ground', kind: 'text', use: 'no user on /map since 4c.2; kept for a possible link in 4c.4' },
   { fg: '--text-secondary', bg: '--ink-box', kind: 'text', use: 'settlement row and bar chevron, on the filled box' },
   { fg: '--text-primary', bg: '--ink-box', kind: 'text', use: 'display ink on the filled box' },
-  { fg: '--bar-label', bg: '--bar-track', kind: 'text', use: 'bar label on the track' },
-  { fg: '--bar-label', bg: '--bar-share', kind: 'text', use: 'bar label on the curtailed share' },
+  { fg: '--bar-label', bg: '--bar-on', kind: 'text', use: 'bar label on the on-grid run' },
+  { fg: '--bar-label', bg: '--bar-off', kind: 'text', use: 'bar label where it runs over the rest of the bar (a small on-grid share)' },
   { fg: '--signal-ageing', bg: '--ink-ground', kind: 'text', use: 'ageing notice' },
   { fg: '--signal-stale', bg: '--ink-ground', kind: 'text', use: 'stale notice' },
   { fg: '--signal-failed', bg: '--ink-ground', kind: 'text', use: 'failed notice' },
@@ -66,9 +66,9 @@ const CONTRAST_ROWS: ContrastRow[] = [
   { fg: '--wind-live', bg: '--ink-ground', kind: 'graphic', use: 'farm markers' },
   { fg: '--wind-live', bg: '--curtailed', kind: 'graphic', use: 'held-down marker edge on its fill' },
   { fg: '--signal-ok', bg: '--ink-ground', kind: 'graphic', use: 'freshness dot, at rest (the bar navy)' },
-  { fg: '--bar-share', bg: '--ink-ground', kind: 'graphic', use: 'freshness dot, the light end of its pulse' },
+  { fg: '--bar-off', bg: '--ink-ground', kind: 'graphic', use: 'freshness dot, the light end of its pulse' },
   { fg: '--signal-ok', bg: '--ink-box', kind: 'graphic', use: 'freshness dot, at rest, on the settlement box' },
-  { fg: '--bar-share', bg: '--ink-box', kind: 'graphic', use: 'freshness dot, light end, on the settlement box' },
+  { fg: '--bar-off', bg: '--ink-box', kind: 'graphic', use: 'freshness dot, light end, on the settlement box' },
   { fg: '--fuel-gas', bg: '--ink-ground', kind: 'graphic', use: 'gas segment' },
   { fg: '--fuel-nuclear', bg: '--ink-ground', kind: 'graphic', use: 'nuclear segment' },
   { fg: '--fuel-solar', bg: '--ink-ground', kind: 'graphic', use: 'solar segment', disclosed: 'Misses by 0.02. The frame\'s own hex, adopted as drawn (DECISIONS 029). Read beside its legend name and figure, never alone.' },
@@ -78,12 +78,12 @@ const CONTRAST_ROWS: ContrastRow[] = [
   { fg: '--fuel-coal', bg: '--ink-ground', kind: 'graphic', use: 'coal segment' },
   { fg: '--fuel-other', bg: '--ink-ground', kind: 'graphic', use: 'other segment' },
   {
-    fg: '--bar-share',
-    bg: '--bar-track',
+    fg: '--bar-off',
+    bg: '--bar-on',
     kind: 'graphic',
-    use: 'the share run against the track',
+    use: 'the two runs of the bar against each other',
     disclosed:
-      'Two fills of one bar, read by the label inside it ("38% of 5,363 MW"), never by the boundary between them. The Figma pair, kept as drawn: --bar-share is the frame\'s own #4865CB since 4c.',
+      'Two fills of one bar, read by the label inside it ("10,971 of 13,105 MW") and the sentence above it, never by the boundary between them. The Figma pair, kept as drawn: --bar-off is the frame\'s own #4865CB.',
   },
 ];
 

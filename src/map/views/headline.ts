@@ -1,46 +1,60 @@
 /**
  * The map's headline (Windfall_Map_Spec.md §3 Part A.2, DECISIONS 026, re-cut
- * for the Figma frames in Windfall_Map_Spec_4b.md / DECISIONS 028): one
- * sentence, the largest and heaviest type on the page, the page's whole
- * argument — not `../../view/headline.ts`'s three-part eyebrow/figure/
- * predicate stack, which `/` still uses unchanged.
+ * for the Figma frames in Windfall_Map_Spec_4b.md / DECISIONS 028, turned over
+ * by Windfall_Map_Spec_4c.md §4c.2 / DECISIONS 029): one sentence, the largest
+ * and heaviest type on the page, the page's whole argument — not
+ * `../../view/headline.ts`'s three-part eyebrow/figure/predicate stack, which
+ * `/` still uses unchanged.
  *
- * Step 4b turned the figure over. The sentence now leads with the megawatts —
- * "At least 2,134 MW of Scotland's tracked wind…" — and the percentage moved
- * into the solid breakdown bar beneath it, printed inline as "13% of 13,105
- * MW". Both are still one payload: `curtailedMW` is `curtailment.now.
- * curtailedMW`, `declaredMW` the sum of `curtailment.now.farms[].declaredMW`,
- * and the percentage is curtailed over *declared* output for the tracked farms
- * at the sampled instant — the share of the wind Scotland is making, not of
- * installed capacity (026's own reasoning: capacity counts every farm idle for
- * lack of wind, which understates the share on a windy day). The sentence, the
- * bar's fill and the bar's label all read those same two numbers, so they can
- * never disagree (§4.3). Rounding is always down — formatMWFloor,
- * formatPctFloor — 003's floor framing applied to the display, since "at
- * least" is a claim a rounded-up figure cannot support.
+ * Step 4c reversed the frame. Through 4b the sentence said how much wind was
+ * held *off* the grid ("At least 2,049 MW of Scotland's tracked wind is
+ * currently being held off the grid."); it now says how much is *on* it —
+ * "83% of Scotland's tracked wind is currently on the grid." — and the bar
+ * beneath it reads "10,971 of 13,105 MW", the on-grid run navy and the rest of
+ * the declared output the lighter blue. All of it comes from the one payload:
+ * `curtailedMW` is `curtailment.now.curtailedMW`, `declaredMW` the sum of
+ * `curtailment.now.farms[].declaredMW`, and `instructedMW` is their difference
+ * (the same quantity each farm's own `instructedMW` is, which the source list
+ * draws per farm). The denominator is still declared output, never installed
+ * capacity (026's reasoning: capacity counts every farm idle for lack of wind,
+ * which understates the share on a windy day). The sentence, the bar's fill
+ * and the bar's label all read those same numbers, so they can never disagree.
  *
- * The line that used to sit under the bar ("2,134 of the 13,105 MW Scotland
- * is making.") is gone from the screen — the headline and the bar now carry
- * both of its numbers — but stays in the DOM, visually hidden, as the one
- * plain sentence a screen reader gets for the bar (which is aria-hidden).
+ * Rounding is always down, the same conservative principle the old "at least"
+ * framing used, applied to the new number: the percentage is `formatPctFloor`,
+ * so the bare figure can never overstate how much wind is getting through, and
+ * the label's on-grid megawatts are floored too while anything is held down, so
+ * they too can only err low. (One corner stays: when under a megawatt is held
+ * down, the label is exact at megawatt resolution — "5,363 of 5,363 MW" — while
+ * the floored percentage reads 99%. Both are true of a 99.99% share.) When
+ * nothing is held down the figures are equal and rounded alike. There is no
+ * "Up to" hedge. What the figure cannot say — that Windfall counts only
+ * instructed turn-downs, so real curtailment may be higher and the true
+ * on-grid share a little lower — is said in the page's one explanation, not
+ * here.
+ *
+ * The line that used to sit under the bar is not on the screen — the headline
+ * and the bar carry both of its numbers — but stays in the DOM, visually
+ * hidden, as the one plain sentence a screen reader gets for the bar (which is
+ * aria-hidden): "10,971 of the 13,105 MW Scotland is making is on the grid."
+ *
+ * The list of held-down farms that used to follow the bar ("Seagreen 631 MW •
+ * Moray West 577 MW …") is gone from here, a stage before 4c.3 replaces it with
+ * the source list: those figures were megawatts *held down*, and under an "on
+ * the grid" headline the same pattern reads as megawatts on it.
  */
 
-import { clear, el, setAttr, setText, setTextCrossfade, type View } from '../../view/dom';
-import { formatMW, formatMWFloor, formatMWh, formatPctFloor, formatPeriodSpan, joinList } from '../../lib/format';
-import type { CurtailedUnit, CurtailmentResponse } from '../../lib/types';
+import { el, setAttr, setText, setTextCrossfade, type View } from '../../view/dom';
+import { formatMW, formatMWh, formatPctFloor, formatPeriodSpan } from '../../lib/format';
+import type { CurtailmentResponse } from '../../lib/types';
 import { speaksOfNow, type AppState } from '../../lib/state';
 
-/** Farms below this share of the headline are folded into "and others" — same threshold ../../view/headline.ts uses. */
-const NAMED_FARMS = 4;
-
 export function mapHeadlineView(): View {
-  const lead = el('span', { class: 'map-headline__lead' });
   const figure = el('strong', { class: 'map-headline__figure' });
   const tail = el('span', { class: 'map-headline__tail' });
   const sentence = el(
     'p',
     { class: 'map-headline__sentence', id: 'map-headline-sentence' },
-    lead,
     figure,
     tail
   );
@@ -52,26 +66,22 @@ export function mapHeadlineView(): View {
   const meta = el('div', { class: 'map-headline__meta' });
 
   const shareFill = el('div', { class: 'share__fill' });
-  const sharePct = el('strong', { class: 'share__pct' });
-  const shareOf = el('span', { class: 'share__of' });
-  const shareLabel = el('span', { class: 'share__label' }, sharePct, shareOf);
+  const shareLabel = el('span', { class: 'share__label' });
   const shareBar = el('div', { class: 'share', 'aria-hidden': 'true' }, shareFill, shareLabel);
   const breakdown = el('p', { class: 'map-headline__breakdown' });
-  const farms = el('p', { class: 'headline__farms' });
 
   const root = el(
     'section',
     { class: 'map-headline', 'data-state': 'ok', 'aria-labelledby': 'map-headline-sentence' },
     sentence,
     meta,
-    el('div', { class: 'map-headline__evidence' }, shareBar, breakdown, farms)
+    el('div', { class: 'map-headline__evidence' }, shareBar, breakdown)
   );
 
   /** The bar says nothing until there is something to say: no label, and CSS greys the track. */
-  function setShare(pct: number, label: { pct: string; of: string } | null) {
+  function setShare(pct: number, label: string | null) {
     shareFill.style.width = `${Math.min(100, Math.max(0, pct))}%`;
-    setText(sharePct, label?.pct ?? '');
-    setText(shareOf, label?.of ?? '');
+    setText(shareLabel, label ?? '');
   }
 
   return {
@@ -82,7 +92,6 @@ export function mapHeadlineView(): View {
 
       if (!data?.now && state.pending) {
         setAttr(root, 'data-state', 'pending');
-        setTextCrossfade(lead, '');
         setTextCrossfade(figure, 'Reading.');
         setTextCrossfade(
           tail,
@@ -91,13 +100,11 @@ export function mapHeadlineView(): View {
         );
         setShare(0, null);
         setText(breakdown, '');
-        setText(farms, '');
         return;
       }
 
       if (!data || !data.now) {
         setAttr(root, 'data-state', 'failed');
-        setTextCrossfade(lead, '');
         setTextCrossfade(figure, 'Unavailable.');
         setTextCrossfade(
           tail,
@@ -107,99 +114,40 @@ export function mapHeadlineView(): View {
         );
         setShare(0, null);
         setText(breakdown, '');
-        setText(farms, '');
         return;
       }
 
-      const { curtailedMW, units, farms: farmsNow } = data.now;
+      const { curtailedMW, farms: farmsNow } = data.now;
       const declaredMW = farmsNow.reduce((sum, f) => sum + f.declaredMW, 0);
+      const allClear = curtailedMW <= 0;
 
-      if (curtailedMW <= 0) {
-        setAttr(root, 'data-state', 'none');
-        setTextCrossfade(lead, '');
-        setTextCrossfade(figure, 'None');
-        setTextCrossfade(
-          tail,
-          present
-            ? " of Scotland's tracked wind is currently being held off the grid."
-            : " of Scotland's tracked wind was being held off the grid when this was last read."
-        );
-        setShare(0, { pct: '0%', of: ` of ${formatMW(declaredMW)}` });
-        setText(breakdown, `0 of the ${formatMW(declaredMW)} Scotland is making.`);
-        setText(farms, '');
-        return;
-      }
+      // What is on the grid: declared output less what the balancing mechanism
+      // has instructed down (the farms' own `instructedMW`, summed). Clamped, so
+      // a curtailed figure that ran past the declared one reads as none, never
+      // as a negative share.
+      const instructedMW = allClear ? declaredMW : Math.min(declaredMW, Math.max(0, declaredMW - curtailedMW));
+      const pct = declaredMW > 0 ? (instructedMW / declaredMW) * 100 : allClear ? 100 : 0;
 
-      setAttr(root, 'data-state', 'curtailing');
-      const pct = declaredMW > 0 ? (curtailedMW / declaredMW) * 100 : 0;
-      setTextCrossfade(lead, 'At least ');
-      setTextCrossfade(figure, formatMWFloor(curtailedMW));
+      // The label's on-grid megawatts: floored while anything is held down (see
+      // the header), the declared figure rounded as its denominator is when
+      // nothing is. Floored, it can never exceed the rounded denominator.
+      const onGrid = (allClear ? Math.round(declaredMW) : Math.floor(instructedMW)).toLocaleString('en-GB');
+
+      setAttr(root, 'data-state', allClear ? 'none' : 'curtailing');
+      setTextCrossfade(figure, allClear ? '100%' : formatPctFloor(pct));
       setTextCrossfade(
         tail,
         present
-          ? " of Scotland's tracked wind is currently being held off the grid."
-          : " of Scotland's tracked wind was being held off the grid when this was last read."
+          ? ' of Scotland’s tracked wind is currently on the grid.'
+          : ' of Scotland’s tracked wind was on the grid when this was last read.'
       );
 
-      setShare(pct, { pct: formatPctFloor(pct), of: ` of ${formatMW(declaredMW)}` });
+      setShare(pct, `${onGrid} of ${formatMW(declaredMW)}`);
       // The plain sentence for the aria-hidden bar (026's exact phrasing): the
       // first figure is bare because the second's "MW" covers both.
-      setText(
-        breakdown,
-        `${Math.floor(curtailedMW).toLocaleString('en-GB')} of the ${formatMW(declaredMW)} Scotland is making.`
-      );
-
-      clear(farms);
-      farms.append(...farmNodes(units));
+      setText(breakdown, `${onGrid} of the ${formatMW(declaredMW)} Scotland is making is on the grid.`);
     },
   };
-}
-
-/** Roll units up to the farms people have heard of — mirrors ../../view/headline.ts's own rollup. */
-function byFarm(units: CurtailedUnit[]): { farm: string; mw: number }[] {
-  const totals = new Map<string, number>();
-  for (const unit of units) {
-    totals.set(unit.farm, (totals.get(unit.farm) ?? 0) + unit.curtailedMW);
-  }
-  return [...totals.entries()]
-    .map(([farm, mw]) => ({ farm, mw }))
-    .sort((a, b) => b.mw - a.mw);
-}
-
-function farmNodes(units: CurtailedUnit[]): Node[] {
-  const farms = byFarm(units);
-  if (farms.length === 0) return [];
-
-  const named = farms.slice(0, NAMED_FARMS);
-  const rest = farms.slice(NAMED_FARMS);
-  const nodes: Node[] = [];
-
-  named.forEach((entry, index) => {
-    if (index > 0) nodes.push(el('span', { class: 'farms__sep', text: '•' }));
-    nodes.push(
-      el(
-        'span',
-        { class: 'farms__item' },
-        el('span', { class: 'farms__name', text: entry.farm }),
-        el('span', { class: 'farms__mw', text: formatMW(entry.mw) })
-      )
-    );
-  });
-
-  if (rest.length > 0) {
-    nodes.push(el('span', { class: 'farms__sep', text: '•' }));
-    const names = rest.map((r) => r.farm);
-    nodes.push(
-      el('span', {
-        class: 'farms__rest',
-        text:
-          names.length <= 3
-            ? joinList(names)
-            : `and ${names.length} more`,
-      })
-    );
-  }
-  return nodes;
 }
 
 /** Exposed for the method note (main.ts) and the swatch plate — the same settled-period line ../../view/headline.ts used to show on-screen, moved to the method note per 026. */

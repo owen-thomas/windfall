@@ -116,34 +116,39 @@
    * 12px text); this is the same hue two lightness points darker, the smallest
    * step that clears 4.5:1 (4.56:1). DECISIONS 028. Its uses have gone one by
    * one: the freshness dot (4c.1, now the bar blues), the byline's domain (4c.1,
-   * now the byline's own muted colour) and, at 4c.3, the farm list's MW figures
-   * (the frame draws them in the wind navy). What is left is the old farm list
-   * until 4c.3 replaces it, after which this token has no user on /map.
+   * now the byline's own muted colour) and the old farm list's MW figures (4c.2,
+   * the list is gone and the frame draws its successors in the wind navy). It
+   * has no user on /map now; kept in case 4c.4's disclosure wants a link colour,
+   * and to be deleted if it does not.
    */
   --link: #405ec9;
 
   /* --- The breakdown bar (spec 4b §6.5, 4c §4c.2) ----------------------------
    * Two fills of one solid bar, read off the Figma frame (DECISIONS 028): the
-   * navy #2E469A and the lighter #4865CB. Step 4c re-matched --bar-share to the
-   * frame's exact #4865CB rather than the AA-darkened --link (it carries no
-   * text of its own; white on it is 5.25:1). 4c.2 turns the bar over — the
-   * on-grid share is the navy run and the remainder the lighter one — and the
-   * two tokens' roles are renamed there. White label: 8.54:1 on the navy.
+   * navy #2E469A and the lighter #4865CB. Step 4c turned the bar over (DECISIONS
+   * 029): the on-grid share is the navy run (--bar-on) and the rest of the
+   * declared output the lighter one (--bar-off). Through 4b they were named for
+   * the opposite reading, --bar-track (the whole bar, navy) and --bar-share (the
+   * curtailed run, light); the names now say what each colour *means*, so the
+   * roles cannot be misread again. --bar-off is the frame's exact #4865CB rather
+   * than the AA-darkened --link (it carries no text of its own; the label runs
+   * over it only when the on-grid share is small, white on it 5.25:1). White
+   * label: 8.54:1 on the navy.
    */
-  --bar-track: #2e469a;
-  --bar-share: #4865cb;
+  --bar-on: #2e469a;
+  --bar-off: #4865cb;
   --bar-label: #ffffff;
 
   /* --- Signal -------------------------------------------------------------
    * Tuned to read as text on cream (masthead clock, staleness notices) at
    * AA, not just as a dot fill — DECISIONS 027's contrast table. `ok` is
    * the tracked-wind bar's navy, and the freshness dot pulses between that and
-   * the bar's lighter blue (--bar-share) while the reading is fresh — Owen's
+   * the bar's lighter blue (--bar-off) while the reading is fresh — Owen's
    * call at the 4c.1 gate, in place of the frame's static green. Both blues
    * clear 3:1 on cream (6.79, 4.18) and on the settlement box (5.75, 3.53).
    * DECISIONS 029.
    */
-  --signal-ok: var(--bar-track);
+  --signal-ok: var(--bar-on);
 
   /* The freshness dot's pulse: one full breath, navy to light blue and back.
      Reduced motion sets the iteration count to 0 (below), the same way

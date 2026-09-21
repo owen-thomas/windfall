@@ -71,7 +71,6 @@ body {
  * Scotland/England get theirs from main.ts's composition loop, same as step 3.
  */
 .map-headline__figure,
-.map-headline__lead,
 .map-headline__tail,
 .map-band__caption,
 .map-band__intensity {
@@ -131,10 +130,10 @@ body {
 /* --- The headline (Part A.2) -------------------------------------------------
  * One sentence, Eczar, the largest and the heaviest type on the page — the
  * deliberate focal point (spec 4b §6.5). Regular weight with the figure in
- * bold: the megawatts are the claim, the rest of the sentence is its frame.
- * "At least "/the figure/"None"/"Unavailable" flow inline rather than sitting
- * in a separate eyebrow+figure+predicate stack (../../view/headline.ts's
- * dashboard layout) — see views/headline.ts's own docs.
+ * bold: the share on the grid ("83%") is the claim, the rest of the sentence is
+ * its frame. The figure and the rest flow inline rather than sitting in a
+ * separate eyebrow+figure+predicate stack (../../view/headline.ts's dashboard
+ * layout) — see views/headline.ts's own docs.
  */
 .map-headline {
   display: grid;
@@ -204,10 +203,10 @@ body {
 
 @keyframes signal-pulse {
   from {
-    background-color: var(--bar-track);
+    background-color: var(--bar-on);
   }
   to {
-    background-color: var(--bar-share);
+    background-color: var(--bar-off);
   }
 }
 
@@ -232,21 +231,24 @@ body {
   gap: var(--gap-group);
 }
 
-/* --- The breakdown bar (spec 4b §6.5) ------------------------------------------
- * One solid 32px bar in place of step 4's thin hatched track: the whole bar
- * is the declared output (the indigo track), the curtailed share the lighter
- * run at its left, and the figures sit inside it — "13% of 13,105 MW" — so
- * the headline block has real graphic weight and outweighs the mixes. The
- * fill's width is set inline by the view and still transitions (app.css).
- * Colour never carries the reading alone: the label does.
+/* --- The breakdown bar (spec 4b §6.5, 4c §4c.2) --------------------------------
+ * One solid bar: the whole of it is the declared output (the lighter blue), the
+ * on-grid share the navy run at its left, and the figures sit inside it —
+ * "10,971 of 13,105 MW". Turned over in 4c: through 4b the run was the curtailed
+ * share; it is now what is getting through, so it is the navy the frame draws
+ * it in (--bar-on), and what is not is the lighter --bar-off. 42px tall and the
+ * label 16px Eczar in one weight, inset 16px, vertically centred, as the
+ * Desktop HD frame measures. The fill's width is set inline by the view and
+ * still transitions (app.css). Colour never carries the reading alone: the
+ * label does, and the sentence above it.
  */
 .map-headline .share {
   position: relative;
   display: flex;
   align-items: center;
-  height: 2rem;
+  height: 2.625rem;
   border-radius: 0;
-  background: var(--bar-track);
+  background: var(--bar-off);
   box-shadow: none;
   overflow: hidden;
 }
@@ -255,24 +257,20 @@ body {
   position: absolute;
   inset: 0 auto 0 0;
   height: auto;
-  background-color: var(--bar-share);
+  background-color: var(--bar-on);
   background-image: none;
   box-shadow: none;
 }
 
 .map-headline .share__label {
   position: relative;
-  padding-inline: 0.5rem;
+  padding-inline: 1rem;
   font-family: var(--font-display);
   font-size: var(--type-region);
   font-weight: var(--wt-regular);
   line-height: 1;
   white-space: nowrap;
   color: var(--bar-label);
-}
-
-.map-headline .share__pct {
-  font-weight: var(--wt-bold);
 }
 
 /* No reading, nothing to show: the bar becomes an empty gauge rather than
@@ -294,45 +292,6 @@ body {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
-}
-
-/* A plain paragraph (not a flex row, as app.css has it) so it wraps like text
-   and can be cap-trimmed below; each farm and its figure stay together. */
-.map-headline .headline__farms {
-  display: block;
-  margin: 0;
-  font-size: var(--type-small);
-  line-height: 1.33;
-}
-
-/* Inline-blocks, so the line may break between one farm and the next (the view
-   emits no whitespace between them) but never inside a name and its figure. */
-.map-headline .farms__item {
-  display: inline-block;
-  white-space: nowrap;
-}
-
-.map-headline .farms__mw {
-  margin-left: 0.4em;
-}
-
-.map-headline .farms__sep {
-  display: inline-block;
-  margin-inline: 0.5em;
-}
-
-.map-headline .farms__name {
-  font-weight: var(--wt-regular);
-  color: var(--text-secondary);
-}
-
-.map-headline .farms__mw {
-  color: var(--link);
-}
-
-.map-headline .farms__sep,
-.map-headline .farms__rest {
-  color: var(--text-secondary);
 }
 
 /* --- The method toggle -----------------------------------------------------------
@@ -738,7 +697,6 @@ body[data-panel-style='card'] .panel {
 @supports (text-box: trim-both cap alphabetic) {
   .map-masthead__wordmark,
   .map-headline__sentence,
-  .map-headline .headline__farms,
   .map-text .method__summary,
   .map-band__place,
   .map-band__intensity,

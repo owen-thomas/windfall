@@ -268,6 +268,22 @@ function bootMap(): void {
   // that module is reused unchanged on `/` too and these lines are map-only.
   // The capacity figure and per-farm coverage line are already in colophon's
   // own `coverage` paragraph (colophon.ts), so nothing is added for those.
+  // Interim, until 4c.4 folds this note into the page's one disclosure (in copy
+  // Owen signs off). colophon.ts's floor paragraph is written for the old
+  // frame — "real curtailment is higher, and this figure will never overstate
+  // it", said of the megawatts held off — which the on-grid headline turns
+  // backwards: it is now the *on-grid* share that could be a little lower than
+  // shown. Same fact, the right way round; the rest of the paragraph is
+  // colophon.ts's own. `/` still uses colophon.ts unchanged.
+  setText(
+    methodEl.querySelector('.method__floor')!,
+    'Published figures for curtailment are often larger. Windfall counts only instructed ' +
+      'turn-downs — wind the grid actively paid to switch off — which is a floor: real ' +
+      'curtailment is higher, so the true share of Scotland’s wind on the grid may be a ' +
+      'little lower than the one shown. For 20 June 2026, Windfall derives 23.75 GWh where a ' +
+      'widely cited figure for the same day is 56.45.'
+  );
+
   const methodSettled = el('p', { class: 'method__map-settled' });
   const methodConstraint = el('p', { class: 'method__map-constraint' });
   const methodFlowScope = el('p', { class: 'method__map-scope' });

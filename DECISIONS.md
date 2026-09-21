@@ -1049,3 +1049,35 @@ Plate totals: **23 pass, 4 disclosed, 0 fail.** Three of the four are new (solar
 
 - The two source rows (Carbon Intensity, Elexon Insights) are not in the frame at all, so their gap and the byline's clear space above them are my reading of the spec, not a measurement. The frame's Shetland is a placeholder box with an outline and a small label; built to the spec (no box, Eczar 16px) instead.
 - `scripts/capture-step4.ts` still hovers and clicks `.map__border-hit` for its step-4 tooltip plates, so those steps will fail now. Left alone: it is a historical capture script and not part of 4c.
+
+### 4c.2 — the on-grid headline and the bar (built)
+
+The headline says how much of Scotland's tracked wind is **on** the grid, where through 4b it said how much was held off. `views/headline.ts`, `map.css`, the bar tokens.
+
+- **Copy.** "**83%** of Scotland's tracked wind is currently on the grid." The figure is the large, bold `.map-headline__figure`; the apostrophe is the typographic ’, as in the frame and the rest of that file. Stale: "…was on the grid when this was last read." Fully clear: "**100%** …". Pending ("Reading.") and failed ("Unavailable.") keep their existing sentences. The "At least" lead and its element are gone.
+- **The number.** `instructedMW = declaredMW − curtailedMW` (clamped to `[0, declaredMW]`, so a curtailed figure that ran past the declared one reads as 0%, never a negative share), over `declaredMW` (the sum of the farms' declared output, never capacity, as 026/028). `pct = instructedMW / declaredMW`. The percentage is `formatPctFloor`: no "Up to", floored, so the frame's 84% reads 83% and a constrained day can never claim more than it has. Below 1% it reads "Less than 1%", from `formatPctFloor`, as before.
+- **The bar.** Label `{on-grid} of {declared} MW`, fill width the exact on-grid share. Sentence, label and fill read the same two numbers. The label is 16px Eczar in **one weight** (the 4b bold percentage is gone), inset 16px, vertically centred, and the bar is **42px** tall: all measured off the frame (the label's 135px of ink is 16px Eczar, whose advance for that string is 137.5px). The frame's bar also has an 8px gap and a 42px chevron button on its right; the bar stays full width until the chevron arrives in 4c.3. Screen-reader sentence: "10,971 of the 13,105 MW Scotland is making is on the grid." The bar stays `aria-hidden` and the sentence labelled.
+- **The on-grid MW in the label is floored while anything is held down** (the spec says `formatMW`, which rounds to nearest). Rounding the numerator up could print more on-grid megawatts than there are, the same overstatement the percentage's floor exists to prevent. When nothing is held down it is the declared figure rounded as its denominator is, so a clear day reads "13,105 of 13,105 MW" and never "13,104 of 13,105". Floored, it can never exceed the rounded denominator.
+- **The bar is turned over, and its tokens renamed to say what they mean.** `--bar-track` (the whole bar, navy) and `--bar-share` (the curtailed run, light) become **`--bar-on`** (`#2E469A`, the on-grid run) and **`--bar-off`** (`#4865CB`, the rest of the declared output). Same two colours, opposite roles; the old names named the old reading and would have misled the next person. The freshness dot's pulse, `--signal-ok` and the plate rows follow. The label runs over the light blue only when the on-grid share is small (white on it 5.25:1). Pending and failed keep the empty grey gauge, so an unread bar never reads as "nothing is on the grid".
+- **The frame's own bar is a static mock:** the not-curtailed frame still draws the 84% split under "100%" and "13,105 of 13,105 MW". Built the honest way, a 100% bar is all navy.
+
+**Two changes I made that the spec did not list, both for honesty:**
+
+- **The list of held-down farms is gone from the headline, a stage early.** "Seagreen 631 MW • Moray West 577 MW • …" showed megawatts *held down*; under an "on the grid" headline the same pattern reads as megawatts on it. 4c.3 was going to replace it with the source list anyway, so it comes out now (`farmNodes`, `byFarm`, the CSS, and `--link`'s last user with it) rather than mislead for a stage.
+- **The method note's floor paragraph is corrected, map-only and interim.** `colophon.ts` says "real curtailment is higher, and this figure will never overstate it", said of the megawatts held off; the on-grid headline turns that backwards, since it is now the on-grid share that could be a little lower. `main.ts` now says: "…real curtailment is higher, so the true share of Scotland's wind on the grid may be a little lower than the one shown." Same fact, the right way round; the rest of the paragraph is unchanged. **4c.4 replaces the whole note with copy Owen signs off.** `/` still uses `colophon.ts` as it was.
+
+**Verified.**
+
+| Fixture | Sentence | Bar label | Fill |
+|---|---|---|---|
+| curtailing | 61% … currently on the grid. | 3,313 of 5,363 MW | 61.79% |
+| calm (none) | 100% … currently on the grid. | 5,363 of 5,363 MW | 100% |
+| stale | 61% … **was on the grid when this was last read.** | 3,313 of 5,363 MW | 61.79% |
+| degraded, offline | Unavailable. … (unchanged) | none | empty gauge |
+| waiting | Reading. … (unchanged) | none | empty gauge |
+
+The 61% is `floor(61.79)`; rounding would have said 62. The label's on-grid MW plus the old headline's "at least 2,049 MW" curtailed differ from 5,363 by one, because both are floored. Driven through the real view with hand-built states: 0.6 MW curtailed reads "99%" / "5,362 of 5,363 MW"; 99.5% curtailed "Less than 1%" / "26 of 5,363 MW"; 100% curtailed and curtailed-past-declared both "0%" / "0 of 5,363 MW". Bar, label centring and fit checked at 1440, 1280, 744 and 393 (no overflow; the sentence is two lines at each). Plate: 23 pass, 4 disclosed, 0 fail (unchanged). Fixtures load with no page errors at 1440×1024; typecheck clean apart from the known baseline; production bundle builds.
+
+**Corners the spec does not cover, left as they are:**
+- **Under a megawatt held down:** the label is exact at megawatt resolution ("5,363 of 5,363 MW") while the floored percentage reads 99%. Both are true of a 99.99% share; noted in the file's header.
+- **Nothing declared (`declaredMW` 0):** renders "100% … 0 of 0 MW". Vacuously true, and more misleading under an on-grid headline than the old "None … held off" was. Scotland's 76 farms all declaring zero is not something the data does, so I have not invented copy for it; if you want one, it is a sentence to write.
