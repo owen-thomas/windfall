@@ -48,7 +48,7 @@ import type { FarmNow } from '../../lib/types';
 import { formatMW, formatWindspeed } from '../../lib/format';
 import { onGridFigure, readOnGrid } from '../onGrid';
 
-/** How many farms show before "and N more…". */
+/** How many farms show before "Show N more". */
 const SHOWN = 8;
 
 export interface SourcesOptions {
@@ -189,7 +189,7 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
     if (!next && selectedFarm !== null && order.indexOf(selectedFarm) >= SHOWN) select(null);
   }
 
-  /** Show the first SHOWN rows, or all of them; keep the "and N more…" control honest. */
+  /** Show the first SHOWN rows, or all of them; keep the "Show N more" control honest. */
   function layout() {
     order.forEach((farm, i) => {
       const row = rows.get(farm);
@@ -197,14 +197,14 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
     });
     const rest = order.length - SHOWN;
     more.hidden = rest <= 0;
-    setText(moreText, expanded ? 'Show fewer' : `and ${rest} more…`);
+    setText(moreText, expanded ? 'Show fewer' : `Show ${rest} more`);
   }
 
   more.addEventListener('click', () => setExpanded(!expanded));
 
   // The selection lives in the list: close the disclosure, or click anywhere
   // else, or press Escape, and it goes. A click inside the list (a row, or the
-  // "and N more…" control) does not.
+  // "Show N more" control) does not.
   root.addEventListener('toggle', () => {
     if (!root.open) select(null);
   });
