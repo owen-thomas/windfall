@@ -485,7 +485,13 @@ body {
   font-family: var(--font-body);
   font-size: 0.75rem;
   line-height: 1.25rem;
-  text-align: right;
+  /* Left, not right: the 3.125rem column is wider than most figures, so
+     right-aligning left the gap to the bar only ever reading as 4px for
+     the widest number in the list — everything shorter floated in blank
+     column space. Left-aligning pins every row's figure straight against
+     the bar's own 4px column-gap, at the cost of the numbers no longer
+     sharing a ones-place edge on the right. */
+  text-align: left;
   white-space: nowrap;
   color: var(--fuel-wind);
 }
