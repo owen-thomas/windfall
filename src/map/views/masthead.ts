@@ -7,17 +7,18 @@
  * The dashboard masthead carries a standfirst slot that is either the
  * product's introductory sentence or, per DECISIONS 010/017, a staleness/
  * failure notice swapped into the same place. The map drops the
- * introductory half of that slot outright — "the headline introduces the
- * product" (026) — but keeps the warning half: a reader still needs to be
- * told, in words, above the fold, when the reading is old or unreachable.
- * So this is not a strapline with the words deleted; it is a notice-only
- * slot that renders nothing when there is nothing to warn about. It skips
- * the dashboard's rollover notice ("settlement period N closed at…") on
- * purpose (DECISIONS 032): that gap is a brief, routine wait every half
- * hour for the next fetch to land (031 already tightened it to seconds),
- * not a fault, and calling it out on every rollover trained readers to
- * ignore the warning slot generally. The genuine staleness notice (a
- * refresh that has actually stopped landing) still fires below.
+ * introductory half outright — "the headline introduces the product" (026)
+ * — and, as of DECISIONS 032/034, drops the staleness half too: neither the
+ * rollover notice ("settlement period N closed at…") nor the stale-reading
+ * one ("this reading is an hour old…") fires here any more. Both read as
+ * alarms for something the clock beside them — "Last read N ago" — already
+ * says plainly enough for a reader to act on (refresh, or just note the
+ * age), and having a two-line warning box appear and disappear under the
+ * settlement row broke the section's own grid rhythm (032/034's respective
+ * live reports). What remains: total failure (no reading has ever landed,
+ * or reaching Windfall's own functions is failing outright) still gets a
+ * word in this slot, because there the clock has nothing to point a reader
+ * at — no age to read, nothing to refresh into.
  */
 
 import { el, setAttr, setText, type View } from '../../view/dom';
@@ -95,16 +96,7 @@ export function mapMastheadView(): View {
         reading.freshness === 'stale' ? `Last read ${formatAge(reading.ms)}` : `Read ${formatAge(reading.ms)}`
       );
 
-      if (reading.freshness === 'stale') {
-        setNotice(
-          `This reading is ${formatAge(reading.ms).replace(' ago', ' old')}. The figures below ` +
-            (settlement
-              ? `describe settlement period ${settlement.period}, not the one now running.`
-              : 'describe an earlier settlement period, not the one now running.')
-        );
-      } else {
-        setNotice('');
-      }
+      setNotice('');
     },
   };
 }

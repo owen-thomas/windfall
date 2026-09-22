@@ -1246,3 +1246,19 @@ This closes 4c.5, and with it the whole of Windfall_Map_Spec_4c.md.
 **The actual fix:** added `vercel.json` — this project had none before — declaring `functions["api/windspeed.ts"].includeFiles: "src/map/data/farms.json"`, the documented way to force Vercel's build to carry a data file that static tracing misses into a specific function's bundle. `loadFarmSites()` staying inside the handler's `try` is kept regardless: it cost nothing, and it is the reason this session could diagnose the real fault directly from the deployed response rather than a third guess against an opaque crash.
 
 **Verified:** typecheck clean; `/api/windspeed` live in local dev (`health: "ok"`, all 76 farms). Production re-checked directly after each of the two prior deploys (both still `500`/`Cannot find module` respectively) — this fix not yet deployed at time of writing; the plan is to push and re-check `curl -sD- https://www.windfall.scot/api/windspeed` again rather than assume it from `includeFiles` being the documented answer.
+
+---
+
+## 034 — `/map` drops the stale-reading notice too
+
+**Date:** 2026-09-22
+**Phase:** Post-4c, found live on windfall.scot
+**Decision:** `mapMastheadView` (`src/map/views/masthead.ts`) no longer shows "This reading is N old. The figures below describe settlement period N, not the one now running." at all — the other half of DECISIONS 010/016/017's honesty mechanism, the half 032 deliberately kept when it dropped the rollover notice.
+
+**What Owen saw:** the notice appearing under the settlement row, two lines of warning-coloured text, whenever a reading actually went stale — screenshotted directly (`?state=stale`). His read: it looks bad and breaks the section's own grid, and the clock right next to it already says "Last read an hour ago", which is enough for a reader to act on (refresh, or just note the age) without a second sentence restating it.
+
+**Consistent with 032's own reasoning, taken one step further.** 032 kept this notice on the argument that a reading that has genuinely stopped refreshing is a real fault, distinct from the routine rollover gap. That distinction still holds — but 032 was weighing whether the *fact* deserved a warning; this is Owen weighing whether it deserves a *second, separate sentence* once the clock beside it already states the age. It does not: "Last read N ago" already changes color (the freshness dot, `data-freshness="stale"`, unchanged by this fix) and already says the number a reader would want. What's dropped is only the redundant restating of it in prose.
+
+**What's left in the slot.** Total failure — no reading has ever landed (`pending` with nothing yet), or Windfall's own functions are unreachable (`failed`) — still gets a sentence, because in both of those cases the clock has no age to show and nothing to point a reader at. Those two branches are untouched.
+
+**Verified:** typecheck clean. `?state=stale` in local dev: the notice box no longer renders, only the clock's own "Last read N ago" (screenshot). `?state=offline` (the failure case): notice still fires, unchanged. No console errors.
