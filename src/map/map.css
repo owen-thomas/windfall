@@ -189,7 +189,7 @@ body {
   font-family: var(--font-display);
   font-size: var(--type-heading);
   font-weight: var(--wt-regular);
-  color: var(--text-primary);
+  color: var(--text-secondary);
 }
 
 .map-settlement__summary .clock__span {
@@ -474,20 +474,24 @@ body {
   font-size: 0.75rem;
   font-weight: var(--wt-bold);
   line-height: 1.25rem;
-  color: var(--text-primary);
+  color: var(--text-secondary);
 }
 
-/* Same numeric treatment as the MW figure (--fuel-wind, Mukta) — both are
-   read alongside the name, not styled as prose. Empty (no reading yet, or the
-   feed never answered for this farm) costs nothing: an empty inline element
-   takes no space. */
+/* Same numeric treatment as the MW figure (--text-muted, Mukta) — both are
+   read alongside the name, not styled as prose. --text-muted rather than the
+   frame's own #7a7769: that value is 3.58:1 on this cream, below AA's 4.5:1
+   for normal text, the same gap 027 already found and fixed once for prose
+   generally (see tokens-light.css) — this is that fix applied here too
+   rather than the frame's literal value (Owen). Empty (no reading yet, or
+   the feed never answered for this farm) costs nothing: an empty inline
+   element takes no space. */
 .source-row__windspeed {
   flex: 0 0 auto;
   font-family: var(--font-body);
   font-size: 0.75rem;
   line-height: 1.25rem;
   white-space: nowrap;
-  color: var(--fuel-wind);
+  color: var(--text-muted);
 }
 
 .source-row__bar {
@@ -521,7 +525,7 @@ body {
      sharing a ones-place edge on the right. */
   text-align: left;
   white-space: nowrap;
-  color: var(--fuel-wind);
+  color: var(--text-muted);
 }
 
 /* "and 68 more…": a row's shape without its bar, a hollow dot in place of a
