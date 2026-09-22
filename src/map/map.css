@@ -559,7 +559,13 @@ body {
 
 .map-settlement__summary {
   display: flex;
-  align-items: center;
+  /* flex-start, not center: the 32px toggle is taller than the clock text
+     (about 17px), and centering split that ~15px of slack above and below
+     it — invisibly padding the heading away from the section's own top and
+     inflating the 32px gap above this row to something closer to 40px. With
+     the heading pinned to the row's own top, the slack falls entirely below
+     it instead, where nothing is measuring against it. */
+  align-items: flex-start;
   gap: 0.5rem;
   list-style: none;
   cursor: pointer;
