@@ -17,7 +17,7 @@
  * not an upstream.
  */
 
-import type { CurtailmentResponse, GridResponse, NarrationResponse } from './types.js';
+import type { CurtailmentResponse, GridResponse, NarrationResponse, WindspeedResponse } from './types.js';
 import { settlementAt } from './settlement.js';
 import type { SouthernRegion } from './situation.js';
 
@@ -89,5 +89,26 @@ export async function fetchNarration(region: SouthernRegion = 'south-england'): 
     return { narration, narrationError: null };
   } catch (err) {
     return { narration: null, narrationError: reason(err) };
+  }
+}
+
+export interface WindspeedFeed {
+  windspeed: WindspeedResponse | null;
+  windspeedError: string | null;
+}
+
+/**
+ * Independent, like `fetchNarration` — the one new external dependency map
+ * step 4c.5 adds. Open-Meteo has nothing to do with curtailment or the mix,
+ * so it is fetched on its own, and a slow or dead weather API can never block
+ * or blank the core feeds it shares a screen with (Windfall_Map_Spec_4c.md
+ * §4c.5, DECISIONS 029).
+ */
+export async function fetchWindspeed(): Promise<WindspeedFeed> {
+  try {
+    const windspeed = await getJson<WindspeedResponse>('/api/windspeed');
+    return { windspeed, windspeedError: null };
+  } catch (err) {
+    return { windspeed: null, windspeedError: reason(err) };
   }
 }

@@ -12,15 +12,21 @@
  * is `../onGrid.ts`'s reading of the one payload, the same one the headline
  * sentence reads, so the sentence, the bar and the rows cannot disagree.
  *
- * Each row is a button: a dot, the farm's name, a 64px mini-bar filled to that
- * farm's on-grid share (`instructedMW / declaredMW`, the same quantity the big
- * bar shows for Scotland as a whole — the bar alone carries it, so there is no
- * percentage in the row), and the farm's on-grid megawatts. Selecting a row
- * hands the farm to `onSelect`, which lights it on the map (main.ts wires the
- * particles and the markers); the selection is single, and is cleared by
- * selecting the row again, by a click anywhere outside the list, by Escape, or
- * by closing the disclosure. The windspeed clause ("≋ 34 km/h") is 4c.5's; a
- * row renders without it until that lands.
+ * Each row is a button: a dot, the farm's name and windspeed, a 64px mini-bar
+ * filled to that farm's on-grid share (`instructedMW / declaredMW`, the same
+ * quantity the big bar shows for Scotland as a whole — the bar alone carries
+ * it, so there is no percentage in the row), and the farm's on-grid megawatts.
+ * Selecting a row hands the farm to `onSelect`, which lights it on the map
+ * (main.ts wires the particles and the markers); the selection is single, and
+ * is cleared by selecting the row again, by a click anywhere outside the
+ * list, by Escape, or by closing the disclosure.
+ *
+ * Windspeed (map step 4c.5) is `state.windspeed`, an independent feed
+ * (client.ts's `fetchWindspeed`, Open-Meteo, DECISIONS 029) that can land
+ * after everything else, or not at all, without holding up or blanking a
+ * row: a farm with no reading for it — feed down, still loading, or a
+ * coordinate Open-Meteo couldn't serve — renders without the "≋ N km/h"
+ * clause, never a zero or a guess.
  *
  * Whether the disclosure starts open (desktop) or shut (mobile) is main.ts's to
  * decide from the layout tier; this view only owns what open and shut mean.
@@ -39,7 +45,7 @@
 import { el, setAttr, setText, type View } from '../../view/dom';
 import type { AppState } from '../../lib/state';
 import type { FarmNow } from '../../lib/types';
-import { formatMW } from '../../lib/format';
+import { formatMW, formatWindspeed } from '../../lib/format';
 import { onGridFigure, readOnGrid } from '../onGrid';
 
 /** How many farms show before "and N more…". */
@@ -62,6 +68,7 @@ interface Row {
   button: HTMLButtonElement;
   dot: HTMLElement;
   name: HTMLElement;
+  windspeed: HTMLElement;
   bar: HTMLElement;
   barFill: HTMLElement;
   mw: HTMLElement;
@@ -114,6 +121,11 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
   function makeRow(farm: string): Row {
     const dot = el('span', { class: 'source-row__dot', 'aria-hidden': 'true' });
     const name = el('span', { class: 'source-row__name' });
+    // Its own span, inside the name's grid cell rather than a cell of its
+    // own — the frame runs it straight on from the name ("Seagreen ≋ 34
+    // km/h"), and an empty span here (no reading yet) costs nothing.
+    const windspeed = el('span', { class: 'source-row__windspeed' });
+    const label = el('span', { class: 'source-row__label' }, name, windspeed);
     const barFill = el('span', { class: 'source-row__bar-fill' });
     const bar = el('span', { class: 'source-row__bar', 'aria-hidden': 'true' }, barFill);
     const mw = el('span', { class: 'source-row__mw' });
@@ -121,20 +133,31 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
       'button',
       { class: 'source-row', type: 'button', 'aria-pressed': 'false', 'data-farm': farm },
       dot,
-      name,
+      label,
       bar,
       mw
     );
     button.addEventListener('click', () => select(selectedFarm === farm ? null : farm));
     const item = el('li', { class: 'map-sources__item' }, button);
-    return { farm, item, button, dot, name, bar, barFill, mw };
+    return { farm, item, button, dot, name, windspeed, bar, barFill, mw };
   }
 
-  function paintRow(row: Row, farm: FarmNow) {
+  function paintRow(row: Row, farm: FarmNow, kmh: number | undefined) {
     const silent = farm.unitsDeclaring === 0 && farm.declaredMW <= 0;
     const held = farm.curtailedMW > 0;
     setText(row.name, farm.farm);
     setAttr(row.dot, 'data-state', silent ? 'silent' : 'declaring');
+
+    // The glyph is decorative (aria-hidden); the reading itself is folded
+    // into the row's aria-label below, so nothing here needs its own.
+    if (kmh === undefined) {
+      row.windspeed.replaceChildren();
+    } else {
+      row.windspeed.replaceChildren(
+        el('span', { 'aria-hidden': 'true', text: '≋' }),
+        ` ${formatWindspeed(kmh)}`
+      );
+    }
 
     if (silent || farm.declaredMW <= 0) {
       // Nothing to divide: a rail with no fill, never a full or empty share.
@@ -148,11 +171,12 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
 
     const onGrid = onGridFigure(farm.instructedMW, held);
     setText(row.mw, silent ? '—' : `${onGrid} MW`);
+    const windLabel = kmh === undefined ? '' : `, ${formatWindspeed(kmh)}`;
     row.button.setAttribute(
       'aria-label',
       silent
-        ? `${farm.farm}: no declaration this half-hour`
-        : `${farm.farm}: ${onGrid} MW on the grid of ${formatMW(farm.declaredMW)}`
+        ? `${farm.farm}: no declaration this half-hour${windLabel}`
+        : `${farm.farm}: ${onGrid} MW on the grid of ${formatMW(farm.declaredMW)}${windLabel}`
     );
   }
 
@@ -231,6 +255,10 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
         if (selectedFarm === name) select(null);
       }
 
+      // Independent of the reading above: lands whenever it lands, and a farm
+      // this feed never answers for just gets no clause (never a guess).
+      const speeds = state.windspeed?.speeds;
+
       for (const farm of farms) {
         let row = rows.get(farm.farm);
         if (!row) {
@@ -238,7 +266,7 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
           rows.set(farm.farm, row);
           if (farm.farm === selectedFarm) row.button.setAttribute('aria-pressed', 'true');
         }
-        paintRow(row, farm);
+        paintRow(row, farm, speeds?.[farm.farm]);
       }
 
       // Re-seat the rows only when the order actually changed, so a refresh

@@ -183,3 +183,26 @@ export interface NarrationResponse {
   errors: string[];
   narration: { text: string; provenance: 'generated' } | null;
 }
+
+/**
+ * Per-farm windspeed, km/h at 10m, from Open-Meteo (map step 4c.5,
+ * Windfall_Map_Spec_4c.md §4c.5, DECISIONS 029) — the one feed this product
+ * does not derive from Elexon or Carbon Intensity. Independent of the core
+ * feeds (client.ts's `fetchWindspeed`), so a slow or dead weather API can
+ * never block or blank curtailment or the mix.
+ *
+ * `speeds` carries only farms Open-Meteo actually answered for — a farm with
+ * no coordinate it could serve, or one dropped by a partial upstream failure,
+ * is simply absent, never a guessed or zeroed entry (sources.ts renders such
+ * a row without the windspeed clause, not with a fabricated one). `health` is
+ * 'ok' when every tracked farm got an answer, 'partial' when some did and
+ * some didn't, 'failed' when none did (including a total transport failure to
+ * Open-Meteo, whether the batch call itself failed or came back in a shape
+ * this route couldn't read).
+ */
+export interface WindspeedResponse {
+  fetchedAt: string;
+  health: SourceHealth;
+  errors: string[];
+  speeds: Record<string, number>;
+}

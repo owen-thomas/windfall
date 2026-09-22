@@ -426,12 +426,40 @@ body {
   border-color: var(--highlight);
 }
 
+/* The name's grid cell: the name itself plus, when 4c.5's feed has answered
+   for this farm, its windspeed running straight on from it ("Seagreen ≋ 34
+   km/h"), as the frame has it — not a column of its own. `min-width: 0` lets
+   it truncate rather than push the mini-bar and MW figure out of the row. */
+.source-row__label {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35em;
+  min-width: 0;
+  overflow: hidden;
+}
+
 .source-row__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--font-display);
   font-size: 0.75rem;
   font-weight: var(--wt-bold);
   line-height: 1.25rem;
   color: var(--text-primary);
+}
+
+/* Same numeric treatment as the MW figure (--fuel-wind, Mukta) — both are
+   read alongside the name, not styled as prose. Empty (no reading yet, or the
+   feed never answered for this farm) costs nothing: an empty inline element
+   takes no space. */
+.source-row__windspeed {
+  flex: 0 0 auto;
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  white-space: nowrap;
+  color: var(--fuel-wind);
 }
 
 .source-row__bar {

@@ -13,7 +13,7 @@
  */
 
 import { msUntilRollover, type SettlementRef } from './settlement.js';
-import type { CurtailmentResponse, GridResponse, NarrationResponse } from './types.js';
+import type { CurtailmentResponse, GridResponse, NarrationResponse, WindspeedResponse } from './types.js';
 
 export type Freshness = 'fresh' | 'ageing' | 'stale';
 
@@ -36,6 +36,14 @@ export interface Feeds {
    */
   narration: NarrationResponse | null;
   narrationError: string | null;
+  /**
+   * Absent for every fixture scenario, same reason and same treatment as
+   * `narration` — scenarios.ts never calls the network, so `/map`'s source
+   * list always degrades gracefully (map step 4c.5). `/` never fetches this
+   * at all and leaves it null throughout.
+   */
+  windspeed: WindspeedResponse | null;
+  windspeedError: string | null;
 }
 
 export interface AppState extends Feeds {
@@ -58,6 +66,8 @@ export function emptyFeeds(): Feeds {
     curtailmentError: null,
     narration: null,
     narrationError: null,
+    windspeed: null,
+    windspeedError: null,
   };
 }
 

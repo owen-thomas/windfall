@@ -85,7 +85,7 @@ import { createFarmMarkerLayer, setMarkerHighlight, styleFarmMarker, type FarmMa
 import { DEFAULT_RATE_PARAMS, type RateParams } from './rate';
 import { createMapControlPanel } from './controls';
 import { renderSwatchPlate } from './swatchPlate';
-import { fetchCoreFeeds } from '../lib/client';
+import { fetchCoreFeeds, fetchWindspeed } from '../lib/client';
 import { scenarioByName, SCENARIOS } from '../lib/scenarios';
 import { emptyFeeds, type AppState } from '../lib/state';
 import type { FarmNow } from '../lib/types';
@@ -671,14 +671,29 @@ function bootMap(): void {
       return;
     }
 
-    const feeds = await fetchCoreFeeds();
-    if (feeds.grid) state.grid = feeds.grid;
-    state.gridError = feeds.gridError;
-    if (feeds.curtailment) state.curtailment = feeds.curtailment;
-    state.curtailmentError = feeds.curtailmentError;
-    state.pending = false;
-    landFarms(state.curtailment?.now?.farms);
-    render();
+    const core = fetchCoreFeeds().then((feeds) => {
+      if (feeds.grid) state.grid = feeds.grid;
+      state.gridError = feeds.gridError;
+      if (feeds.curtailment) state.curtailment = feeds.curtailment;
+      state.curtailmentError = feeds.curtailmentError;
+      state.pending = false;
+      landFarms(state.curtailment?.now?.farms);
+      render();
+    });
+
+    // Windspeed resolves independently (4c.5, DECISIONS 029), same reasoning
+    // as src/main.ts's own narration fetch: Open-Meteo has nothing to do with
+    // curtailment or the mix, so a slow or dead weather API can never hold up
+    // — or blank — the feeds this page actually turns on. `pending` is not
+    // gated on it; the source list simply lands windspeed into its rows
+    // whenever this resolves, on the same refresh cadence as everything else.
+    const windspeed = fetchWindspeed().then((feed) => {
+      if (feed.windspeed) state.windspeed = feed.windspeed;
+      state.windspeedError = feed.windspeedError;
+      render();
+    });
+
+    await Promise.all([core, windspeed]);
   }
 
   function selectScenario(name: string) {
