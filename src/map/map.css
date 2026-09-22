@@ -636,14 +636,18 @@ body {
 .map-settlement__body {
   margin-top: 0.75rem;
   display: grid;
-  gap: 1rem;
+  gap: 1em; /* Owen — scales with .map-settlement__p's own font-size (1rem today) rather than a fixed rem */
 }
 
 .map-settlement__p {
   margin: 0;
   font-size: 1rem; /* 16px (Owen) — was 0.85em/13.6px */
   font-weight: var(--wt-light);
-  line-height: 1.55;
+  /* Unitless, not "1.25em" as spec'd: identical result here (no child
+     inherits a different font-size to compute against), and unitless is
+     what the rest of this file's line-heights already use. Was 1.55, read
+     as looser than the paragraph gap below it — Owen. */
+  line-height: 1.25;
   color: var(--text-muted);
 }
 
