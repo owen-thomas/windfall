@@ -17,6 +17,7 @@ import './styles/app.css';
 
 import { fetchCoreFeeds, fetchNarration } from './lib/client';
 import { scenarioByName, SCENARIOS } from './lib/scenarios';
+import { msUntilRolloverCheck } from './lib/settlement';
 import { emptyFeeds, type AppState } from './lib/state';
 import { screenView } from './view/screen';
 import { toggleView } from './view/toggle';
@@ -128,6 +129,19 @@ void refresh().then(() => {
 
 setInterval(render, TICK_MS);
 setInterval(() => void refresh(), REFETCH_MS);
+
+// REFETCH_MS alone can leave the honest "this settlement period has closed"
+// notice (010/016/017) showing for up to REFETCH_MS after a rollover, purely
+// because the flat interval isn't aligned to where the boundary actually is
+// (DECISIONS 031, found live). This schedules an extra check right there,
+// alongside the interval above rather than instead of it — the interval still
+// catches acceptances landing mid-period.
+(function scheduleRolloverRefresh() {
+  setTimeout(() => {
+    void refresh();
+    scheduleRolloverRefresh();
+  }, msUntilRolloverCheck());
+})();
 
 if (import.meta.env.DEV) {
   // Convenience for capture work: cycle states from the keyboard.

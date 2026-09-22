@@ -134,3 +134,32 @@ export function previousPeriod(ref: Pick<SettlementRef, 'date' | 'period'>): Set
 export function msUntilRollover(ref: SettlementRef, now: Date = new Date()): number {
   return Date.parse(ref.periodEnd) - now.getTime();
 }
+
+/**
+ * How long a client's boot script should wait before its next rollover
+ * check: the current period's own end, plus a short buffer for the upstreams
+ * to have published the new period's first data, rather than the client's
+ * flat refetch cadence (`REFETCH_MS` in each page's `main.ts`, unaligned to
+ * any period boundary). Always positive, so a caller can pass it straight to
+ * `setTimeout` in a refresh-then-reschedule loop without its own clamping.
+ *
+ * Exists because the flat cadence alone can leave up to `REFETCH_MS` of the
+ * page's honest "this settlement period has closed" notice (DECISIONS
+ * 010/016/017) showing for no reason but bad luck in when the last poll
+ * happened to land relative to the boundary — found live on windfall.scot at
+ * a real rollover, DECISIONS 031. This does not touch that notice or its
+ * logic: a genuinely slow upstream still shows it, for as long as it takes to
+ * actually get fresh data. It only shrinks the *unnecessary* part of the
+ * wait — the part caused by polling on a schedule that ignores where the
+ * boundary actually is — the same principle 018 already applies to
+ * narration's cache TTL, applied here to the client's own poll timing.
+ *
+ * 15s is a judgement call, not a measured one: long enough that a normal
+ * publish lag doesn't make this fire for nothing, short enough that the
+ * improvement is worth having. Not a promise upstreams answer within it.
+ */
+const ROLLOVER_CHECK_BUFFER_MS = 15_000;
+
+export function msUntilRolloverCheck(now: Date = new Date()): number {
+  return Math.max(1000, msUntilRollover(settlementAt(now), now) + ROLLOVER_CHECK_BUFFER_MS);
+}

@@ -86,6 +86,7 @@ import { DEFAULT_RATE_PARAMS, type RateParams } from './rate';
 import { createMapControlPanel } from './controls';
 import { renderSwatchPlate } from './swatchPlate';
 import { fetchCoreFeeds, fetchWindspeed } from '../lib/client';
+import { msUntilRolloverCheck } from '../lib/settlement';
 import { scenarioByName, SCENARIOS } from '../lib/scenarios';
 import { emptyFeeds, type AppState } from '../lib/state';
 import type { FarmNow } from '../lib/types';
@@ -718,6 +719,20 @@ function bootMap(): void {
   const TICK_MS = 15_000;
   setInterval(render, TICK_MS);
   setInterval(() => void refresh(), REFETCH_MS);
+
+  // REFETCH_MS alone can leave the honest "this settlement period has closed"
+  // notice (010/016/017, shown here via masthead.ts's clock) showing for up
+  // to REFETCH_MS after a rollover, purely because the flat interval isn't
+  // aligned to where the boundary actually is (DECISIONS 031, found live on
+  // windfall.scot). This schedules an extra check right there, alongside the
+  // interval above rather than instead of it — the interval still catches
+  // acceptances landing mid-period.
+  (function scheduleRolloverRefresh() {
+    setTimeout(() => {
+      void refresh();
+      scheduleRolloverRefresh();
+    }, msUntilRolloverCheck());
+  })();
 
   if (import.meta.env.DEV) {
     addEventListener('keydown', (event) => {

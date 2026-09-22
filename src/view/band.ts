@@ -192,9 +192,22 @@ export const NORTH: BandSpec = {
       now: 'Scotland is generating more than it can use, and more than the network can carry away.',
       past: 'Scotland was generating more than it could use, and more than the network could carry away.',
     },
+    // Reworded post-4c (DECISIONS 030): keyed on the same `curtailedMW <= 0`
+    // as the map's on-grid headline, so the two never disagreed — but paired
+    // with a headline now reading "100% on the grid", "generating less than
+    // the network can carry" read as a caveat pulling against that claim
+    // rather than the reason for it. Landed on a subject/verb echo of its own
+    // constrained sibling above ("Scotland is generating more/less than…"),
+    // "wind" specific (this page's mechanism is wind curtailment, not
+    // generation broadly) and "south" kept (not "network capacity" alone):
+    // this page's whole argument is one specific link, not a generic limit.
+    // Shared with `/` via the SCOTLAND alias below. `past` exists for the
+    // same reason every caption's does — the settlement-period-closed gap
+    // 031 shrank but did not remove — and is not a present-tense claim
+    // wearing a past-tense label: see 010/016/017.
     clear: {
-      now: 'Scotland is generating less than the network south of it can carry.',
-      past: 'Scotland was generating less than the network south of it could carry.',
+      now: 'Scotland is generating less wind than the southbound network can carry.',
+      past: 'Scotland was generating less wind than the southbound network could carry.',
     },
     unknown: 'How much of this reaches the south cannot be read this half-hour.',
   },
