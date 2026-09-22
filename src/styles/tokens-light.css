@@ -41,7 +41,8 @@
    * is the one size that steps by breakpoint tier, 40/32/32/20px, so it is
    * set in grid.css with the other tier tokens, not here.
    */
-  --type-region: 1rem; /* wordmark, region name + intensity, the breakdown bar's label — Eczar */
+  --type-region: 1rem; /* wordmark, region name + intensity, "of" in the breakdown bar's label — Eczar */
+  --type-heading: 1.25rem; /* 20px — the breakdown bar's two figures, the settlement-period heading — Eczar */
   --type-body: 0.75rem; /* band sentences, tooltip body, method note — Mukta */
   --type-small: 0.75rem; /* settlement row, farm list, legend, toggle, byline, border label — Mukta */
   --type-caption: 0.6875rem; /* inset captions, the mobile legend — Mukta */

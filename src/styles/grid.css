@@ -75,8 +75,10 @@
   --text-bleed: 0rem;
   --gap-masthead: 1.9rem;
 
-  /* Vertical gap between the rows inside the headline block. */
-  --gap-group: 0.5rem;
+  /* Vertical gap between the rows inside the headline block (the sentence,
+     the bar, the settlement disclosure) — flat across every tier, not a
+     stepped value like the type scale below. */
+  --gap-group: 2rem; /* 32px */
 
   /* Type that steps by tier. */
   --type-display: 1.25rem; /* 20px */
@@ -133,7 +135,6 @@
     --page-bottom: 3.5rem;
     --gap-masthead: 2.875rem;
     --mix-span: 3;
-    --gap-group: 0.75rem;
     --type-display: 2rem; /* 32px */
     --lh-display: 1.125;
     --type-wordmark: 1rem; /* 16px */

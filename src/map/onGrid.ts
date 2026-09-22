@@ -31,8 +31,11 @@ export interface OnGridReading {
   pct: number;
   /** Nothing is being held down: the on-grid share is a true 100%. */
   allClear: boolean;
-  /** The bar's label: "10,971 of 13,105 MW". */
-  label: string;
+  /** The bar's label, on-grid half: "10,971". Split from `declaredLabel` so the
+   *  view can set "of" in its own, smaller size between the two. */
+  onGridLabel: string;
+  /** The bar's label, declared half: "13,105 MW". */
+  declaredLabel: string;
   /** The plain sentence for the aria-hidden bar: "10,971 of the 13,105 MW Scotland is making is on the grid." */
   sentence: string;
 }
@@ -62,7 +65,8 @@ export function readOnGrid(now: Pick<CurtailmentNow, 'curtailedMW' | 'farms'>): 
     instructedMW,
     pct,
     allClear,
-    label: `${onGrid} of ${formatMW(declaredMW)}`,
+    onGridLabel: onGrid,
+    declaredLabel: formatMW(declaredMW),
     // The first figure is bare because the second's "MW" covers both (026's phrasing).
     sentence: `${onGrid} of the ${formatMW(declaredMW)} Scotland is making is on the grid.`,
   };

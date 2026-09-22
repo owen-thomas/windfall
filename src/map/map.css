@@ -142,7 +142,7 @@ body {
 }
 
 .map-headline__sentence {
-  margin: 0 0 calc(1.5rem - var(--gap-group));
+  margin: 0;
   font-family: var(--font-display);
   font-size: var(--type-display);
   font-weight: var(--wt-regular);
@@ -183,8 +183,10 @@ body {
 }
 
 .map-settlement__summary .clock__period {
-  font-weight: var(--wt-bold);
-  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-size: var(--type-heading);
+  font-weight: var(--wt-regular);
+  color: var(--text-primary);
 }
 
 .map-settlement__summary .clock__span {
@@ -237,11 +239,12 @@ body {
  * blue), the on-grid share the navy run at its left, the figures inside it —
  * "10,971 of 13,105 MW". Turned over in 4c: through 4b the run was the curtailed
  * share; it is now what is getting through, so it is the navy the frame draws it
- * in (--bar-on), and what is not is the lighter --bar-off. 42px tall and the
- * label 16px Eczar in one weight, inset 16px, vertically centred, as the Desktop
- * HD frame measures. The fill's width is set inline by the view and still
- * transitions (app.css). Colour never carries the reading alone: the label does,
- * and the sentence above it.
+ * in (--bar-on), and what is not is the lighter --bar-off. 32px tall, inset 8px
+ * from the left, vertically centred. The two figures are 20px Eczar; "of"
+ * between them drops to 16px (--type-region) — the numbers are the reading,
+ * "of" is only the grammar joining them (post-4c.5 fix). The fill's width is
+ * set inline by the view and still transitions (app.css). Colour never carries
+ * the reading alone: the label does, and the sentence above it.
  */
 .map-sources__summary {
   position: relative;
@@ -267,7 +270,7 @@ body {
   min-width: 0;
   display: flex;
   align-items: center;
-  height: 2.625rem;
+  height: 2rem;
   border-radius: 0;
   background: var(--bar-off);
   box-shadow: none;
@@ -285,20 +288,30 @@ body {
 
 .map-sources .share__label {
   position: relative;
-  padding-inline: 1rem;
+  padding-left: 0.5rem;
+  padding-right: 1rem;
   font-family: var(--font-display);
-  font-size: var(--type-region);
+  font-size: var(--type-heading);
   font-weight: var(--wt-regular);
   line-height: 1;
   white-space: nowrap;
   color: var(--bar-label);
 }
 
-/* The chevron: the frame's 42px square in --ink-box with a small filled
-   triangle, pointing down when the list is open and right when it is shut. */
+/* "of", between the two figures: smaller than either (see the section
+   comment above) — its own span rather than a size change on the whole
+   label. */
+.map-sources .share__label-of {
+  font-size: var(--type-region);
+}
+
+/* The chevron: a 32px square in --ink-box with a small filled triangle,
+   pointing down when the list is open and right when it is shut. The same
+   size and box treatment as .map-settlement__chevron below — one toggle
+   convention, not two. */
 .map-sources__chevron {
-  flex: 0 0 2.625rem;
-  height: 2.625rem;
+  flex: 0 0 2rem;
+  height: 2rem;
   display: grid;
   place-items: center;
   background: var(--ink-box);
@@ -526,15 +539,19 @@ body {
   border: 1px solid var(--bar-off);
 }
 
-/* --- The settlement disclosure (spec 4b §6.5, 4c §4c.4) ------------------------
- * The boxed settlement-period row is the summary; the page's one consolidated
+/* --- The settlement disclosure (spec 4b §6.5, 4c §4c.4; post-4c.5 re-cut) ------
+ * The settlement-period row is the summary; the page's one consolidated
  * explanation is its body (views/settlement.ts). It replaces colophonView's own
  * "How this number is worked out" toggle on this page — that `<details>` is
  * detached in main.ts rather than styled here, since `/` still uses it as is.
  *
- * Frame measurements at 1440: the box is the text column's full width, 42px
- * tall, 16px padding each side; the chevron sits flush with the right edge, no
- * separate button. Closed by default (the settlement.ts header explains why).
+ * The row no longer sits in its own boxed pill (that was the 4c.4 frame's
+ * reading; dropped post-4c.5, Owen's call): the heading now runs flush with
+ * the rest of the column, at the same left edge as the headline and the bar
+ * above it, with only its own toggle keeping a background — the same 32px
+ * --ink-box square as the bar's own chevron (.map-sources__chevron), 8px
+ * gap between heading and toggle. Closed by default (the settlement.ts
+ * header explains why).
  */
 .map-settlement {
   margin-top: 0;
@@ -544,9 +561,6 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  height: 2.625rem;
-  padding-inline: 1rem;
-  background: var(--ink-box);
   list-style: none;
   cursor: pointer;
 }
@@ -557,16 +571,22 @@ body {
 
 .map-settlement__summary:focus-visible {
   outline: 2px solid var(--text-primary);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 
-/* The chevron: the same shape, size and rotation as the bar's
-   (.map-sources__chevron) — the standard disclosure-triangle pattern, right
-   when shut and down when open — so the two disclosures this page now has
-   read as one convention, not two. (An earlier build had this one rotating
-   the other way, down-to-up; caught at the 4c.4 gate.) */
+/* The toggle: the same 32px --ink-box square as the bar's own
+   (.map-sources__chevron) — one convention, not two — the triangle drawn on
+   ::before rather than the element itself so the element can be the box. */
 .map-settlement__chevron {
-  flex: 0 0 auto;
+  flex: 0 0 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  background: var(--ink-box);
+}
+
+.map-settlement__chevron::before {
+  content: '';
   width: 10px;
   height: 6px;
   background: var(--text-secondary);
@@ -575,7 +595,7 @@ body {
   transition: transform var(--dur-quick) var(--ease-in-out);
 }
 
-.map-settlement[open] .map-settlement__chevron {
+.map-settlement[open] .map-settlement__chevron::before {
   transform: none;
 }
 
@@ -593,13 +613,12 @@ body {
 .map-settlement__body {
   margin-top: 0.75rem;
   display: grid;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .map-settlement__p {
   margin: 0;
-  max-width: 66ch;
-  font-size: var(--type-body);
+  font-size: 0.85em;
   font-weight: var(--wt-light);
   line-height: 1.55;
   color: var(--text-muted);
@@ -1010,6 +1029,9 @@ body[data-panel-style='card'] .panel {
 @supports (text-box: trim-both cap alphabetic) {
   .map-masthead__wordmark,
   .map-headline__sentence,
+  .map-sources .share__label,
+  .map-settlement__summary .clock__period,
+  .map-settlement__p,
   .map-band__place,
   .map-band__intensity,
   .map-band__caption,

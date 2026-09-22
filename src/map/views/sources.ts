@@ -219,9 +219,19 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
     if (event.key === 'Escape' && selectedFarm !== null) select(null);
   });
 
-  function setBar(pct: number, label: string | null, plain: string) {
+  function setBar(pct: number, onGridLabel: string | null, declaredLabel: string | null, plain: string) {
     shareFill.style.width = `${Math.min(100, Math.max(0, pct))}%`;
-    setText(shareLabel, label ?? '');
+    if (onGridLabel === null || declaredLabel === null) {
+      shareLabel.replaceChildren();
+    } else {
+      // "of" on its own, smaller than the two figures either side of it —
+      // the numbers are the reading, "of" is just the grammar joining them.
+      shareLabel.replaceChildren(
+        onGridLabel,
+        el('span', { class: 'share__label-of', text: ' of ' }),
+        declaredLabel
+      );
+    }
     setText(sentence, plain);
   }
 
@@ -237,14 +247,19 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
         // empty gauge, and no list. (`open` is left alone, so a desktop that
         // starts open is still open when the reading lands.)
         setAttr(root, 'data-state', state.pending ? 'pending' : 'failed');
-        setBar(0, null, '');
+        setBar(0, null, null, '');
         if (selectedFarm !== null) select(null);
         return;
       }
 
       setAttr(root, 'data-state', 'ok');
       const reading = readOnGrid(data.now);
-      setBar(reading.pct, reading.label, `${reading.sentence} The farms behind it, largest first.`);
+      setBar(
+        reading.pct,
+        reading.onGridLabel,
+        reading.declaredLabel,
+        `${reading.sentence} The farms behind it, largest first.`
+      );
 
       const farms = [...data.now.farms].sort(byDeclared);
       const present = new Set(farms.map((f) => f.farm));
