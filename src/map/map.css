@@ -92,24 +92,15 @@ body {
 
 .map-masthead__wordmark {
   margin: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 0.3em;
-  font-family: var(--font-display);
   font-size: var(--type-wordmark);
-  font-weight: var(--wt-regular);
   line-height: 1.25;
-  letter-spacing: -0.01em;
-  color: var(--text-primary);
 }
 
-/* The vector "Windfall≋" lockup (images/Logo.svg → public/logo.svg),
-   replacing the bold-strong "Windfall" plus a literal "≋" character: the
-   wave glyph rendered as text was font-dependent and drifted from the
-   brand mark's actual shape. Scales with --type-wordmark like the text
-   beside it did, at the SVG's own 87:16 aspect ratio; baseline-aligned so
-   it sits on the same line as "Scotland wind energy tracker" rather than
-   centred against its ascender/descender box. */
+/* The vector "Windfall≋" lockup (images/Logo.svg → public/logo.svg): the
+   whole masthead now, since Owen dropped "Scotland wind energy tracker"
+   (the headline sentence below already says what the page is). Scales with
+   --type-wordmark the same way the text it replaced did, at the SVG's own
+   87:16 aspect ratio. */
 .map-masthead__logo {
   height: 1em;
   width: auto;

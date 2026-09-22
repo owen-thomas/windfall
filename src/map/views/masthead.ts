@@ -56,8 +56,7 @@ export function mapMastheadView(): View {
         alt: 'Windfall',
         width: 87,
         height: 16,
-      }),
-      ' Scotland wind energy tracker'
+      })
     ),
     clock
   );
