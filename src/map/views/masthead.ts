@@ -50,8 +50,14 @@ export function mapMastheadView(): View {
     el(
       'h1',
       { class: 'map-masthead__wordmark' },
-      el('strong', { class: 'map-masthead__name', text: 'Windfall' }),
-      ' ≋ Scotland wind energy tracker'
+      el('img', {
+        class: 'map-masthead__logo',
+        src: '/logo.svg',
+        alt: 'Windfall',
+        width: 87,
+        height: 16,
+      }),
+      ' Scotland wind energy tracker'
     ),
     clock
   );

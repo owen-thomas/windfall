@@ -15,11 +15,20 @@
  * object the bar renders, so they cannot disagree with it (026's own rule:
  * "every figure in a sentence comes from the same payload as the bar above
  * it").
+ *
+ * Scotland's caption only, a third clause: "Average wind speed 14 km/h." —
+ * the mean of whatever `state.windspeed` (map step 4c.5, Open-Meteo) answered
+ * for, across every tracked farm's coordinate, not filtered to farms
+ * currently declaring output. Windspeed is a reading of the weather at a
+ * location, not of a farm's operating state, so a silent farm's own wind
+ * still counts — the same reasoning `sources.ts`'s per-farm "≋ N km/h" already
+ * applies row by row. Omitted entirely (never "0 km/h") while the feed hasn't
+ * answered for anything yet, per the product's own no-guessing rule.
  */
 
 import { el, setAttr, setText, setTextCrossfade, type View } from '../../view/dom';
 import { FUEL_ORDER, orderMix } from '../../lib/fuels';
-import { formatIntensity, formatIntensityWords, formatPct, fuelLabel } from '../../lib/format';
+import { formatIntensity, formatIntensityWords, formatPct, formatWindspeed, fuelLabel } from '../../lib/format';
 import type { CurtailmentNow, RegionState } from '../../lib/types';
 import { speaksOfNow, type AppState } from '../../lib/state';
 import type { BandSpec } from '../../view/band';
@@ -137,7 +146,15 @@ function unknownOrStateCaption(
   return spec.caption[now.curtailedMW > 0 ? 'constrained' : 'clear'][tense];
 }
 
-/** The complete two-clause statement: the existing constraint-voice sentence, then a second clause stating the bar's own lead-fuel share and intensity in prose (026). */
+/** The mean of every farm coordinate the windspeed feed has answered for so far, or null while it has answered for none. */
+function averageWindspeed(speeds: Record<string, number> | undefined): number | null {
+  if (!speeds) return null;
+  const values = Object.values(speeds);
+  if (values.length === 0) return null;
+  return values.reduce((sum, v) => sum + v, 0) / values.length;
+}
+
+/** The complete statement: the existing constraint-voice sentence, a second clause stating the bar's own lead-fuel share and intensity in prose (026), and — Scotland's panel only — a third giving the tracked fleet's average windspeed (4c.5). */
 function twoClauseCaption(
   spec: BandSpec,
   region: RegionState,
@@ -148,5 +165,9 @@ function twoClauseCaption(
   const leadPct = spec.lead === 'wind' ? region.windPct : region.gasPct;
   const words = formatIntensityWords(region.intensity.forecast ?? region.intensity.actual);
   const second = `${formatPct(leadPct)} ${spec.lead} at ${words}.`;
-  return `${first} ${second}`;
+
+  if (spec.lead !== 'wind') return `${first} ${second}`;
+  const avg = averageWindspeed(state.windspeed?.speeds);
+  if (avg === null) return `${first} ${second}`;
+  return `${first} ${second} Average wind speed ${formatWindspeed(avg)}.`;
 }

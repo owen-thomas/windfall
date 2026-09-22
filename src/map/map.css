@@ -92,6 +92,9 @@ body {
 
 .map-masthead__wordmark {
   margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.3em;
   font-family: var(--font-display);
   font-size: var(--type-wordmark);
   font-weight: var(--wt-regular);
@@ -100,8 +103,17 @@ body {
   color: var(--text-primary);
 }
 
-.map-masthead__name {
-  font-weight: var(--wt-bold);
+/* The vector "Windfall≋" lockup (images/Logo.svg → public/logo.svg),
+   replacing the bold-strong "Windfall" plus a literal "≋" character: the
+   wave glyph rendered as text was font-dependent and drifted from the
+   brand mark's actual shape. Scales with --type-wordmark like the text
+   beside it did, at the SVG's own 87:16 aspect ratio; baseline-aligned so
+   it sits on the same line as "Scotland wind energy tracker" rather than
+   centred against its ascender/descender box. */
+.map-masthead__logo {
+  height: 1em;
+  width: auto;
+  display: block;
 }
 
 /* --- The text block --------------------------------------------------------
@@ -195,6 +207,12 @@ body {
 
 .map-settlement__summary .clock__age {
   margin-left: auto;
+  /* app.css's shared .clock__age sets 0.4rem; matched here to the farm
+     list's own dot-to-text gap (.source-row's 4px column-gap) instead, so
+     the two dot-and-label pairs on this page read as one convention
+     (Owen). Scoped to the map's settlement row only — `/` keeps app.css's
+     own value unchanged. */
+  gap: 4px;
 }
 
 /* The freshness dot pulses between the tracked-wind bar's two blues while the
@@ -389,7 +407,7 @@ body {
   appearance: none;
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: 10px minmax(0, 1fr) 64px 3.125rem;
+  grid-template-columns: 0.45rem minmax(0, 1fr) 64px 3.125rem;
   column-gap: 4px;
   align-items: center;
   width: calc(100% + 12px);
@@ -420,9 +438,15 @@ body {
   outline-offset: 0;
 }
 
+/* Same size as the settlement row's own freshness dot (app.css
+   .clock__age::before, 0.45rem) — Owen's call, matched exactly rather than
+   independently chosen. The grid column above is sized to match, so there's
+   no leftover slack around a now-smaller circle (the same class of bug the
+   settlement toggle's height caused — see the map-settlement__summary
+   align-items comment). */
 .source-row__dot {
-  width: 10px;
-  height: 10px;
+  width: 0.45rem;
+  height: 0.45rem;
   box-sizing: border-box;
   border-radius: 50%;
   background: var(--bar-off);
@@ -554,7 +578,11 @@ body {
  * header explains why).
  */
 .map-settlement {
-  margin-top: 0;
+  /* The headline block's grid gap (--gap-group, 32px) is shared with the
+     sentence-to-bar gap above; this one is 8px tighter (Owen), so it pulls
+     in on top of the shared gap rather than the token itself changing (that
+     would shrink the sentence-to-bar gap too, which nobody asked for). */
+  margin-top: -0.5rem;
 }
 
 .map-settlement__summary {
@@ -618,7 +646,7 @@ body {
 
 .map-settlement__p {
   margin: 0;
-  font-size: 0.85em;
+  font-size: 1rem; /* 16px (Owen) — was 0.85em/13.6px */
   font-weight: var(--wt-light);
   line-height: 1.55;
   color: var(--text-muted);
