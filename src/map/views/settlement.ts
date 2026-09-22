@@ -115,9 +115,11 @@ export function mapSettlementView(clockEl: Element): View {
       }
       setText(
         coverage,
-        'This is a partial picture: farms get held back in ways our data doesn’t capture, so ' +
-          'real curtailment is probably higher and the on-grid share lower than what’s shown ' +
-          `here. Windfall only counts what the grid operator instructs off. ${trackedLine}`
+        'Britain’s grid is measured in half-hour settlement periods — the one named above is ' +
+          'what every figure on this page describes. This is a partial picture: farms get held ' +
+          'back in ways our data doesn’t capture, so real curtailment is probably higher and the ' +
+          `on-grid share lower than what’s shown here. Windfall only counts what the grid ` +
+          `operator instructs off. ${trackedLine}`
       );
     },
   };

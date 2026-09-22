@@ -11,13 +11,18 @@
  * product" (026) — but keeps the warning half: a reader still needs to be
  * told, in words, above the fold, when the reading is old or unreachable.
  * So this is not a strapline with the words deleted; it is a notice-only
- * slot that renders nothing when there is nothing to warn about, and the
- * same three warning sentences the dashboard uses when there is.
+ * slot that renders nothing when there is nothing to warn about. It skips
+ * the dashboard's rollover notice ("settlement period N closed at…") on
+ * purpose (DECISIONS 032): that gap is a brief, routine wait every half
+ * hour for the next fetch to land (031 already tightened it to seconds),
+ * not a fault, and calling it out on every rollover trained readers to
+ * ignore the warning slot generally. The genuine staleness notice (a
+ * refresh that has actually stopped landing) still fires below.
  */
 
 import { el, setAttr, setText, type View } from '../../view/dom';
-import { formatAge, formatPeriodSpan, formatTime } from '../../lib/format';
-import { describesNow, overallAge, settlementOf, type AppState } from '../../lib/state';
+import { formatAge, formatPeriodSpan } from '../../lib/format';
+import { overallAge, settlementOf, type AppState } from '../../lib/state';
 
 export function mapMastheadView(): View {
   const period = el('span', { class: 'clock__period' });
@@ -89,15 +94,6 @@ export function mapMastheadView(): View {
         age,
         reading.freshness === 'stale' ? `Last read ${formatAge(reading.ms)}` : `Read ${formatAge(reading.ms)}`
       );
-
-      if (reading.freshness !== 'stale' && !describesNow(state) && settlement) {
-        setAttr(clock, 'data-freshness', 'ageing');
-        setNotice(
-          `Settlement period ${settlement.period} closed at ${formatTime(settlement.periodEnd)}. The ` +
-            'figures below describe it, not the period now running.'
-        );
-        return;
-      }
 
       if (reading.freshness === 'stale') {
         setNotice(

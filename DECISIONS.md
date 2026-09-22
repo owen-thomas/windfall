@@ -1214,3 +1214,31 @@ This closes 4c.5, and with it the whole of Windfall_Map_Spec_4c.md.
 **Considered and rejected: a hard page refresh at rollover** (Owen's first framing of the ask). Would have discarded the graceful in-place transition 020's whole motion pass exists to provide — the crossfade, the flow field's build-up, a selected source's highlight, scroll position — for a jarring reload, to fix a problem that turned out to be a scheduling gap, not a need to reload. Raised before building anything; Owen's follow-up ("it brought up a warning rather than just updating the figures") confirmed the actual complaint was the gap, not the absence of a reload.
 
 **Verified:** `msUntilRolloverCheck` checked against real settlement boundaries at several offsets through a period (exactly at rollover, 1ms after, 90 seconds after — past where the old flat interval could still be waiting, 1 second before) — always positive, always resolving to (that period's end + 15s) regardless of when in the period it's called from, so the reschedule loop is self-correcting off the real clock rather than chaining relative delays. Both boot scripts load with no page errors; all seven `/map` fixtures and the dashboard's own fixtures unaffected (this is additive scheduling, not a change to render or refresh logic itself). Typecheck clean; production build passes. Not verified against a real live rollover in this session (would need a 30-minute wait) — the pure function's correctness across the tested offsets is what stands in for that.
+
+---
+
+## 032 — `/map` drops the rollover notice outright; explains "settlement period" instead
+
+**Date:** 2026-09-22
+**Phase:** Post-4c, found live on windfall.scot
+**Decision:** `mapMastheadView` (`src/map/views/masthead.ts`) no longer shows "Settlement period N closed at HH:MM. The figures below describe it, not the period now running." at all. 031 already shrank the window this can be true for to about 15 seconds plus whatever the upstream takes to publish; on Owen's read, even that brief a warning wasn't worth the alarm it raised — the figures are correct, only their clock has ticked over, and a reader mid-sentence doesn't need to be told the sentence just changed tense. `describesNow` and the `'ageing'` freshness state are now unused on this page; the plain staleness notice ("this reading is N minutes old…", genuine non-transient lag) is untouched. `/` still carries the rollover notice unchanged — not asked, not touched.
+
+**Companion change, same request:** the map's one explanation (`src/map/views/settlement.ts`, DECISIONS 029) never actually said what a "settlement period" was, despite the boxed row above it naming one every render. Added as the opening sentence of the second paragraph (the coverage/caveats paragraph): "Britain's grid is measured in half-hour settlement periods — the one named above is what every figure on this page describes." Placed there rather than in the mechanism paragraph above it because that paragraph is about *why* curtailment happens, not *when* a reading is taken — a different question, and the coverage paragraph was already the page's other place for caveating what the figures do and don't claim.
+
+**Verified:** typecheck clean; both changes render correctly at `/map/` in dev (screenshot), no console errors. Not verified against a real live rollover in this session — same limitation as 031.
+
+---
+
+## 033 — `/api/windspeed` was crashing in production, not merely stale
+
+**Date:** 2026-09-22
+**Phase:** Post-4c, found live on windfall.scot
+**Decision:** `api/windspeed.ts` now loads `farms.json` via `createRequire(import.meta.url)(...)` instead of a static `import farms from '../src/map/data/farms.json'`.
+
+**What Owen saw:** windspeeds on `/map` never appeared to update — reported as "aren't live", read first as a caching or scheduling question like 031.
+
+**What was actually wrong:** `GET /api/windspeed` was returning `500 FUNCTION_INVOCATION_FAILED` on windfall.scot, not stale data — confirmed directly (`curl -sD- https://www.windfall.scot/api/windspeed`), while `/api/grid` and `/api/curtailment` both answered normally. Vercel's Node builder transpiles each `api/*.ts` file individually rather than bundling it (confirmed against Vercel's own community reports of the same failure mode), so the function runs under Node's native ESM loader — which refuses a bare `import x from './y.json'` without an import attribute (`with { type: 'json' }`, version-dependent syntax) and rejects the whole module before the handler ever runs. `windspeed.ts` was the only route in `api/` importing a `.json` file directly; every other route only imports `.ts`/`.js`, which is why this was invisible everywhere else. Open-Meteo itself was never the problem — queried directly with the same batched-coordinate URL this route builds, it answered 200 with live data.
+
+**The fix sidesteps Node ESM's JSON-import-attribute rules entirely** rather than adding the (Node-version-specific) attribute syntax: `createRequire(import.meta.url)('../src/map/data/farms.json')` uses CommonJS's `require`, which has always loaded JSON natively with no attribute needed, regardless of which Node version Vercel runs the function on.
+
+**Verified:** typecheck clean. `/api/windspeed` returns `200`, `health: "ok"`, live per-farm speeds for all 76 farms against the real Open-Meteo API in local dev (`GET http://localhost:54550/api/windspeed`). Not yet re-verified against production directly (would need a deploy) — the root cause (a bare JSON import under Vercel's per-file Node ESM transpilation) and the fix (avoiding import attributes altogether via `require`) are both independently confirmed.

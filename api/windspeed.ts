@@ -19,10 +19,19 @@
  * (no clause on the row), so failing shut here costs nothing.
  */
 
+import { createRequire } from 'node:module';
 import type { ApiRequest, ApiResponse } from './_lib/handler.js';
 import type { WindspeedResponse } from '../src/lib/types.js';
 import { fetchJson, setCacheHeaders } from './_lib/http.js';
-import farms from '../src/map/data/farms.json';
+
+// Vercel transpiles each API file individually rather than bundling, so this
+// runs under Node's native ESM loader — which refuses a bare `import x from
+// './y.json'` without an import attribute, and rejects the whole module
+// before the handler ever runs (every other route only imports .ts/.js, so
+// this was the one function that could hit it). `require` sidesteps that:
+// CommonJS has always loaded JSON natively, no attribute syntax to get wrong
+// across Node versions.
+const farms = createRequire(import.meta.url)('../src/map/data/farms.json');
 
 interface FarmSite {
   farm: string;
