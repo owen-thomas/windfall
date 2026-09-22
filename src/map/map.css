@@ -163,10 +163,13 @@ body {
   color: var(--text-muted);
 }
 
-/* The settlement-period / "Read N ago" row, seated here by main.ts. The
-   masthead view still owns it and its notice (010/016/017); this only lays
-   it out: the period and its span left, the freshness dot and age right. */
-.map-headline__meta .map-masthead__clock {
+/* The settlement-period / "Read N ago" row, seated in the settlement
+   disclosure's summary by main.ts (views/settlement.ts). The masthead view
+   still owns it and its notice (010/016/017); this only lays it out: the
+   period and its span left, the freshness dot and age right. */
+.map-settlement__summary .map-masthead__clock {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -179,16 +182,16 @@ body {
   text-align: left;
 }
 
-.map-headline__meta .clock__period {
+.map-settlement__summary .clock__period {
   font-weight: var(--wt-bold);
   color: var(--text-muted);
 }
 
-.map-headline__meta .clock__span {
+.map-settlement__summary .clock__span {
   color: var(--text-muted);
 }
 
-.map-headline__meta .clock__age {
+.map-settlement__summary .clock__age {
   margin-left: auto;
 }
 
@@ -489,39 +492,83 @@ body {
   border: 1px solid var(--bar-off);
 }
 
-/* --- The method toggle -----------------------------------------------------------
- * colophonView's own <details>, seated last in the text block. "► How this
- * number is worked out", bold, as the frames have it; the ► turns to point
- * down when it is open. The paragraphs were styled by `.colophon` in the
- * footer and no longer sit under it, so their size and colour are restated.
+/* --- The settlement disclosure (spec 4b §6.5, 4c §4c.4) ------------------------
+ * The boxed settlement-period row is the summary; the page's one consolidated
+ * explanation is its body (views/settlement.ts). It replaces colophonView's own
+ * "How this number is worked out" toggle on this page — that `<details>` is
+ * detached in main.ts rather than styled here, since `/` still uses it as is.
+ *
+ * Frame measurements at 1440: the box is the text column's full width, 42px
+ * tall, 16px padding each side; the chevron sits flush with the right edge, no
+ * separate button. Closed by default (the settlement.ts header explains why).
  */
-.map-text .method {
-  font-size: var(--type-body);
-  color: var(--text-muted);
+.map-settlement {
+  margin-top: 0;
 }
 
-.map-text .method__summary {
+.map-settlement__summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.625rem;
+  padding-inline: 1rem;
+  background: var(--ink-box);
   list-style: none;
   cursor: pointer;
-  font-size: var(--type-small);
-  font-weight: var(--wt-bold);
-  line-height: 1.17;
-  color: var(--text-secondary);
 }
 
-.map-text .method__summary::-webkit-details-marker {
+.map-settlement__summary::-webkit-details-marker {
   display: none;
 }
 
-.map-text .method__summary::before {
-  content: '►';
-  display: inline-block;
-  margin-right: 0.5em;
+.map-settlement__summary:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: -2px;
+}
+
+/* The chevron: the same shape, size and rotation as the bar's
+   (.map-sources__chevron) — the standard disclosure-triangle pattern, right
+   when shut and down when open — so the two disclosures this page now has
+   read as one convention, not two. (An earlier build had this one rotating
+   the other way, down-to-up; caught at the 4c.4 gate.) */
+.map-settlement__chevron {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 6px;
+  background: var(--text-secondary);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  transform: rotate(-90deg);
   transition: transform var(--dur-quick) var(--ease-in-out);
 }
 
-.map-text .method[open] .method__summary::before {
-  transform: rotate(90deg);
+.map-settlement[open] .map-settlement__chevron {
+  transform: none;
+}
+
+.map-settlement__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.map-settlement__body {
+  margin-top: 0.75rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.map-settlement__p {
+  margin: 0;
+  max-width: 66ch;
+  font-size: var(--type-body);
+  font-weight: var(--wt-light);
+  line-height: 1.55;
+  color: var(--text-muted);
 }
 
 /* --- The map cell ------------------------------------------------------------
@@ -929,7 +976,6 @@ body[data-panel-style='card'] .panel {
 @supports (text-box: trim-both cap alphabetic) {
   .map-masthead__wordmark,
   .map-headline__sentence,
-  .map-text .method__summary,
   .map-band__place,
   .map-band__intensity,
   .map-band__caption,

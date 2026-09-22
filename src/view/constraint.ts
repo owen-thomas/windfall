@@ -27,10 +27,15 @@ import { speaksOfNow, type AppState } from '../lib/state';
  * network's standing role rather than its state this half-hour.
  */
 /**
- * Exported for src/view/border.ts (step 3, Windfall_Map_Spec.md Part C.3):
- * the map's `constraintSentenceOf` reuses this exact three-state copy and the
- * same tense/state logic, rather than restating it, so the two pages can never
- * drift into describing the same constraint differently.
+ * Through 4c (Windfall_Map_Spec.md step 3 Part C.3, then Windfall_Map_Spec_4c.md,
+ * DECISIONS 029) `/map`'s own `constraintSentenceOf` (`src/view/border.ts`,
+ * since removed) reused this exact three-state copy for the border's tooltip
+ * and, later, the settlement disclosure, so the two pages could never drift
+ * into describing the same constraint differently. 4c.4 dropped the map's use
+ * of it (Owen's call at the gate: the disclosure's opening paragraph already
+ * explains the mechanism, and a live-tensed restatement said the same thing
+ * twice) — this file is `/`'s alone now, until something on `/map` needs the
+ * three-state copy again.
  */
 export const CONSTRAINED = {
   now:

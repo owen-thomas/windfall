@@ -45,11 +45,14 @@
  * inset moves above the Scotland mix and loses its caption (its square, with
  * a 1px outline and the name in the corner, is the frame's), the freshness dot
  * pulses between the bar's two blues, and the colophon and byline are re-cut.
- * 4c.2 reframes the headline (views/headline.ts). 4c.3, here: the bar and the
+ * 4c.2 reframes the headline (views/headline.ts). 4c.3: the bar and the
  * tracked farms under it are one disclosure (views/sources.ts), open on desktop
  * and shut on mobile, and selecting a farm in it lights that farm's marker and
- * flow on the map and dims the rest — a paint change only. The consolidated
- * explanation follows in 4c.4.
+ * flow on the map and dims the rest — a paint change only. 4c.4, here: the
+ * settlement row and the page's one consolidated explanation are a second
+ * disclosure (views/settlement.ts), replacing colophon.ts's own "How this
+ * number is worked out" toggle (retired from this page, still built for `/`)
+ * and the border's old tooltip sentence.
  */
 
 import '../styles/tokens.css';
@@ -87,14 +90,14 @@ import { scenarioByName, SCENARIOS } from '../lib/scenarios';
 import { emptyFeeds, type AppState } from '../lib/state';
 import type { FarmNow } from '../lib/types';
 
-import { el, setText, type View } from '../view/dom';
+import { el, type View } from '../view/dom';
 import { SCOTLAND, ENGLAND } from '../view/band';
-import { constraintSentenceOf } from '../view/border';
 import { colophonView } from '../view/colophon';
 import { toggleView } from '../view/toggle';
 import { mapMastheadView } from './views/masthead';
-import { mapHeadlineView, settledLine } from './views/headline';
+import { mapHeadlineView } from './views/headline';
 import { mapSourcesView } from './views/sources';
+import { mapSettlementView } from './views/settlement';
 import { mapBandView } from './views/band';
 import { buildProjection } from '../flow/projection';
 import { extendToCoast } from './borderLine';
@@ -232,26 +235,31 @@ function bootMap(): void {
   // building and updating it exactly as before, so its freshness, notice and
   // state rules travel with it.
   //
-  // 1. The settlement-period / "Read N ago" row. The Figma frames put it
-  //    between the headline sentence and the bar; the masthead view still
-  //    owns it (and its stale/failed notice, which comes along in the same
-  //    element), it just isn't rendered in the masthead any more.
-  const clockEl = masthead.el.querySelector('.map-masthead__clock')!;
-  headline.el.querySelector('.map-headline__meta')!.append(clockEl);
-
-  // The bar and its list follow the settlement row (4c.4 moves the row below
-  // them, as the frame has it). Open on desktop and shut elsewhere: the list is
-  // dense, and on a phone it sits between the headline and the map. "Desktop" is
-  // the two-column layout, read from grid.css's own `--layout` token so the
-  // breakpoint stays written in one place.
+  // 1. The bar and its list, then the settlement-period row — the frame's own
+  //    order (§1): sentence, bar, list, settlement row, explanation. The bar
+  //    is open on desktop and shut elsewhere: the list is dense, and on a phone
+  //    it sits between the headline and the map. "Desktop" is the two-column
+  //    layout, read from grid.css's own `--layout` token so the breakpoint
+  //    stays written in one place.
   headline.el.append(sources.el);
   sources.el.open = getComputedStyle(document.documentElement).getPropertyValue('--layout').trim() === 'two-col';
 
-  // 2. The "How this number is worked out" toggle — colophonView's own
-  //    <details>, now the last row of the text block. The footer keeps the
-  //    source-health rows and the byline.
-  const methodEl = colophon.el.querySelector<HTMLElement>('.method')!;
-  const textBlock = el('div', { class: 'map-text' }, headline.el, methodEl);
+  // The settlement row: the masthead view still owns and keeps fresh the clock
+  // element itself (its freshness dot, its stale/failed/ageing notice —
+  // 010/016/017 — all travel with it), it just isn't rendered in the masthead
+  // any more. Since 4c.4 it is wrapped in its own disclosure (views/
+  // settlement.ts) — the boxed row is the summary, and its chevron opens the
+  // page's one explanation.
+  const clockEl = masthead.el.querySelector('.map-masthead__clock')!;
+  const settlement = mapSettlementView(clockEl);
+  headline.el.append(settlement.el);
+
+  // 2. The old "How this number is worked out" toggle — colophonView's own
+  //    <details>, reused unchanged on `/` — is retired from this page (4c.4):
+  //    everything it said lives in the settlement disclosure above, once.
+  //    Detached rather than edited, since colophon.ts is shared with `/`.
+  colophon.el.querySelector<HTMLElement>('.method')!.remove();
+  const textBlock = el('div', { class: 'map-text' }, headline.el);
 
   // 3. The byline reads as the Figma frames have it: "Built by Owen Thomas ✺
   //    owenthomas.work", the domain a link. The "figures are lower bounds"
@@ -280,34 +288,6 @@ function bootMap(): void {
 
   app.classList.add('grid', 'map-page');
   app.replaceChildren(masthead.el, textBlock, composition, foot);
-
-  // Part A.6: the method note gains the settled MWh line, the constraint
-  // sentence and the farms-with-no-declaration count — appended to
-  // colophonView's own <details> rather than edited into colophon.ts, since
-  // that module is reused unchanged on `/` too and these lines are map-only.
-  // The capacity figure and per-farm coverage line are already in colophon's
-  // own `coverage` paragraph (colophon.ts), so nothing is added for those.
-  // Interim, until 4c.4 folds this note into the page's one disclosure (in copy
-  // Owen signs off). colophon.ts's floor paragraph is written for the old
-  // frame — "real curtailment is higher, and this figure will never overstate
-  // it", said of the megawatts held off — which the on-grid headline turns
-  // backwards: it is now the *on-grid* share that could be a little lower than
-  // shown. Same fact, the right way round; the rest of the paragraph is
-  // colophon.ts's own. `/` still uses colophon.ts unchanged.
-  setText(
-    methodEl.querySelector('.method__floor')!,
-    'Published figures for curtailment are often larger. Windfall counts only instructed ' +
-      'turn-downs — wind the grid actively paid to switch off — which is a floor: real ' +
-      'curtailment is higher, so the true share of Scotland’s wind on the grid may be a ' +
-      'little lower than the one shown. For 20 June 2026, Windfall derives 23.75 GWh where a ' +
-      'widely cited figure for the same day is 56.45.'
-  );
-
-  const methodSettled = el('p', { class: 'method__map-settled' });
-  const methodConstraint = el('p', { class: 'method__map-constraint' });
-  const methodFlowScope = el('p', { class: 'method__map-scope' });
-  const methodBlindFarms = el('p', { class: 'method__map-blind' });
-  methodEl.append(methodSettled, methodConstraint, methodFlowScope, methodBlindFarms);
 
   // Part C.6 (step 3 numbering retained): the state toggle and its
   // colophon-flow position, as on `/`.
@@ -649,46 +629,11 @@ function bootMap(): void {
     pending: true,
   };
 
-  const views: View[] = [masthead, scotlandBand, englandBand, headline, sources, colophon];
+  const views: View[] = [masthead, scotlandBand, englandBand, headline, sources, settlement, colophon];
 
   function render() {
     state.now = new Date();
     for (const view of views) view.update(state);
-    updateMethodMapNotes();
-  }
-
-  /** Part A.6: the method note's map-only lines. */
-  function updateMethodMapNotes() {
-    setText(methodSettled, settledLine(state.curtailment) || 'No settled reading for the last complete half-hour.');
-
-    const constraint = constraintSentenceOf(state);
-    setText(methodConstraint, constraint.text);
-
-    setText(
-      methodFlowScope,
-      'The flow above shows declared output of tracked Scottish farms only — a physical notification, ' +
-        'not a metered reading (§4.3).',
-    );
-
-    const now = state.curtailment?.now;
-    const method = state.curtailment?.method;
-    if (now) {
-      const blind = now.farms.filter((f) => f.unitsDeclaring === 0).length;
-      setText(
-        methodBlindFarms,
-        blind > 0
-          ? `${blind} of ${now.farms.length} tracked farms had no declaration at the sampled instant, and ` +
-              'render silent on the map rather than as an assumed zero.'
-          : `All ${now.farms.length} tracked farms had a declaration at the sampled instant.`,
-      );
-    } else {
-      setText(
-        methodBlindFarms,
-        method
-          ? 'Per-farm coverage is unknown while the balancing feed is unavailable — every marker renders silent.'
-          : '',
-      );
-    }
   }
 
   function landFarms(farmsNow: FarmNow[] | null | undefined) {

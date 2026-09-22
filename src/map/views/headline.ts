@@ -18,14 +18,13 @@
  * higher and the true on-grid share a little lower — is said in the page's one
  * explanation, not here.
  *
- * The settlement-period row is seated in `.map-headline__meta` by main.ts, and
- * the bar-and-list disclosure is appended after it (4c.4 moves the row below
- * the list, as the frame has it).
+ * The bar-and-list disclosure and, after it, the settlement row's own
+ * disclosure are appended here by main.ts (views/sources.ts, views/settlement.ts)
+ * — the frame's order (§1): sentence, bar, list, settlement row, explanation.
  */
 
 import { el, setAttr, setTextCrossfade, type View } from '../../view/dom';
-import { formatMWh, formatPctFloor, formatPeriodSpan } from '../../lib/format';
-import type { CurtailmentResponse } from '../../lib/types';
+import { formatPctFloor } from '../../lib/format';
 import { speaksOfNow, type AppState } from '../../lib/state';
 import { readOnGrid } from '../onGrid';
 
@@ -39,17 +38,10 @@ export function mapHeadlineView(): View {
     tail
   );
 
-  // Where main.ts seats the settlement-period / "Read N ago" row. That row is
-  // rendered and kept fresh by the masthead view (its freshness and notice
-  // rules are the masthead's, 010/016/017), but the Figma frames put it here,
-  // between the sentence and the bar.
-  const meta = el('div', { class: 'map-headline__meta' });
-
   const root = el(
     'section',
     { class: 'map-headline', 'data-state': 'ok', 'aria-labelledby': 'map-headline-sentence' },
-    sentence,
-    meta
+    sentence
   );
 
   return {
@@ -93,13 +85,4 @@ export function mapHeadlineView(): View {
       );
     },
   };
-}
-
-/** Exposed for the method note (main.ts) and the swatch plate — the same settled-period line ../../view/headline.ts used to show on-screen, moved to the method note per 026. */
-export function settledLine(data: CurtailmentResponse | null): string {
-  if (!data?.settled) return '';
-  const { curtailedMWh, settlement } = data.settled;
-  const span = formatPeriodSpan(settlement.periodStart, settlement.periodEnd);
-  if (curtailedMWh <= 0) return `Nothing in the last complete half-hour either, ${span}.`;
-  return `${formatMWh(curtailedMWh)} over the last complete half-hour, ${span}.`;
 }
