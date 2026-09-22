@@ -24,15 +24,6 @@ import type { ApiRequest, ApiResponse } from './_lib/handler.js';
 import type { WindspeedResponse } from '../src/lib/types.js';
 import { fetchJson, setCacheHeaders } from './_lib/http.js';
 
-// Vercel transpiles each API file individually rather than bundling, so this
-// runs under Node's native ESM loader — which refuses a bare `import x from
-// './y.json'` without an import attribute, and rejects the whole module
-// before the handler ever runs (every other route only imports .ts/.js, so
-// this was the one function that could hit it). `require` sidesteps that:
-// CommonJS has always loaded JSON natively, no attribute syntax to get wrong
-// across Node versions.
-const farms = createRequire(import.meta.url)('../src/map/data/farms.json');
-
 interface FarmSite {
   farm: string;
   // A plain array, not a [number, number] tuple: that's what TS infers from
@@ -46,7 +37,19 @@ interface OpenMeteoLocation {
   current?: { wind_speed_10m?: number };
 }
 
-const FARM_SITES = farms as FarmSite[];
+// Loaded lazily, inside the handler's own try/catch, rather than as a
+// top-level `import`/`require`. A prior version did this at module scope and
+// kept crashing the whole function (`FUNCTION_INVOCATION_FAILED`, no route
+// this route's own error handling ever got a chance to run) for a reason
+// that a silent top-level throw gave no way to diagnose from outside Vercel's
+// own dashboard. Whatever the exact cause, moving the load inside the try
+// turns an opaque crash into an honest `health: 'failed'` response carrying
+// the real error message — which is both the fix and the instrument for
+// confirming it.
+function loadFarmSites(): FarmSite[] {
+  const farms = createRequire(import.meta.url)('../src/map/data/farms.json');
+  return farms as FarmSite[];
+}
 
 function openMeteoUrl(sites: FarmSite[]): string {
   const lat = sites.map((s) => s.latLon[0]).join(',');
@@ -66,6 +69,7 @@ export default async function handler(_req: ApiRequest, res: ApiResponse) {
   };
 
   try {
+    const FARM_SITES = loadFarmSites();
     const locations = await fetchJson<unknown>(openMeteoUrl(FARM_SITES));
     if (!Array.isArray(locations) || locations.length !== FARM_SITES.length) {
       body.errors.push(
