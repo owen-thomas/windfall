@@ -225,25 +225,43 @@ body {
   display: none;
 }
 
-.map-headline__evidence {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--gap-group);
+/* --- The bar and its source list (spec 4b §6.5, 4c §4c.2–4c.3) ----------------
+ * One native <details>: the bar (with its chevron) is the summary, the tracked
+ * farms are the content. views/sources.ts owns the DOM; main.ts opens it on
+ * desktop and leaves it shut elsewhere.
+ *
+ * The bar: one solid bar, the whole of it the declared output (the lighter
+ * blue), the on-grid share the navy run at its left, the figures inside it —
+ * "10,971 of 13,105 MW". Turned over in 4c: through 4b the run was the curtailed
+ * share; it is now what is getting through, so it is the navy the frame draws it
+ * in (--bar-on), and what is not is the lighter --bar-off. 42px tall and the
+ * label 16px Eczar in one weight, inset 16px, vertically centred, as the Desktop
+ * HD frame measures. The fill's width is set inline by the view and still
+ * transitions (app.css). Colour never carries the reading alone: the label does,
+ * and the sentence above it.
+ */
+.map-sources__summary {
+  position: relative;
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+  list-style: none;
+  cursor: pointer;
 }
 
-/* --- The breakdown bar (spec 4b §6.5, 4c §4c.2) --------------------------------
- * One solid bar: the whole of it is the declared output (the lighter blue), the
- * on-grid share the navy run at its left, and the figures sit inside it —
- * "10,971 of 13,105 MW". Turned over in 4c: through 4b the run was the curtailed
- * share; it is now what is getting through, so it is the navy the frame draws
- * it in (--bar-on), and what is not is the lighter --bar-off. 42px tall and the
- * label 16px Eczar in one weight, inset 16px, vertically centred, as the
- * Desktop HD frame measures. The fill's width is set inline by the view and
- * still transitions (app.css). Colour never carries the reading alone: the
- * label does, and the sentence above it.
- */
-.map-headline .share {
+.map-sources__summary::-webkit-details-marker {
+  display: none;
+}
+
+.map-sources__summary:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+
+.map-sources .share {
   position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   height: 2.625rem;
@@ -253,7 +271,7 @@ body {
   overflow: hidden;
 }
 
-.map-headline .share__fill {
+.map-sources .share__fill {
   position: absolute;
   inset: 0 auto 0 0;
   height: auto;
@@ -262,7 +280,7 @@ body {
   box-shadow: none;
 }
 
-.map-headline .share__label {
+.map-sources .share__label {
   position: relative;
   padding-inline: 1rem;
   font-family: var(--font-display);
@@ -273,17 +291,51 @@ body {
   color: var(--bar-label);
 }
 
+/* The chevron: the frame's 42px square in --ink-box with a small filled
+   triangle, pointing down when the list is open and right when it is shut. */
+.map-sources__chevron {
+  flex: 0 0 2.625rem;
+  height: 2.625rem;
+  display: grid;
+  place-items: center;
+  background: var(--ink-box);
+}
+
+.map-sources__chevron::before {
+  content: '';
+  width: 10px;
+  height: 6px;
+  background: var(--text-secondary);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  transform: rotate(-90deg);
+  transition: transform var(--dur-quick) var(--ease-in-out);
+}
+
+.map-sources[open] .map-sources__chevron::before {
+  transform: none;
+}
+
 /* No reading, nothing to show: the bar becomes an empty gauge rather than
-   assert a total. */
-.map-headline[data-state='pending'] .share,
-.map-headline[data-state='failed'] .share {
+   assert a total, and there is no list or chevron to offer. */
+.map-sources[data-state='pending'] .share,
+.map-sources[data-state='failed'] .share {
   background: var(--ink-raised);
   box-shadow: inset 0 0 0 1px var(--ink-line);
 }
 
+.map-sources:not([data-state='ok']) .map-sources__chevron,
+.map-sources:not([data-state='ok']) .map-sources__body {
+  display: none;
+}
+
+.map-sources:not([data-state='ok']) .map-sources__summary {
+  cursor: default;
+}
+
 /* The plain sentence for the bar (aria-hidden), visually removed but never
-   display:none — a screen reader still gets the reading. */
-.map-headline__breakdown {
+   display:none — a screen reader still gets the reading, and it names the
+   summary. */
+.map-sources__sr {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -292,6 +344,149 @@ body {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* The list. Two columns from tablet up, one on a phone (--sources-cols, in
+   grid.css), filled top to bottom so the largest farms run down the first
+   column and on into the second: a ranking, read down, not across. */
+.map-sources__body {
+  /* The frame: 10.5px from the bar's foot to the first 20px row's top. */
+  margin-top: 0.65rem;
+}
+
+.map-sources__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  column-count: var(--sources-cols);
+  column-gap: 1rem;
+}
+
+.map-sources__item {
+  break-inside: avoid;
+}
+
+/* A row, on the frame's 20px pitch: dot, name, a 64px mini-bar, the figure. The
+   button is 6px wider than its column each side, so the hover and selected
+   tints bleed past the text edge and the dot and figure stay on the column's. */
+.source-row {
+  appearance: none;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) 64px 3.125rem;
+  column-gap: 4px;
+  align-items: center;
+  width: calc(100% + 12px);
+  min-height: 1.25rem;
+  margin: 0 -6px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.source-row:hover,
+.map-sources__more:hover {
+  background: color-mix(in srgb, var(--ink-box) 45%, transparent);
+}
+
+.source-row[aria-pressed='true'] {
+  background: var(--ink-raised);
+}
+
+.source-row:focus-visible,
+.map-sources__more:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 0;
+}
+
+.source-row__dot {
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: var(--bar-off);
+}
+
+/* Silent (no declaration): hollow and dashed, as its marker is on the map. */
+.source-row__dot[data-state='silent'] {
+  background: none;
+  border: 1.5px dashed var(--text-muted);
+}
+
+.source-row[aria-pressed='true'] .source-row__dot {
+  background: var(--highlight);
+  border-color: var(--highlight);
+}
+
+.source-row__name {
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: var(--wt-bold);
+  line-height: 1.25rem;
+  color: var(--text-primary);
+}
+
+.source-row__bar {
+  display: block;
+  height: 4px;
+  background: var(--bar-off);
+  overflow: hidden;
+}
+
+/* No share to draw (nothing declared): a plain rail, never a full or empty bar. */
+.source-row__bar[data-share='none'] {
+  background: var(--ink-line);
+}
+
+.source-row__bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--bar-on);
+  transition: width var(--dur-base) var(--ease-out);
+}
+
+.source-row__mw {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--fuel-wind);
+}
+
+/* "and 68 more…": a row's shape without its bar, a hollow dot in place of a
+   filled one. */
+.map-sources__more {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 1.25rem;
+  margin: 0 0 0 -6px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: var(--wt-regular);
+  line-height: 1.25rem;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.map-sources__more[hidden] {
+  display: none;
+}
+
+.source-row__dot--hollow {
+  background: none;
+  border: 1px solid var(--bar-off);
 }
 
 /* --- The method toggle -----------------------------------------------------------
@@ -418,6 +613,43 @@ body {
   stroke: var(--text-muted);
   stroke-width: 1.5;
   stroke-dasharray: 1.5 1.5;
+}
+
+/* Picking a farm out in the source list (4c.3): its marker takes --highlight and
+   grows a little, every other marker fades, and the flow does the same on the
+   canvas (particles.ts) — so the blue reads against a dimmed field, not against
+   the wind's own blue. Attributes, not classes, set by markers.ts; the inset
+   (Shetland) is a separate svg and is styled alike. */
+.map__farm-marker {
+  transition: opacity var(--dur-quick) var(--ease-in-out);
+}
+
+.map__svg[data-highlighting] .map__farm-marker,
+.map__inset[data-highlighting] .map__farm-marker {
+  opacity: 0.28;
+}
+
+.map__svg[data-highlighting] .map__farm-marker[data-highlight],
+.map__inset[data-highlighting] .map__farm-marker[data-highlight] {
+  opacity: 1;
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(1.6);
+}
+
+.map__svg[data-highlighting] .map__farm-marker[data-highlight][data-state='declaring'],
+.map__inset[data-highlighting] .map__farm-marker[data-highlight][data-state='declaring'] {
+  fill: var(--highlight);
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+
+.map__svg[data-highlighting] .map__farm-marker[data-highlight][data-state='held-down'],
+.map__svg[data-highlighting] .map__farm-marker[data-highlight][data-state='silent'],
+.map__inset[data-highlighting] .map__farm-marker[data-highlight][data-state='held-down'],
+.map__inset[data-highlighting] .map__farm-marker[data-highlight][data-state='silent'] {
+  stroke: var(--highlight);
+  stroke-width: 2.5;
 }
 
 /* The overlays are laid out by main.ts's positionOverlays() and stay hidden

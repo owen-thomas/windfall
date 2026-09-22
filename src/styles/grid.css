@@ -105,6 +105,8 @@
      right, top-left from tablet up. */
   --inset-label-left: auto;
   --inset-label-right: 0.6875rem;
+  /* The source list's columns: one on a phone, two from tablet up. */
+  --sources-cols: 1;
   --scotland-swatch-order: 2;
   --legend-gap: 1rem; /* stacked: the frames put 24px between the header group and the legend */
   --bar-gap: 0rem;
@@ -143,6 +145,7 @@
     --scotland-swatch-order: 0;
     --inset-label-left: 0.6875rem;
     --inset-label-right: auto;
+    --sources-cols: 2;
     --anchor-england-lat: 55.1;
   }
 }

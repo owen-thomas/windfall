@@ -9,45 +9,25 @@
  * Step 4c reversed the frame. Through 4b the sentence said how much wind was
  * held *off* the grid ("At least 2,049 MW of Scotland's tracked wind is
  * currently being held off the grid."); it now says how much is *on* it —
- * "83% of Scotland's tracked wind is currently on the grid." — and the bar
- * beneath it reads "10,971 of 13,105 MW", the on-grid run navy and the rest of
- * the declared output the lighter blue. All of it comes from the one payload:
- * `curtailedMW` is `curtailment.now.curtailedMW`, `declaredMW` the sum of
- * `curtailment.now.farms[].declaredMW`, and `instructedMW` is their difference
- * (the same quantity each farm's own `instructedMW` is, which the source list
- * draws per farm). The denominator is still declared output, never installed
- * capacity (026's reasoning: capacity counts every farm idle for lack of wind,
- * which understates the share on a windy day). The sentence, the bar's fill
- * and the bar's label all read those same numbers, so they can never disagree.
+ * "83% of Scotland's tracked wind is currently on the grid." The number is
+ * `../onGrid.ts`'s reading of the one payload, which the breakdown bar and the
+ * source list beneath it (./sources.ts, 4c.3) read too, so none of the three
+ * can disagree; that file has the rounding rules. Here: the percentage is
+ * `formatPctFloor`, there is no "Up to" hedge, and what the figure cannot say —
+ * that Windfall counts only instructed turn-downs, so real curtailment may be
+ * higher and the true on-grid share a little lower — is said in the page's one
+ * explanation, not here.
  *
- * Rounding is always down, the same conservative principle the old "at least"
- * framing used, applied to the new number: the percentage is `formatPctFloor`,
- * so the bare figure can never overstate how much wind is getting through, and
- * the label's on-grid megawatts are floored too while anything is held down, so
- * they too can only err low. (One corner stays: when under a megawatt is held
- * down, the label is exact at megawatt resolution — "5,363 of 5,363 MW" — while
- * the floored percentage reads 99%. Both are true of a 99.99% share.) When
- * nothing is held down the figures are equal and rounded alike. There is no
- * "Up to" hedge. What the figure cannot say — that Windfall counts only
- * instructed turn-downs, so real curtailment may be higher and the true
- * on-grid share a little lower — is said in the page's one explanation, not
- * here.
- *
- * The line that used to sit under the bar is not on the screen — the headline
- * and the bar carry both of its numbers — but stays in the DOM, visually
- * hidden, as the one plain sentence a screen reader gets for the bar (which is
- * aria-hidden): "10,971 of the 13,105 MW Scotland is making is on the grid."
- *
- * The list of held-down farms that used to follow the bar ("Seagreen 631 MW •
- * Moray West 577 MW …") is gone from here, a stage before 4c.3 replaces it with
- * the source list: those figures were megawatts *held down*, and under an "on
- * the grid" headline the same pattern reads as megawatts on it.
+ * The settlement-period row is seated in `.map-headline__meta` by main.ts, and
+ * the bar-and-list disclosure is appended after it (4c.4 moves the row below
+ * the list, as the frame has it).
  */
 
-import { el, setAttr, setText, setTextCrossfade, type View } from '../../view/dom';
-import { formatMW, formatMWh, formatPctFloor, formatPeriodSpan } from '../../lib/format';
+import { el, setAttr, setTextCrossfade, type View } from '../../view/dom';
+import { formatMWh, formatPctFloor, formatPeriodSpan } from '../../lib/format';
 import type { CurtailmentResponse } from '../../lib/types';
 import { speaksOfNow, type AppState } from '../../lib/state';
+import { readOnGrid } from '../onGrid';
 
 export function mapHeadlineView(): View {
   const figure = el('strong', { class: 'map-headline__figure' });
@@ -65,24 +45,12 @@ export function mapHeadlineView(): View {
   // between the sentence and the bar.
   const meta = el('div', { class: 'map-headline__meta' });
 
-  const shareFill = el('div', { class: 'share__fill' });
-  const shareLabel = el('span', { class: 'share__label' });
-  const shareBar = el('div', { class: 'share', 'aria-hidden': 'true' }, shareFill, shareLabel);
-  const breakdown = el('p', { class: 'map-headline__breakdown' });
-
   const root = el(
     'section',
     { class: 'map-headline', 'data-state': 'ok', 'aria-labelledby': 'map-headline-sentence' },
     sentence,
-    meta,
-    el('div', { class: 'map-headline__evidence' }, shareBar, breakdown)
+    meta
   );
-
-  /** The bar says nothing until there is something to say: no label, and CSS greys the track. */
-  function setShare(pct: number, label: string | null) {
-    shareFill.style.width = `${Math.min(100, Math.max(0, pct))}%`;
-    setText(shareLabel, label ?? '');
-  }
 
   return {
     el: root,
@@ -98,8 +66,6 @@ export function mapHeadlineView(): View {
           ' Windfall is asking Elexon what is being held down this half-hour. Nothing is claimed ' +
             'until it answers.'
         );
-        setShare(0, null);
-        setText(breakdown, '');
         return;
       }
 
@@ -112,40 +78,19 @@ export function mapHeadlineView(): View {
             ? ' Windfall could not reach its own reading of the balancing mechanism.'
             : ' Elexon’s balancing data did not answer this time. The generation mix above is unaffected.'
         );
-        setShare(0, null);
-        setText(breakdown, '');
         return;
       }
 
-      const { curtailedMW, farms: farmsNow } = data.now;
-      const declaredMW = farmsNow.reduce((sum, f) => sum + f.declaredMW, 0);
-      const allClear = curtailedMW <= 0;
+      const reading = readOnGrid(data.now);
 
-      // What is on the grid: declared output less what the balancing mechanism
-      // has instructed down (the farms' own `instructedMW`, summed). Clamped, so
-      // a curtailed figure that ran past the declared one reads as none, never
-      // as a negative share.
-      const instructedMW = allClear ? declaredMW : Math.min(declaredMW, Math.max(0, declaredMW - curtailedMW));
-      const pct = declaredMW > 0 ? (instructedMW / declaredMW) * 100 : allClear ? 100 : 0;
-
-      // The label's on-grid megawatts: floored while anything is held down (see
-      // the header), the declared figure rounded as its denominator is when
-      // nothing is. Floored, it can never exceed the rounded denominator.
-      const onGrid = (allClear ? Math.round(declaredMW) : Math.floor(instructedMW)).toLocaleString('en-GB');
-
-      setAttr(root, 'data-state', allClear ? 'none' : 'curtailing');
-      setTextCrossfade(figure, allClear ? '100%' : formatPctFloor(pct));
+      setAttr(root, 'data-state', reading.allClear ? 'none' : 'curtailing');
+      setTextCrossfade(figure, reading.allClear ? '100%' : formatPctFloor(reading.pct));
       setTextCrossfade(
         tail,
         present
           ? ' of Scotland’s tracked wind is currently on the grid.'
           : ' of Scotland’s tracked wind was on the grid when this was last read.'
       );
-
-      setShare(pct, `${onGrid} of ${formatMW(declaredMW)}`);
-      // The plain sentence for the aria-hidden bar (026's exact phrasing): the
-      // first figure is bare because the second's "MW" covers both.
-      setText(breakdown, `${onGrid} of the ${formatMW(declaredMW)} Scotland is making is on the grid.`);
     },
   };
 }

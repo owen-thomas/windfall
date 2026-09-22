@@ -44,8 +44,12 @@
  * passive line (no hit area, label, tooltip or pointer logic), the Shetland
  * inset moves above the Scotland mix and loses its caption (its square, with
  * a 1px outline and the name in the corner, is the frame's), the freshness dot
- * pulses between the bar's two blues, and the colophon and byline are re-cut. The headline reframe, the source list and the
- * consolidated disclosure follow in 4c.2–4c.4.
+ * pulses between the bar's two blues, and the colophon and byline are re-cut.
+ * 4c.2 reframes the headline (views/headline.ts). 4c.3, here: the bar and the
+ * tracked farms under it are one disclosure (views/sources.ts), open on desktop
+ * and shut on mobile, and selecting a farm in it lights that farm's marker and
+ * flow on the map and dims the rest — a paint change only. The consolidated
+ * explanation follows in 4c.4.
  */
 
 import '../styles/tokens.css';
@@ -74,7 +78,7 @@ import {
   markerStateFor,
   type FarmMarkerState,
 } from './farmSources';
-import { createFarmMarkerLayer, styleFarmMarker, type FarmMarkerLayer } from './markers';
+import { createFarmMarkerLayer, setMarkerHighlight, styleFarmMarker, type FarmMarkerLayer } from './markers';
 import { DEFAULT_RATE_PARAMS, type RateParams } from './rate';
 import { createMapControlPanel } from './controls';
 import { renderSwatchPlate } from './swatchPlate';
@@ -90,6 +94,7 @@ import { colophonView } from '../view/colophon';
 import { toggleView } from '../view/toggle';
 import { mapMastheadView } from './views/masthead';
 import { mapHeadlineView, settledLine } from './views/headline';
+import { mapSourcesView } from './views/sources';
 import { mapBandView } from './views/band';
 import { buildProjection } from '../flow/projection';
 import { extendToCoast } from './borderLine';
@@ -185,6 +190,12 @@ function bootMap(): void {
   const headline = mapHeadlineView();
   const colophon = colophonView();
 
+  // Picking a farm in the source list picks it out on the map (4c.3): its flow
+  // in the --highlight blue with the rest dimmed, and its marker likewise. Held
+  // here, so a rebuild that redraws the inset's markers can re-apply it.
+  let highlightedFarm: string | null = null;
+  const sources = mapSourcesView({ onSelect: highlightFarm });
+
   // The two mix panels are grid items of the map cell (map.css): their columns
   // come from the grid tokens, their vertical position from positionOverlays()
   // below. Hidden until that has run, so neither ever flashes at row 0.
@@ -227,6 +238,14 @@ function bootMap(): void {
   //    element), it just isn't rendered in the masthead any more.
   const clockEl = masthead.el.querySelector('.map-masthead__clock')!;
   headline.el.querySelector('.map-headline__meta')!.append(clockEl);
+
+  // The bar and its list follow the settlement row (4c.4 moves the row below
+  // them, as the frame has it). Open on desktop and shut elsewhere: the list is
+  // dense, and on a phone it sits between the headline and the map. "Desktop" is
+  // the two-column layout, read from grid.css's own `--layout` token so the
+  // breakpoint stays written in one place.
+  headline.el.append(sources.el);
+  sources.el.open = getComputedStyle(document.documentElement).getPropertyValue('--layout').trim() === 'two-col';
 
   // 2. The "How this number is worked out" toggle — colophonView's own
   //    <details>, now the last row of the text block. The footer keeps the
@@ -424,6 +443,7 @@ function bootMap(): void {
       insetSvg.append(circle);
       insetMarkers.set(site.farm, circle);
     }
+    setMarkerHighlight(insetSvg, insetMarkers, highlightedFarm);
   }
 
   function drawGeometry() {
@@ -485,6 +505,24 @@ function bootMap(): void {
 
   function paintTransparent() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  /** A colour token, resolved — the canvas takes a colour string, not a var(). */
+  function tokenColor(name: string, fallback: string): string {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+  }
+
+  /**
+   * Pick one farm out on the map, or (null) put everything back. Purely paint:
+   * the particles draw its flow in --highlight and the rest dimmed, and its
+   * marker (on the main stage or in the Shetland inset, wherever it is drawn)
+   * lights while the others fade. No relayout, no rebuild.
+   */
+  function highlightFarm(farm: string | null) {
+    highlightedFarm = farm;
+    particles.setHighlightSource(farm, { color: tokenColor('--highlight', '#0a7cff') });
+    markerLayer.setHighlight(farm);
+    setMarkerHighlight(insetSvg, insetMarkers, farm);
   }
 
   /** The stage's css size and the DPR it is drawn at — what a rebuild is a function of. */
@@ -611,7 +649,7 @@ function bootMap(): void {
     pending: true,
   };
 
-  const views: View[] = [masthead, scotlandBand, englandBand, headline, colophon];
+  const views: View[] = [masthead, scotlandBand, englandBand, headline, sources, colophon];
 
   function render() {
     state.now = new Date();

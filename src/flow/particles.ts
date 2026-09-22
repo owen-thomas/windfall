@@ -279,6 +279,21 @@ export interface ParticleStyle {
 export const DEFAULT_PARTICLE_STYLE: ParticleStyle = { jitterAmount: 1, spawnJitterRadius: 4 };
 
 /**
+ * How one source is picked out from the rest (Windfall_Map_Spec_4c.md §4c.3,
+ * DECISIONS 029): its particles draw in `color`, a little heavier, and every
+ * other source's draw at `dimAlpha` of their usual opacity, so the selection
+ * reads against the rest of the field. `/map` passes its `--highlight` token as
+ * the colour; `/flow` never selects a source, so nothing here touches it.
+ */
+export interface HighlightStyle {
+  color: string;
+  dimAlpha: number;
+  widthScale: number;
+}
+
+export const DEFAULT_HIGHLIGHT_STYLE: HighlightStyle = { color: '#0a7cff', dimAlpha: 0.22, widthScale: 1.35 };
+
+/**
  * Draw a hue/weight jitter bucket (-1, 0, or 1) with `jitterAmount` scaling
  * the probability of landing nonzero. At j=1: P(nonzero) = 2/3, split
  * evenly between -1 and +1 — algebraically identical to the original
@@ -386,6 +401,11 @@ export class ParticleSystem {
    */
   private renderBuckets: number[][] = [];
 
+  /** The id of the one source drawn highlighted, or null. Its index moves with the world, so it is re-resolved on setWorld. */
+  private highlightId: string | null = null;
+  private highlightIndex = -1;
+  private highlightStyle: HighlightStyle = DEFAULT_HIGHLIGHT_STYLE;
+
   /** Total elapsed sim time, for the curl-noise field's time axis. */
   private time = 0;
 
@@ -452,12 +472,32 @@ export class ParticleSystem {
 
   setWorld(world: World) {
     this.world = world;
+    this.resolveHighlight();
     this.buildRateTable();
     // A resize changes the mask's dimensions, so the occupancy grid has to
     // be rebuilt at the new size — rebuilding (rather than resampling)
     // just means a brief cold start for the density signal, which decays
     // back to steady-state within a couple of DENSITY_RECYCLE_DURATIONs.
     this.densityField = buildDensityField(world.mask);
+  }
+
+  /**
+   * Pick one source out of the field (or, with null, put the field back). A
+   * paint change only: no particle is added, moved or re-timed, so nothing is
+   * rebuilt and the flow does not restart. The old, full-strength trails fade
+   * out over the same few frames every trail does.
+   */
+  setHighlightSource(sourceId: string | null, style?: Partial<HighlightStyle>) {
+    this.highlightId = sourceId;
+    if (style) this.highlightStyle = { ...DEFAULT_HIGHLIGHT_STYLE, ...style };
+    this.resolveHighlight();
+  }
+
+  private resolveHighlight() {
+    this.highlightIndex =
+      this.highlightId === null
+        ? -1
+        : this.world.sources.findIndex((resolved) => resolved.source.id === this.highlightId);
   }
 
   private buildRateTable() {
@@ -790,10 +830,17 @@ export class ParticleSystem {
     }
 
     ctx.lineCap = 'round';
+    const highlighted = this.highlightIndex;
+    const { dimAlpha } = this.highlightStyle;
+    // While a source is picked out, every other source draws at reduced opacity
+    // (the selection reads by contrast, not by hue alone) and the picked one is
+    // drawn last, on top, in the highlight colour.
+    ctx.globalAlpha = highlighted >= 0 ? dimAlpha : 1;
     for (let b = 0; b < numBuckets; b++) {
       const indices = this.renderBuckets[b];
       if (indices.length === 0) continue;
       const sourceIdx = Math.floor(b / 9);
+      if (sourceIdx === highlighted) continue;
       const hueBucket = Math.floor((b % 9) / 3) - 1;
       const weightBucket = (b % 3) - 1;
       const channel = this.world.sources[sourceIdx]?.source.palette;
@@ -813,5 +860,25 @@ export class ParticleSystem {
       }
       ctx.stroke();
     }
+
+    if (highlighted >= 0) {
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = this.highlightStyle.color;
+      for (let b = highlighted * 9; b < highlighted * 9 + 9; b++) {
+        const indices = this.renderBuckets[b];
+        if (indices.length === 0) continue;
+        const weightBucket = (b % 3) - 1;
+        ctx.lineWidth =
+          resolveStrokeWidth(palette, weightBucket) * strokeWeightMultiplier * this.highlightStyle.widthScale;
+        ctx.beginPath();
+        for (const i of indices) {
+          ctx.moveTo(this.px[i], this.py[i]);
+          ctx.lineTo(this.x[i], this.y[i]);
+        }
+        ctx.stroke();
+      }
+    }
+    // The caller's next draw is its trail-fade wash, which must not inherit a dimmed alpha.
+    ctx.globalAlpha = 1;
   }
 }

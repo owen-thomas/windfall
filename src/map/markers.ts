@@ -62,6 +62,30 @@ export function ensureHatchDef(svg: SVGSVGElement): void {
   defs.append(pattern);
 }
 
+/**
+ * Pick one farm's marker out from the rest (Windfall_Map_Spec_4c.md §4c.3,
+ * DECISIONS 029): `data-highlight` on its circle, `data-highlighting` on the
+ * svg so CSS can dim the others. Used by the main-stage layer below and by the
+ * Shetland inset's own markers (main.ts), which are a separate svg. The picked
+ * marker is moved to the end of its svg so it draws above its neighbours.
+ */
+export function setMarkerHighlight(
+  svg: SVGSVGElement,
+  markers: Iterable<[string, SVGCircleElement]>,
+  farm: string | null
+): void {
+  if (farm === null) svg.removeAttribute('data-highlighting');
+  else svg.setAttribute('data-highlighting', '');
+  for (const [name, circle] of markers) {
+    if (name === farm) {
+      circle.setAttribute('data-highlight', '');
+      svg.append(circle);
+    } else {
+      circle.removeAttribute('data-highlight');
+    }
+  }
+}
+
 export interface FarmMarkerLayer {
   /** Recompute every marker's cx/cy from the current Projection — call after buildWorld() on boot and every rebuild(). */
   reposition(project: Projection['project']): void;
@@ -75,6 +99,8 @@ export interface FarmMarkerLayer {
    * inset instead (main.ts's `drawInset`).
    */
   setHidden(hidden: ReadonlySet<string>): void;
+  /** Light one farm's marker and dim the rest, or (null) put them all back. */
+  setHighlight(farm: string | null): void;
 }
 
 export function createFarmMarkerLayer(svg: SVGSVGElement, sites: FarmSite[]): FarmMarkerLayer {
@@ -110,6 +136,9 @@ export function createFarmMarkerLayer(svg: SVGSVGElement, sites: FarmSite[]): Fa
       for (const [farm, circle] of circles) {
         circle.style.display = hidden.has(farm) ? 'none' : '';
       }
+    },
+    setHighlight(farm) {
+      setMarkerHighlight(svg, circles, farm);
     },
   };
 }

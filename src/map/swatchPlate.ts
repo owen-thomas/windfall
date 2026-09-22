@@ -17,6 +17,7 @@ import { emptyFeeds, type AppState } from '../lib/state';
 import { scenarioByName } from '../lib/scenarios';
 import { mapBandView } from './views/band';
 import { mapHeadlineView } from './views/headline';
+import { mapSourcesView } from './views/sources';
 import { SCOTLAND, ENGLAND } from '../view/band';
 
 const TYPE_TOKENS: { token: string; label: string; sample: string; font: 'display' | 'body' }[] = [
@@ -31,6 +32,7 @@ const COLOUR_GROUPS: { title: string; tokens: string[] }[] = [
   { title: 'Ground & text', tokens: ['--ink-void', '--ink-ground', '--ink-raised', '--ink-line', '--ink-line-strong', '--ink-box', '--text-primary', '--text-secondary', '--text-muted'] },
   { title: 'Fuels (wind: indigo in the bars and legend; --wind-live on the map itself)', tokens: ['--fuel-wind', '--wind-live', '--fuel-gas', '--fuel-nuclear', '--fuel-solar', '--fuel-hydro', '--fuel-biomass', '--fuel-imports', '--fuel-coal', '--fuel-other'] },
   { title: 'Curtailed', tokens: ['--curtailed', '--curtailed-edge'] },
+  { title: 'Selection (the farm picked out in the source list)', tokens: ['--highlight'] },
   { title: 'Link & the breakdown bar', tokens: ['--link', '--bar-on', '--bar-off', '--bar-label'] },
   { title: 'Signal', tokens: ['--signal-ok', '--signal-ageing', '--signal-stale', '--signal-failed'] },
 ];
@@ -64,9 +66,14 @@ const CONTRAST_ROWS: ContrastRow[] = [
   { fg: '--signal-failed', bg: '--ink-ground', kind: 'text', use: 'failed notice' },
   { fg: '--fuel-wind', bg: '--ink-ground', kind: 'graphic', use: 'wind bar segment, legend swatch' },
   { fg: '--wind-live', bg: '--ink-ground', kind: 'graphic', use: 'farm markers' },
+  { fg: '--highlight', bg: '--ink-ground', kind: 'graphic', use: 'the selected farm\'s marker and flow' },
+  { fg: '--highlight', bg: '--ink-raised', kind: 'graphic', use: 'the selected row\'s dot, on its tint' },
+  { fg: '--fuel-wind', bg: '--ink-ground', kind: 'text', use: 'source rows: on-grid MW (and, from 4c.5, windspeed)' },
+  { fg: '--fuel-wind', bg: '--ink-raised', kind: 'text', use: 'source rows: figures on the selected tint' },
+  { fg: '--text-primary', bg: '--ink-raised', kind: 'text', use: 'source rows: farm names on the selected tint' },
   { fg: '--wind-live', bg: '--curtailed', kind: 'graphic', use: 'held-down marker edge on its fill' },
   { fg: '--signal-ok', bg: '--ink-ground', kind: 'graphic', use: 'freshness dot, at rest (the bar navy)' },
-  { fg: '--bar-off', bg: '--ink-ground', kind: 'graphic', use: 'freshness dot, the light end of its pulse' },
+  { fg: '--bar-off', bg: '--ink-ground', kind: 'graphic', use: 'freshness dot, the light end of its pulse; the source rows\' dots and mini-bar rest' },
   { fg: '--signal-ok', bg: '--ink-box', kind: 'graphic', use: 'freshness dot, at rest, on the settlement box' },
   { fg: '--bar-off', bg: '--ink-box', kind: 'graphic', use: 'freshness dot, light end, on the settlement box' },
   { fg: '--fuel-gas', bg: '--ink-ground', kind: 'graphic', use: 'gas segment' },
@@ -156,8 +163,14 @@ function contrastTable(): HTMLElement {
 function fixtureHeadlines(): HTMLElement {
   const wrap = el('div', { class: 'plate__bars' });
   for (const fixtureName of ['curtailing', 'calm', 'degraded']) {
+    const state = fixtureState(fixtureName);
     const view = mapHeadlineView();
-    view.update(fixtureState(fixtureName));
+    view.update(state);
+    // The bar and the farm list are the sources view (4c.3); shown open, as they are on desktop.
+    const sources = mapSourcesView({ onSelect: () => undefined });
+    sources.update(state);
+    sources.el.open = true;
+    view.el.append(sources.el);
     wrap.append(
       el('div', { class: 'plate__bars-column' }, el('h3', { class: 'plate__bars-title', text: fixtureName }), view.el)
     );

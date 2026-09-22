@@ -111,6 +111,14 @@
   --curtailed: #b9cdf0;
   --curtailed-edge: var(--wind-live);
 
+  /* The farm picked out in the source list (4c.3, DECISIONS 029): its marker
+     and its flow on the map, and its dot in the list. A vivid azure, lighter
+     and more cyan than --wind-live (about 211° against 227°), 3.13:1 on cream.
+     Against --wind-live itself it is only ~2.1:1, so what makes the selection
+     read is dimming everything else — the flow draws the rest at a fraction of
+     its opacity and the other markers fade — not the hue alone. */
+  --highlight: #0a7cff;
+
   /* --- Link / accent --------------------------------------------------------
    * Text-size blue. The Figma value is #4865CB (4.18:1 on cream — below AA for
    * 12px text); this is the same hue two lightness points darker, the smallest
