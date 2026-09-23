@@ -17,8 +17,14 @@
  *
  *   Desktop L   ≥1440px (90rem)      two-column
  *   Desktop M   1280–1439px (80rem)  two-column — same layout, one type step down
- *   Tablet      744–1279px (46.5rem) stacked
- *   Mobile      ≤743px               stacked   (the defaults below)
+ *   Tablet      600–1279px (37.5rem) stacked
+ *   Mobile      ≤599px               stacked   (the defaults below)
+ *
+ * 4d moved the tablet break down from 744px (46.5rem): no phone held upright
+ * is wider than ~440px, so 600–743px (foldables, small tablets, landscape
+ * phones, narrow windows) was getting the phone layout stretched thin (Owen).
+ * The tablet margin is fluid across the new range so its farm columns keep
+ * their room (see --page-margin below).
  *
  * The layout flips at exactly 1280px.
  *
@@ -81,7 +87,17 @@
   --gap-group: 2rem; /* 32px */
 
   /* Type that steps by tier. */
-  --type-display: 1.25rem; /* 20px */
+  --type-display: 1.5rem; /* 24px (4d, Owen: was 20px, too slight for the page's claim) */
+  /* 4d: the subheadings' two sizes — the bold figures (the bar's two MW figures,
+     the settlement times) and the words beside them ("on the grid", "Held
+     back", "to", "Settlement period 30"). 24px / 16px from tablet up (Owen:
+     "larger headings are 24"), 16px / 12px on a phone, where the larger pair
+     took too much of the line (Owen). */
+  --type-subhead: 0.875rem; /* 14px under 400px (a narrow phone), 16px from 400px — below */
+  --type-subhead-label: 0.75rem; /* 12px */
+  /* 4d: the farm rows, the list's control, the method toggle and the footer —
+     12px, measured against Owen's frame. */
+  --type-row: 0.75rem; /* 12px */
   --lh-display: 1.2;
   --type-wordmark: 0.75rem; /* 12px */
   --type-legend: 0.6875rem; /* 11px — the mobile legend */
@@ -91,26 +107,16 @@
      tokens the panel's one rule set reads. Desktop: region name and
      intensity share a line, the legend flows two to a row. Tablet and mobile
      (panels only 3–4 columns wide): name, bar, then the intensity beneath it,
-     and the legend a single-column stack. Mobile only: the caption sentence
-     is taken off the screen (max-height 0 — still read aloud, never
-     display:none), and the Scotland panel is right-aligned against the
-     margin with its swatch trailing, as the Mobile frame has it. */
+     and the legend a single-column stack. 4d: the caption sits behind a
+     "Show summary" toggle at every tier (views/band.ts), and the Scotland
+     panel stays left-aligned on a phone too, so its summary reads as a
+     paragraph rather than a ragged-left block (Owen). */
   --band-cols: minmax(0, 1fr);
   --band-areas: 'place' 'bar' 'intensity' 'legend' 'caption';
   --legend-flow: column;
-  --caption-max-h: 0;
-  --caption-overflow: hidden;
-  --caption-gap: 0;
-  --scotland-align: end;
-  /* The Shetland label sits in the top corner of its square, 12px in from the
-     edge (11px + the 1px outline): top-right on mobile, where the panel ranges
-     right, top-left from tablet up. */
-  --inset-label-left: auto;
-  --inset-label-right: 0.6875rem;
-  /* The source list's columns: one on a phone, two from tablet up. */
-  --sources-cols: 1;
-  --scotland-swatch-order: 2;
-  --legend-gap: 1rem; /* stacked: the frames put 24px between the header group and the legend */
+  --scotland-align: start;
+  --scotland-swatch-order: 0;
+  --legend-gap: 0.5rem; /* stacked: 16px between the header group and the legend with the band's 8px row gap (4d, Owen: 24px read as too loose) */
   --bar-gap: 0rem;
   --source-detail-display: none; /* the feed descriptors ("NESO · mix, regions, forecast") wait for the room desktop has */
 
@@ -126,27 +132,35 @@
   --anchor-england-lat: 54.4;
 }
 
-/* --- Tablet (744–1279px): stacked, wider margins, 3-column mix panels ------- */
-@media (min-width: 46.5rem) {
+/* --- Phone from 400px: the bold subheadings' 16px --------------------------------
+ * 4d: under 400px (320–399: small Androids, the iPhone SE) the bar's two labels
+ * and the settlement heading ran out of line at 16px (Owen); 14px keeps them to
+ * one line down to 320px while staying a step above the 12px words beside them.
+ */
+@media (min-width: 25rem) {
+  :root {
+    --type-subhead: 1rem; /* 16px */
+  }
+}
+
+/* --- Tablet (600–1279px): stacked, wider margins, 3-column mix panels ------- */
+@media (min-width: 37.5rem) {
   :root {
     --tier: tablet;
-    --page-margin: 4rem; /* 64px — the Tablet frame's margin (spec §5.1 says 24px; DECISIONS 028) */
+    /* 64px from 744px up — the Tablet frame's margin (spec §5.1 says 24px;
+       DECISIONS 028) — easing down to 36px at 600px, linearly, so the two farm
+       columns stay ≈250px wide at the bottom of the range (4d). */
+    --page-margin: clamp(2.25rem, 19.444vw - 5.0417rem, 4rem);
     --page-top: 3.375rem; /* 54px: the frames' masthead cap-height sits at y=54 */
     --page-bottom: 3.5rem;
     --gap-masthead: 2.875rem;
     --mix-span: 3;
     --type-display: 2rem; /* 32px */
     --lh-display: 1.125;
+    --type-subhead: 1.5rem; /* 24px */
+    --type-subhead-label: 1rem; /* 16px */
     --type-wordmark: 1rem; /* 16px */
     --type-legend: 0.75rem; /* 12px */
-    --caption-max-h: none;
-    --caption-overflow: visible;
-    --caption-gap: 0.5rem;
-    --scotland-align: start;
-    --scotland-swatch-order: 0;
-    --inset-label-left: 0.6875rem;
-    --inset-label-right: auto;
-    --sources-cols: 2;
     --anchor-england-lat: 55.1;
   }
 }

@@ -21,11 +21,25 @@ const STALE_WHILE_REVALIDATE = 600;
  * S_MAXAGE + STALE_WHILE_REVALIDATE old, and its health flags describe
  * upstream state at `fetchedAt`, not at delivery. See types.ts.
  */
-export function setCacheHeaders(res: { setHeader(name: string, value: string): unknown }): void {
+export function setCacheHeaders(
+  res: { setHeader(name: string, value: string): unknown },
+  options: { staleIfErrorSeconds?: number } = {}
+): void {
+  // `stale-if-error`: when a refresh comes back 5xx, Vercel's CDN doesn't cache
+  // the error and keeps serving the last good copy for this long instead
+  // (vercel.com/docs/caching/cache-control-headers). Only useful on a route
+  // that answers a failure with a 5xx — see noStoreHeaders below.
+  const staleIfError = options.staleIfErrorSeconds ? `, stale-if-error=${options.staleIfErrorSeconds}` : '';
   res.setHeader(
     'Cache-Control',
-    `public, s-maxage=${S_MAXAGE}, stale-while-revalidate=${STALE_WHILE_REVALIDATE}`
+    `public, s-maxage=${S_MAXAGE}, stale-while-revalidate=${STALE_WHILE_REVALIDATE}${staleIfError}`
   );
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+}
+
+/** For a failure answered with a 5xx: never cached, so the CDN's last good copy stands. */
+export function setNoStoreHeaders(res: { setHeader(name: string, value: string): unknown }): void {
+  res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
 }
 

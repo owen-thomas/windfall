@@ -11,7 +11,7 @@
  * — and, as of DECISIONS 032/034, drops the staleness half too: neither the
  * rollover notice ("settlement period N closed at…") nor the stale-reading
  * one ("this reading is an hour old…") fires here any more. Both read as
- * alarms for something the clock beside them — "Last read N ago" — already
+ * alarms for something the clock — "Last updated N ago", in the footer since 4d — already
  * says plainly enough for a reader to act on (refresh, or just note the
  * age), and having a two-line warning box appear and disappear under the
  * settlement row broke the section's own grid rhythm (032/034's respective
@@ -22,23 +22,37 @@
  */
 
 import { el, setAttr, setText, type View } from '../../view/dom';
-import { formatAge, formatPeriodSpan } from '../../lib/format';
+import { formatAge, formatTime } from '../../lib/format';
 import { overallAge, settlementOf, type AppState } from '../../lib/state';
 
-export function mapMastheadView(): View {
+export interface MapMastheadView extends View {
+  /** The settlement heading ("15:00 to 15:30  Settlement period 31"), seated in
+   *  the method disclosure's summary by main.ts. */
+  clock: HTMLElement;
+  /** The freshness dot and "Updated N ago", seated in the footer by main.ts (4d). */
+  freshness: HTMLElement;
+}
+
+export function mapMastheadView(): MapMastheadView {
+  // 4d: the time leads, bold and large, "to" smaller; the period number follows.
+  const start = el('span', { class: 'clock__time' });
+  const end = el('span', { class: 'clock__time' });
+  const span = el('span', { class: 'clock__span' }, start, el('span', { class: 'clock__to', text: ' to ' }), end);
   const period = el('span', { class: 'clock__period' });
-  const span = el('span', { class: 'clock__span' });
   const age = el('span', { class: 'clock__age' });
   const notice = el('p', { class: 'map-masthead__notice' });
 
   const clock = el(
     'div',
     { class: 'clock map-masthead__clock', 'data-freshness': 'fresh' },
-    period,
     span,
-    age,
+    period,
     notice
   );
+  // Its own `.clock`, so app.css's `.clock[data-freshness] .clock__age` states
+  // (010/016/017) still apply now the age lives in the footer, apart from the
+  // heading it used to share a row with.
+  const freshness = el('p', { class: 'clock map-freshness', 'data-freshness': 'fresh' }, age);
 
   // The clock is built and kept fresh here, but the Figma frames seat it in the
   // headline block (between the sentence and the bar), so main.ts re-parents
@@ -47,8 +61,9 @@ export function mapMastheadView(): View {
   const root = el(
     'header',
     { class: 'map-masthead' },
+    // Not the page's <h1> since 4d: the headline sentence is (views/headline.ts).
     el(
-      'h1',
+      'div',
       { class: 'map-masthead__wordmark' },
       el('img', {
         class: 'map-masthead__logo',
@@ -66,39 +81,48 @@ export function mapMastheadView(): View {
     notice.hidden = text === '';
   }
 
+  function setFreshness(value: string) {
+    setAttr(clock, 'data-freshness', value);
+    setAttr(freshness, 'data-freshness', value);
+  }
+
   return {
     el: root,
+    clock,
+    freshness,
     update(state: AppState) {
       const settlement = settlementOf(state);
 
       if (settlement) {
+        setText(start, formatTime(settlement.periodStart));
+        setText(end, formatTime(settlement.periodEnd));
+        span.hidden = false;
         setText(period, `Settlement period ${settlement.period}`);
-        setText(span, formatPeriodSpan(settlement.periodStart, settlement.periodEnd));
       } else {
+        span.hidden = true;
         setText(period, 'Settlement period unknown');
-        setText(span, '—');
       }
 
       const reading = overallAge(state);
 
       if (!reading && state.pending) {
         setText(age, 'Reading');
-        setAttr(clock, 'data-freshness', 'pending');
+        setFreshness('pending');
         setNotice('');
         return;
       }
 
       if (!reading) {
         setText(age, 'No reading');
-        setAttr(clock, 'data-freshness', 'failed');
+        setFreshness('failed');
         setNotice('Windfall is not reaching its data sources. Nothing on this page is current.');
         return;
       }
 
-      setAttr(clock, 'data-freshness', reading.freshness);
+      setFreshness(reading.freshness);
       setText(
         age,
-        reading.freshness === 'stale' ? `Last read ${formatAge(reading.ms)}` : `Read ${formatAge(reading.ms)}`
+        reading.freshness === 'stale' ? `Last updated ${formatAge(reading.ms)}` : `Updated ${formatAge(reading.ms)}`
       );
 
       setNotice('');

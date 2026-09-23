@@ -2,23 +2,20 @@
  * What is on the grid, read once from the curtailment payload
  * (Windfall_Map_Spec_4c.md §4c.2–4c.3, DECISIONS 029).
  *
- * The headline's sentence ("83% of Scotland's tracked wind is currently on the
- * grid"), the breakdown bar's label and fill, and every row of the source list
- * are all this one reading, taken from `curtailment.now` and nothing else, so
+ * The headline's sentence ("At least 17% of Scotland's tracked wind is currently
+ * being held back from the grid", 4d), the bar's two labels and fill, and every
+ * row of the source list are all this one reading, taken from `curtailment.now` and nothing else, so
  * none of them can disagree with another. `instructedMW` is `declaredMW −
  * curtailedMW` — what the balancing mechanism is letting through — over
  * *declared* output, never installed capacity (026's reasoning: capacity counts
  * every farm idle for lack of wind, which understates the share on a windy day).
  *
- * Rounding only ever errs low, the conservative principle 003/026 established
- * and 029 applies to the new number: the percentage is floored (by the caller,
- * `formatPctFloor`), and the on-grid megawatts are floored while anything is
- * held down, so a printed figure can never claim more wind is getting through
- * than is. When nothing is held down the on-grid and declared figures are equal
- * and rounded alike, so a clear day reads "13,105 of 13,105 MW", never
- * "13,104 of 13,105". (One corner stays: when under a megawatt is held down the
- * label is exact at megawatt resolution — "5,363 of 5,363 MW" — while the
- * floored percentage reads 99%. Both are true of a 99.99% share.)
+ * Rounding (4d): what is held back is the lower bound — Windfall counts only
+ * instructed turn-downs — so it is floored, both as the headline's percentage
+ * (by the caller, `formatPctFloor`) and as the bar's megawatts. The on-grid
+ * label is the rounded declared total minus that floor, so the two labels
+ * always add up to the declared output and neither overstates the other's
+ * claim. `onGridFigure` below is the per-farm row's figure, unchanged from 4c.
  */
 
 import { formatMW } from '../lib/format';
@@ -27,17 +24,18 @@ import type { CurtailmentNow } from '../lib/types';
 export interface OnGridReading {
   declaredMW: number;
   instructedMW: number;
-  /** Exact on-grid share, 0–100 — the bar's fill. The sentence floors it (`formatPctFloor`). */
+  /** Megawatts held back (curtailed), clamped to 0–declared. */
+  heldMW: number;
+  /** Exact on-grid share, 0–100 — the bar's fill. */
   pct: number;
+  /** Exact held-back share, 0–100. The headline floors it (4d). */
+  heldPct: number;
   /** Nothing is being held down: the on-grid share is a true 100%. */
   allClear: boolean;
-  /** The bar's label, on-grid half: "10,971". Split from `declaredLabel` so the
-   *  view can set "of" in its own, smaller size between the two. */
+  /** The bar's on-grid label: "10,877 MW". */
   onGridLabel: string;
-  /** The bar's label, declared half: "13,105 MW". */
-  declaredLabel: string;
-  /** The plain sentence for the aria-hidden bar: "10,971 of the 13,105 MW Scotland is making is on the grid." */
-  sentence: string;
+  /** The bar's held-back label: "2,228 MW", floored ("at least"). */
+  heldLabel: string;
 }
 
 /**
@@ -54,20 +52,24 @@ export function readOnGrid(now: Pick<CurtailmentNow, 'curtailedMW' | 'farms'>): 
 
   // Clamped, so a curtailed figure that ran past the declared one reads as
   // none on the grid, never as a negative share.
-  const instructedMW = allClear
-    ? declaredMW
-    : Math.min(declaredMW, Math.max(0, declaredMW - now.curtailedMW));
-  const pct = declaredMW > 0 ? (instructedMW / declaredMW) * 100 : allClear ? 100 : 0;
+  const heldMW = allClear ? 0 : Math.min(declaredMW, Math.max(0, now.curtailedMW));
+  const instructedMW = declaredMW - heldMW;
+  const pct = declaredMW > 0 ? (instructedMW / declaredMW) * 100 : 100;
+  const heldPct = declaredMW > 0 ? (heldMW / declaredMW) * 100 : 0;
 
-  const onGrid = onGridFigure(instructedMW, !allClear);
+  // 4d: the held-back figure is the lower bound ("at least"), so it is floored;
+  // the on-grid figure is what is left of the rounded declared total, so the two
+  // labels always add up to it and the on-grid one never undercounts the floor.
+  const declaredWhole = Math.round(declaredMW);
+  const heldWhole = Math.floor(heldMW);
   return {
     declaredMW,
     instructedMW,
+    heldMW,
     pct,
+    heldPct,
     allClear,
-    onGridLabel: onGrid,
-    declaredLabel: formatMW(declaredMW),
-    // The first figure is bare because the second's "MW" covers both (026's phrasing).
-    sentence: `${onGrid} of the ${formatMW(declaredMW)} Scotland is making is on the grid.`,
+    onGridLabel: formatMW(declaredWhole - heldWhole),
+    heldLabel: formatMW(heldWhole),
   };
 }

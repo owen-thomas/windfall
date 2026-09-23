@@ -1,8 +1,14 @@
 /**
- * The settlement row and, hanging off its chevron, the page's one explanation
- * (Windfall_Map_Spec_4c.md §4c.4, DECISIONS 029): a native `<details>`, the
- * boxed settlement-period row as the `<summary>`, one consolidated disclosure
- * as its body.
+ * The settlement row and, hanging off it, the page's one explanation
+ * (Windfall_Map_Spec_4c.md §4c.4, DECISIONS 029; re-cut by
+ * Windfall_Map_Spec_4d.md): a native `<details>`, the settlement heading as the
+ * `<summary>`, one consolidated disclosure as its body.
+ *
+ * 4d: the heading leads with the time ("15:00 to 15:30", then "Settlement
+ * period 31"), the boxed chevron becomes an underlined text toggle at the row's
+ * right ("▶ Show method" / "▼ Hide method"), and the body is four short
+ * paragraphs in Owen's final copy. The freshness dot and age have moved to the
+ * footer (views/masthead.ts builds both halves).
  *
  * Through 4c.3 this page carried its explaining in two places: a "How this
  * number is worked out" `<details>` in the text column (colophon.ts's own,
@@ -38,19 +44,15 @@
  *   no place in a disclosure whose job is to remove doubt, not add it.
  * All three: recorded, not silently dropped — see DECISIONS 029.
  *
- * The settlement row itself (the clock element built and kept fresh by
- * `mapMastheadView` — its freshness dot, its stale/failed/ageing notice,
- * 010/016/017, all travel with it) is passed in rather than rebuilt: it is
- * the same element `main.ts` already re-parents into the headline block, now
- * wrapped in a box with a chevron rather than sitting bare, and seated *after*
- * the bar-and-list disclosure — the frame's own order (§1) is bar, list,
- * settlement row, explanation.
+ * The settlement heading itself (the clock element built and kept fresh by
+ * `mapMastheadView`, its failure notice with it) is passed in rather than
+ * rebuilt, and seated *after* the bar and list — the frame's order is bar,
+ * list, settlement row, explanation.
  *
  * Closed by default, on every tier: this is reference material a reader
- * checks against, not the page's argument (that is the headline and the bar,
- * which 4c.3 does open by default on desktop). The pre-4c `.method` disclosure
- * was closed by default for the same reason ("closed by default and one click
- * away" — its own doc comment) and nothing about the reframe changes it.
+ * checks against, not the page's argument (that is the headline and the
+ * bar). The pre-4c `.method` disclosure was closed by default for the same
+ * reason ("closed by default and one click away" — its own doc comment).
  *
  * The copy is Owen's (drafted through `owen-thomas-work:house-style` and
  * `design:ux-copy`, redrafted at his review) — see DECISIONS 029 for the full
@@ -61,23 +63,39 @@ import { el, setText, type View } from '../../view/dom';
 import type { AppState } from '../../lib/state';
 
 // Static: the same in every state, so set once rather than on every render.
-const MECHANISM =
-  'Scottish wind farms declare how much they can produce. The wires between Scotland and England ' +
-  'can only carry so much power south, so when Scottish wind exceeds that capacity, farms are ' +
-  'paid to switch off. What remains is on the grid.';
+const PERIODS =
+  'Britain’s grid runs in half-hour blocks called settlement periods. Every figure on this page ' +
+  'is for the half hour shown above.';
 
-const SR_LABEL = 'How this figure is worked out, and why Scotland’s wind gets turned down.';
+const MECHANISM =
+  'Scotland’s wind farms tell the grid how much power they could make. The cables south to ' +
+  'England can only carry so much, so when there’s more wind than they can take, farms are paid ' +
+  'to switch off. Whatever isn’t switched off goes onto the grid.';
+
+const FLOOR =
+  'We only count the switch-offs ordered by the grid operator. Farms also get held back in ways ' +
+  'our data can’t see, so the real share is probably higher.';
 
 export function mapSettlementView(clockEl: Element): View {
-  const chevron = el('span', { class: 'map-settlement__chevron', 'aria-hidden': 'true' });
-  const sr = el('span', { class: 'map-settlement__sr', text: SR_LABEL });
-  const summary = el('summary', { class: 'map-settlement__summary' }, clockEl, chevron, sr);
+  const toggleText = el('span', { class: 'map-toggle__text', text: 'Show method' });
+  const toggle = el('span', { class: 'map-toggle map-settlement__toggle' }, toggleText);
+  const summary = el('summary', { class: 'map-settlement__summary' }, clockEl, toggle);
 
-  const mechanism = el('p', { class: 'map-settlement__p', text: MECHANISM });
   const coverage = el('p', { class: 'map-settlement__p' });
-  const body = el('div', { class: 'map-settlement__body' }, mechanism, coverage);
+  const body = el(
+    'div',
+    { class: 'map-settlement__body' },
+    el('p', { class: 'map-settlement__p', text: PERIODS }),
+    el('p', { class: 'map-settlement__p', text: MECHANISM }),
+    el('p', { class: 'map-settlement__p', text: FLOOR }),
+    coverage
+  );
 
+  // Closed on first load, every tier (4d decision 11).
   const root = el('details', { class: 'map-settlement' }, summary, body);
+  root.addEventListener('toggle', () => {
+    setText(toggleText, root.open ? 'Hide method' : 'Show method');
+  });
 
   return {
     el: root,
@@ -86,41 +104,30 @@ export function mapSettlementView(clockEl: Element): View {
       const method = data?.method;
       const now = data?.now;
 
-      // --- The floor, and what's tracked. "Farms", not "units" or "them":
-      // unitsTracked (BMU-level) and farms.length (farm-level) are different
-      // counts, so naming the wrong noun (or a pronoun that could point at
-      // either) would say something false, not just something vague. ---------
-      let trackedLine: string;
+      // "Farms", not "units" or "them": unitsTracked (BMU-level) and
+      // farms.length (farm-level) are different counts, so naming the wrong
+      // noun would say something false, not just something vague.
       if (method && now) {
         const total = now.farms.length;
         const declaring = now.farms.filter((f) => f.unitsDeclaring > 0).length;
-        const declaredClause = declaring === total
-          ? `All ${total} of those farms had declared`
-          : `${declaring} of those farms had declared`;
-        const silent = total - declaring;
-        const silentClause = silent > 0
-          ? ` ${silent} hadn’t, and show silent on the map rather than a guessed zero.`
-          : '';
-        trackedLine =
-          `It tracks ${method.unitsTracked} transmission-connected Scottish wind units across ` +
-          `${total} farms, ${Math.round(method.capacityMW).toLocaleString('en-GB')} MW of ` +
-          `registered capacity. ${declaredClause} when we sampled the data.${silentClause}`;
+        const reported = declaring === total ? `All ${total}` : `${declaring} of ${total}`;
+        setText(
+          coverage,
+          `We’re tracking ${method.unitsTracked} transmission-connected wind units across ${total} ` +
+            `Scottish farms, with ${Math.round(method.capacityMW).toLocaleString('en-GB')} MW of ` +
+            `registered capacity between them. ${reported} had reported their figures when this ` +
+            'data was taken.'
+        );
       } else if (method) {
-        trackedLine =
-          `It tracks ${method.unitsTracked} transmission-connected Scottish wind units, ` +
-          `${Math.round(method.capacityMW).toLocaleString('en-GB')} MW of registered capacity. ` +
-          'Which farms are declaring is unknown while the balancing feed is unavailable.';
+        setText(
+          coverage,
+          `We’re tracking ${method.unitsTracked} transmission-connected Scottish wind units, with ` +
+            `${Math.round(method.capacityMW).toLocaleString('en-GB')} MW of registered capacity ` +
+            'between them. Which farms have reported is unknown while the balancing feed is unavailable.'
+        );
       } else {
-        trackedLine = 'How many farms are covered is unknown while the balancing feed is unavailable.';
+        setText(coverage, 'How many farms are covered is unknown while the balancing feed is unavailable.');
       }
-      setText(
-        coverage,
-        'Britain’s grid is measured in half-hour settlement periods — the one named above is ' +
-          'what every figure on this page describes. This is a partial picture: farms get held ' +
-          'back in ways our data doesn’t capture, so real curtailment is probably higher and the ' +
-          `on-grid share lower than what’s shown here. Windfall only counts what the grid ` +
-          `operator instructs off. ${trackedLine}`
-      );
     },
   };
 }

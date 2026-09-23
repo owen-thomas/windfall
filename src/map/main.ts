@@ -138,6 +138,13 @@ function bootMap(): void {
    */
   type ExtentMode = 'trueExtent' | 'inset';
   let extentMode: ExtentMode = 'inset';
+  /** The Shetland square: this share of the drawn map's width, with a floor
+   *  that keeps its 12px name legible, and the gap kept under it (4d). */
+  const INSET_SCALE = 0.2;
+  const INSET_MIN_PX = 72;
+  const INSET_CLEARANCE_PX = 16;
+  const INSET_STROKE_PX = 1;
+  const FOOT_CLEARANCE_PX = 24;
   const SHETLAND_ARCHIPELAGO = new Set(['Shetland Mainland', 'Yell', 'Unst']);
 
   function islandsForFit(): IslandRing[] {
@@ -203,15 +210,10 @@ function bootMap(): void {
   // The two mix panels are grid items of the map cell (map.css): their columns
   // come from the grid tokens, their vertical position from positionOverlays()
   // below. Hidden until that has run, so neither ever flashes at row 0.
-  // The Shetland inset (built above, drawn by drawInset) is the *first* thing in
-  // the Scotland panel — above the mix, since 4c (DECISIONS 029) — not a corner
-  // of the map; see map.css's inset section.
-  const scotlandPanel = el(
-    'section',
-    { class: 'map__overlay panel panel--scotland' },
-    insetBox,
-    scotlandBand.el
-  );
+  // The Shetland inset (built above, drawn by drawInset) is its own overlay
+  // since 4d: pinned to the top-right corner of the drawn map and scaled with
+  // it (positionOverlays), no longer the first thing in Scotland's panel.
+  const scotlandPanel = el('section', { class: 'map__overlay panel panel--scotland' }, scotlandBand.el);
   const englandPanel = el('section', { class: 'map__overlay panel panel--england' }, englandBand.el);
 
   // Part A.8: stagger, headline 0/breakdown 1 (set inside views/headline.ts
@@ -228,8 +230,13 @@ function bootMap(): void {
     { class: 'composition', id: 'composition' },
     stage,
     englandPanel,
-    scotlandPanel
+    scotlandPanel,
+    insetBox
   );
+  // A country's "Show summary" changes its panel's height, and the panels are
+  // placed by their heights (positionOverlays). `toggle` doesn't bubble, hence
+  // the capture.
+  composition.addEventListener('toggle', () => positionOverlays(), true);
 
   // --- Step 4b: three pieces of the old chrome move into the text column. ------
   // Each is a re-parent, not a rewrite: the view that renders it keeps
@@ -237,22 +244,17 @@ function bootMap(): void {
   // state rules travel with it.
   //
   // 1. The bar and its list, then the settlement-period row — the frame's own
-  //    order (§1): sentence, bar, list, settlement row, explanation. The bar
-  //    is open on desktop and shut elsewhere: the list is dense, and on a phone
-  //    it sits between the headline and the map. "Desktop" is the two-column
-  //    layout, read from grid.css's own `--layout` token so the breakpoint
-  //    stays written in one place.
+  //    order (§1): sentence, bar, list, settlement row, explanation. Since 4d
+  //    the list is always shown (views/sources.ts grows it in batches) rather
+  //    than a disclosure open on desktop and shut on mobile.
   headline.el.append(sources.el);
-  sources.el.open = getComputedStyle(document.documentElement).getPropertyValue('--layout').trim() === 'two-col';
 
-  // The settlement row: the masthead view still owns and keeps fresh the clock
-  // element itself (its freshness dot, its stale/failed/ageing notice —
-  // 010/016/017 — all travel with it), it just isn't rendered in the masthead
-  // any more. Since 4c.4 it is wrapped in its own disclosure (views/
-  // settlement.ts) — the boxed row is the summary, and its chevron opens the
-  // page's one explanation.
-  const clockEl = masthead.el.querySelector('.map-masthead__clock')!;
-  const settlement = mapSettlementView(clockEl);
+  // The settlement heading: the masthead view still owns and keeps fresh the
+  // clock element itself, it just isn't rendered in the masthead any more. It
+  // is the summary of the method disclosure (views/settlement.ts). Its
+  // freshness dot and age are a separate element since 4d, seated in the
+  // footer below.
+  const settlement = mapSettlementView(masthead.clock);
   headline.el.append(settlement.el);
 
   // 2. The old "How this number is worked out" toggle — colophonView's own
@@ -281,6 +283,31 @@ function bootMap(): void {
   //    only ever a second, redundant cue — so nothing is lost. Removed here,
   //    not in colophon.ts, which `/` uses unchanged.
   colophon.el.querySelectorAll('.source__mark').forEach((mark) => mark.remove());
+
+  // 5. 4d: the footer reads "Carbon Intensity • Elexon Insights ● Updated 6
+  //    minutes ago" — the freshness moves here from the settlement row, after
+  //    the two sources and before the byline. Each source's health word stays
+  //    in the DOM but only shows when that source isn't answering (map.css).
+  //    The two sources are grouped so that, when the line wraps on a phone,
+  //    the freshness drops to its own line flush left rather than indented.
+  //    Each source says what it gives the page, not just its product name —
+  //    "Carbon Intensity" and "Elexon Insights" meant nothing on their own
+  //    (Owen) — with the organisation linked.
+  const [carbonRow, elexonRow] = colophon.el.querySelectorAll('.source');
+  carbonRow
+    .querySelector('.source__name')!
+    .replaceChildren(
+      'Grid mix from ',
+      el('a', { class: 'map-foot__link', href: 'https://carbonintensity.org.uk', text: 'NESO' })
+    );
+  elexonRow
+    .querySelector('.source__name')!
+    .replaceChildren(
+      'Switch-offs from ',
+      el('a', { class: 'map-foot__link', href: 'https://bmrs.elexon.co.uk', text: 'Elexon' })
+    );
+  const feeds = el('span', { class: 'map-foot__feeds' }, carbonRow, elexonRow);
+  colophon.el.querySelector('.colophon__byline')!.before(feeds, masthead.freshness);
 
   // The footer sits in the same grid row as the map and overlays its bottom-
   // left corner, as the Figma frames do; the dev state toggle rides in it so
@@ -315,6 +342,10 @@ function bootMap(): void {
   let world: World;
   let particles: ParticleSystem;
   let currentDpr = 1;
+  /** The stage's height when last built, css px: the floor panels are kept above. */
+  let stageCssHeight = 0;
+  /** The drawn map's bounding box in the stage, css px — where the inset pins. */
+  let fitBounds = { left: 0, top: 0, right: 0, bottom: 0 };
   let debugCanvas: HTMLCanvasElement | null = null;
   let debugLayers = new Set<DebugLayer>(['mask']);
   let debugVisible = false;
@@ -326,6 +357,7 @@ function bootMap(): void {
     const rect = stage.getBoundingClientRect();
     const cssWidth = Math.max(1, rect.width);
     const cssHeight = Math.max(1, rect.height);
+    stageCssHeight = cssHeight;
     const width = Math.round(cssWidth * dpr);
     const height = Math.round(cssHeight * dpr);
 
@@ -380,24 +412,52 @@ function bootMap(): void {
     }
   }
 
-  function drawInset() {
+  /** The inset square's side the last time it was drawn, css px. */
+  let insetSide = 0;
+
+  function drawInset(side = insetSide) {
     if (extentMode !== 'inset') {
       insetBox.style.display = 'none';
       return;
     }
     insetBox.style.display = 'block';
     const shetlandIslands = ALL_ISLANDS.filter((i) => SHETLAND_ARCHIPELAGO.has(i.name));
-    if (shetlandIslands.length === 0) return;
+    if (shetlandIslands.length === 0 || side <= 0) return;
+    insetSide = side;
 
-    // The drawing area is the 120px square less the strip kept for the name
-    // (map.css's --inset-label-band); the svg scales to whatever width it is
-    // given, so a phone's narrower square shrinks the island, never the name.
-    const INSET_WIDTH = 120;
-    const INSET_HEIGHT = 90;
-    insetSvg.setAttribute('viewBox', `0 0 ${INSET_WIDTH} ${INSET_HEIGHT}`);
+    // 4d: the svg is the whole square, drawn at its own pixel size. The
+    // archipelago is fitted into the space under the name's strip (so it keeps
+    // its shape at every size — Owen), at 90% of it so there's room to move,
+    // then slid so its farm's dot is as near the square's centre as the
+    // island's own extent allows without running under the name or off the
+    // square.
+    const band = 26;
+    const pad = 6;
+    insetSvg.setAttribute('viewBox', `0 0 ${side} ${side}`);
 
     const allPoints = shetlandIslands.flatMap((i) => i.ring);
-    const insetProjection = buildProjection(allPoints, INSET_WIDTH, INSET_HEIGHT, { padding: 0.08 });
+    const areaW = side - 2 * pad;
+    const areaH = Math.max(1, side - band - pad);
+    const fitted = buildProjection(allPoints, areaW, areaH * 0.9, { padding: 0 });
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const point of allPoints) {
+      const [, y] = fitted.project(point);
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y);
+    }
+    const anchorSite = FARM_SITES.find((s) => offMainStageFarms.has(s.farm));
+    const [ax, ay] = anchorSite ? fitted.project(anchorSite.latLon) : [areaW / 2, (minY + maxY) / 2];
+    const dx = side / 2 - ax;
+    // Centre the dot, then clamp: the island's top no higher than the strip's
+    // foot, its bottom no lower than the square's padding.
+    const dy = Math.min(Math.max(side / 2 - ay, band - minY), side - pad - maxY);
+    const insetProjection = {
+      project: (p: [number, number]): [number, number] => {
+        const [x, y] = fitted.project(p);
+        return [x + dx, y + dy];
+      },
+    };
 
     for (const p of insetIslandPaths) p.remove();
     insetIslandPaths.length = 0;
@@ -454,11 +514,9 @@ function bootMap(): void {
    * That is what the Figma frames do: the panels are flush to the columns but
    * level with the country they describe, at every fit.
    *
-   * It is the *mix band's* top edge that sits at the anchor, not the panel's:
-   * since 4c the Shetland inset is the first thing in Scotland's panel, above the
-   * band, and hangs above the anchor (`lead-in` below) rather than pushing the
-   * band down off the latitude the frames put it at. With the inset hidden
-   * (true-extent mode) the lead-in is 0 and nothing changes.
+   * It is the *mix band's* top edge that sits at the anchor, not the panel's
+   * (`lead-in` below; 0 since 4d moved the Shetland inset out of Scotland's
+   * panel to the map's top-right corner, placed here too).
    *
    * Measured against `.composition` rather than `.map__stage` itself via
    * getBoundingClientRect, in css px (world.projection deals in device px).
@@ -467,19 +525,74 @@ function bootMap(): void {
     const stageRect = stage.getBoundingClientRect();
     const compRect = composition.getBoundingClientRect();
     const offsetY = stageRect.top - compRect.top;
+    const offsetX = stageRect.left - compRect.left;
 
-    /** Top edge of a panel whose band starts `leadIn` px below it, so the band sits at a latitude; kept inside the cell so a low anchor on a short map never clips it. */
+    // 4d: the Shetland square pins to the top-right corner of the drawn map
+    // (the fitted island's bounding box) and scales with it: a fifth of the
+    // map's width, never so small the name won't fit (Owen).
+    let inset: { left: number; right: number; top: number; bottom: number } | null = null;
+    if (extentMode === 'inset') {
+      const fitWidth = fitBounds.right - fitBounds.left;
+      const side = Math.max(INSET_MIN_PX, fitWidth * INSET_SCALE);
+      const left = offsetX + fitBounds.right - side;
+      const top = offsetY + fitBounds.top;
+      insetBox.style.left = `${left}px`;
+      insetBox.style.top = `${top}px`;
+      insetBox.style.width = `${side}px`;
+      // Drawn at its own size: the stroke is inside the box, so the svg's.
+      const inner = side - 2 * INSET_STROKE_PX;
+      if (Math.abs(inner - insetSide) > 0.5) drawInset(inner);
+      inset = { left, right: left + side, top, bottom: top + side };
+    }
+
+    // Stacked, the footer sits over or right under the map cell's bottom-left
+    // corner; a panel over the same columns (England's, with its summary open)
+    // ends a clear 24px above it rather than running into it (4d).
+    const footRect = document.querySelector('.map-foot')?.getBoundingClientRect();
+    // The floor is the stage as it was built, not the cell's live height: stacked,
+    // the cell grows with a panel that runs past it, so its height would move
+    // with the very panel being placed.
+    const cellFloor = offsetY + stageCssHeight;
+    function floorFor(panel: HTMLElement): number {
+      const left = compRect.left + panel.offsetLeft;
+      const sharesColumns = footRect && left < footRect.right && left + panel.offsetWidth > footRect.left;
+      const footTop = footRect ? footRect.top - compRect.top : Infinity;
+      // Whether it overlays the cell or starts right under it, keep the gap.
+      // (Its own live position can't be trusted either — it sits under a cell
+      // the panel may be stretching — so the built floor bounds it.)
+      return sharesColumns ? Math.min(cellFloor, footTop) - FOOT_CLEARANCE_PX : cellFloor;
+    }
+
+    /** Top edge of a panel whose band starts `leadIn` px below it, so the band sits at a latitude; kept inside the cell (and clear of the footer) so a low anchor on a short map never clips it. */
     function panelTop(panel: HTMLElement, lat: number, leadIn: number): number {
       const [, y] = world.projection.project([lat, 0]);
       const wanted = offsetY + y / currentDpr - leadIn;
-      return Math.max(0, Math.min(wanted, compRect.height - panel.offsetHeight));
+      return Math.max(0, Math.min(wanted, floorFor(panel) - panel.offsetHeight));
     }
 
     for (const [panel, band, token, fallback] of [
       [scotlandPanel, scotlandBand.el, '--anchor-scotland-lat', 57.2],
       [englandPanel, englandBand.el, '--anchor-england-lat', 54.4],
     ] as const) {
-      panel.style.setProperty('--anchor-y', `${panelTop(panel, tokenNumber(token, fallback), band.offsetTop)}px`);
+      let top = panelTop(panel, tokenNumber(token, fallback), band.offsetTop);
+      // A panel sharing columns with the Shetland square (a phone: Scotland's
+      // hangs from the top of the cell) starts clear below it.
+      const overlaps = inset && panel.offsetLeft < inset.right && panel.offsetLeft + panel.offsetWidth > inset.left;
+      if (inset && overlaps && top < inset.bottom + INSET_CLEARANCE_PX) {
+        top = Math.min(inset.bottom + INSET_CLEARANCE_PX, floorFor(panel) - panel.offsetHeight);
+      }
+      // Sitting above the panel's content, the square lines up with its left
+      // edge rather than the map's corner (Owen).
+      if (inset && overlaps && top >= inset.bottom) insetBox.style.left = `${panel.offsetLeft}px`;
+      // Beside it in one row (a tablet), the panel drops so the cap height of
+      // "Scotland" is level with the square's top edge (Owen). The name is
+      // trimmed to its cap height (text-box), so its box top is the cap.
+      if (inset && !overlaps && panel === scotlandPanel && top < inset.bottom) {
+        const place = band.querySelector('.map-band__place');
+        const capOffset = place ? place.getBoundingClientRect().top - panel.getBoundingClientRect().top : 0;
+        top = Math.max(0, Math.min(inset.top - capOffset, floorFor(panel) - panel.offsetHeight));
+      }
+      panel.style.setProperty('--anchor-y', `${top}px`);
       panel.style.visibility = 'visible';
     }
   }
@@ -547,6 +660,14 @@ function bootMap(): void {
       particles = new ParticleSystem(world, particleCount, { style: { ...DEFAULT_PARTICLE_STYLE } });
     }
     if (!markerLayer) markerLayer = createFarmMarkerLayer(svg, FARM_SITES);
+    fitBounds = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+    for (const point of projectionRing) {
+      const [x, y] = world.projection.project(point);
+      fitBounds.left = Math.min(fitBounds.left, x / currentDpr);
+      fitBounds.right = Math.max(fitBounds.right, x / currentDpr);
+      fitBounds.top = Math.min(fitBounds.top, y / currentDpr);
+      fitBounds.bottom = Math.max(fitBounds.bottom, y / currentDpr);
+    }
     debugCanvas = null;
     landFarms(lastFarmsNow);
     drawGeometry();
@@ -566,7 +687,13 @@ function bootMap(): void {
     resizeTimer = window.setTimeout(rebuild, 200);
   }).observe(stage);
 
+  // Field-tuning tools — the rate panel ('h'), debug layers ('d', 1–4), the
+  // extent and panel-style toggles ('t', 'c') — exist only in dev or with
+  // ?dev. On production they were live keys on a public page, and the rate
+  // panel sat in the DOM as a hidden <h2> (4d).
+  const devTools = import.meta.env.DEV || params.has('dev');
   window.addEventListener('keydown', (e) => {
+    if (!devTools) return;
     if (e.key === 'd') {
       debugVisible = !debugVisible;
     } else if (e.key === '1') {
@@ -578,7 +705,7 @@ function bootMap(): void {
     } else if (e.key === '4') {
       toggleLayer('gradient');
     } else if (e.key === 'h') {
-      controlPanel.toggle();
+      controlPanel?.toggle();
     } else if (e.key === 't') {
       // Gate-review convenience: the shipped inset default vs. the
       // true-extent toggle, side by side across two screenshots.
@@ -610,13 +737,13 @@ function bootMap(): void {
   // those are a font's to decide, so settle them again once the faces are in.
   void document.fonts?.ready.then(() => positionOverlays());
 
-  const controlPanel = createMapControlPanel({
+  const controlPanel = devTools ? createMapControlPanel({
     rateParams,
     onRateParamsChanged() {
       applyFarmRates(farmSources, lastFarmsNow, rateParams);
       particles.refreshRates();
     },
-  });
+  }) : null;
 
   // --- State machinery: fetchCoreFeeds on the same cadence as src/main.ts,
   // ?state= fixtures via scenarioByName, and the [ / ] cycler. Sources rebuild
@@ -668,6 +795,12 @@ function bootMap(): void {
       Object.assign(state, scenario.build(new Date()));
       state.pending = scenario.pending ?? false;
       landFarms(state.curtailment?.now?.farms);
+      render();
+      // The fixtures carry no weather, so they take the live windspeeds:
+      // otherwise every dev state reads as if the feed had failed.
+      const feed = await fetchWindspeed();
+      if (feed.windspeed) state.windspeed = feed.windspeed;
+      state.windspeedError = feed.windspeedError;
       render();
       return;
     }

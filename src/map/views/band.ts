@@ -16,6 +16,10 @@
  * "every figure in a sentence comes from the same payload as the bar above
  * it").
  *
+ * 4d: the caption sits behind the method disclosure's own pattern — a native
+ * `<details>`, "▶ Show summary" / "▼ Hide summary", closed on first load — at
+ * every tier (Owen). Through 4c a phone took it off the screen entirely.
+ *
  * Scotland's caption only, a third clause: "Average wind speed 14 km/h." —
  * the mean of whatever `state.windspeed` (map step 4c.5, Open-Meteo) answered
  * for, across every tracked farm's coordinate, not filtered to farms
@@ -60,8 +64,14 @@ export function mapBandView(spec: BandSpec): View {
   let legendKey = '';
 
   const caption = el('p', { class: 'map-band__caption' });
+  const toggleText = el('span', { class: 'map-toggle__text', text: 'Show summary' });
+  const summary = el('summary', { class: 'map-band__summary' }, el('span', { class: 'map-toggle' }, toggleText));
+  const more = el('details', { class: 'map-band__more' }, summary, caption);
+  more.addEventListener('toggle', () => {
+    setText(toggleText, more.open ? 'Hide summary' : 'Show summary');
+  });
 
-  const root = el('section', { class: 'map-band', 'data-side': spec.side, 'data-state': 'ok' }, head, bar, legend, caption);
+  const root = el('section', { class: 'map-band', 'data-side': spec.side, 'data-state': 'ok' }, head, bar, legend, more);
 
   return {
     el: root,
@@ -154,19 +164,33 @@ function averageWindspeed(speeds: Record<string, number> | undefined): number | 
   return values.reduce((sum, v) => sum + v, 0) / values.length;
 }
 
-/** The complete statement: the existing constraint-voice sentence, a second clause stating the bar's own lead-fuel share and intensity in prose (026), and — Scotland's panel only — a third giving the tracked fleet's average windspeed (4c.5). */
+/** The complete statement: for Scotland, the existing constraint-voice sentence, a second clause stating the bar's own lead-fuel share and intensity in prose (026), and a third giving the tracked fleet's average windspeed (4c.5); for England, one sentence of the two facts side by side (4d). */
 function twoClauseCaption(
   spec: BandSpec,
   region: RegionState,
   now: CurtailmentNow | null | undefined,
   state: AppState
 ): string {
-  const first = unknownOrStateCaption(spec, now, state);
   const leadPct = spec.lead === 'wind' ? region.windPct : region.gasPct;
   const words = formatIntensityWords(region.intensity.forecast ?? region.intensity.actual);
+
+  // England (4d): one sentence of fact, not cause. The old "gas plants across
+  // England make up the difference" claimed the gas was *because* Scotland's
+  // wind was held back, which the data can't show — only that both are true.
+  // Likewise "largely by gas" wasn't true at 35%. So: the two facts, side by
+  // side, and the reader draws the line.
+  if (spec.lead === 'gas') {
+    const past = now ? !speaksOfNow(state.curtailment?.fetchedAt, now.settlement, state.now) : false;
+    const coming = past ? 'was coming' : 'is coming';
+    const share = `${formatPct(leadPct)} of England’s power ${coming} from gas, at ${words}.`;
+    if (!now) return `${spec.caption.unknown} ${share}`;
+    if (now.curtailedMW <= 0) return share[0].toUpperCase() + share.slice(1);
+    return `While Scotland’s wind ${past ? 'was' : 'is'} held back, ${share}`;
+  }
+
+  const first = unknownOrStateCaption(spec, now, state);
   const second = `${formatPct(leadPct)} ${spec.lead} at ${words}.`;
 
-  if (spec.lead !== 'wind') return `${first} ${second}`;
   const avg = averageWindspeed(state.windspeed?.speeds);
   if (avg === null) return `${first} ${second}`;
   return `${first} ${second} Average wind speed ${formatWindspeed(avg)}.`;

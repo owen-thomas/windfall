@@ -14,7 +14,9 @@
  * query string is not a safe equality check. A single bad coordinate degrades
  * to a missing entry for that farm (never a guess); a response that isn't the
  * array shape expected, or the fetch itself failing, degrades the whole
- * route to `health: 'failed'` with an empty `speeds` — the client already
+ * route to `health: 'failed'` with an empty `speeds`, answered as an uncached
+ * 503 so the CDN keeps serving its last good copy (see the handler's foot).
+ * The client already
  * treats "no entry for this farm" and "the whole feed is down" identically
  * (no clause on the row), so failing shut here costs nothing.
  */
@@ -22,7 +24,10 @@
 import { createRequire } from 'node:module';
 import type { ApiRequest, ApiResponse } from './_lib/handler.js';
 import type { WindspeedResponse } from '../src/lib/types.js';
-import { fetchJson, setCacheHeaders } from './_lib/http.js';
+import { fetchJson, setCacheHeaders, setNoStoreHeaders } from './_lib/http.js';
+
+/** How long the CDN keeps serving the last good windspeeds while Open-Meteo is failing. */
+const STALE_IF_ERROR_SECONDS = 3600;
 
 interface FarmSite {
   farm: string;
@@ -92,6 +97,15 @@ export default async function handler(_req: ApiRequest, res: ApiResponse) {
     body.errors.push(err instanceof Error ? err.message : String(err));
   }
 
-  setCacheHeaders(res);
+  // A total failure (Open-Meteo down, rate-limited — a 429 — or a crash above)
+  // answers 503, uncached, rather than a cacheable 200 with no speeds in it. A
+  // 200 would replace the CDN's last good copy for everyone for five minutes; a
+  // 503 lets `stale-if-error` keep serving that copy, for up to an hour, while
+  // the refresh keeps being retried. The body still says what went wrong.
+  if (body.health === 'failed') {
+    setNoStoreHeaders(res);
+    return res.status(503).json(body);
+  }
+  setCacheHeaders(res, { staleIfErrorSeconds: STALE_IF_ERROR_SECONDS });
   return res.status(200).json(body);
 }

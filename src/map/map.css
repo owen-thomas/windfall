@@ -70,8 +70,10 @@ body {
  * Scotland 2, England 3 (Part A.8, minus the border — a plain line since 4c);
  * Scotland/England get theirs from main.ts's composition loop, same as step 3.
  */
+.map-headline__lead,
 .map-headline__figure,
 .map-headline__tail,
+.map-sources__figure,
 .map-band__caption,
 .map-band__intensity {
   transition: opacity var(--dur-quick) var(--ease-in-out) calc(var(--i, 0) * var(--stagger-step));
@@ -139,8 +141,15 @@ body {
  * layout) — see views/headline.ts's own docs.
  */
 .map-headline {
+  /* The method text's columns follow the farm list's (4d), so both read off
+     the text column's width. */
+  container: text / inline-size;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  /* 4d: 32px between the three sections — sentence, bar and farms, settlement —
+     measured optically, ink to ink: the sentence's last baseline to the bar
+     labels' cap height (both trimmed), and the last farm row's text to the
+     settlement heading's cap height (.map-settlement pulls in for that). */
   gap: var(--gap-group);
 }
 
@@ -158,7 +167,7 @@ body {
 }
 
 .map-headline__figure {
-  font-weight: var(--wt-bold);
+  font-weight: var(--wt-semibold);
 }
 
 /* Pending's "Reading" is not a claim yet, so it stays muted. */
@@ -166,62 +175,74 @@ body {
   color: var(--text-muted);
 }
 
-/* The settlement-period / "Read N ago" row, seated in the settlement
-   disclosure's summary by main.ts (views/settlement.ts). The masthead view
-   still owns it and its notice (010/016/017); this only lays it out: the
-   period and its span left, the freshness dot and age right. */
+/* The figure is the held-back share (4d), in the held-back blue. When nothing
+   is held back ("100% … on the grid") it is the display ink like the rest. */
+.map-headline[data-state='curtailing'] .map-headline__figure {
+  color: var(--held-text);
+}
+
+/* The settlement heading, seated in the method disclosure's summary by main.ts
+   (views/settlement.ts); the masthead view still owns it and its notice
+   (010/016/017). 4d: the time leads, "15:00" and "15:30" 24px bold with "to"
+   16px bold between them, then "Settlement period 31" 16px regular. */
 .map-settlement__summary .map-masthead__clock {
   flex: 1 1 auto;
   min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-items: unset;
-  column-gap: 0.5rem;
-  row-gap: 0.15rem;
+  /* A block of inline text, not app.css's flex row, so the optical trim below
+     (text-box) can take its first line to cap height and its last to the
+     baseline — the 40px above it is then measured as the frame measures it. */
+  display: block;
   max-width: none;
-  font-size: var(--type-small);
+  /* The line's own size is the times' 24px: text-box trims to the block's own
+     font metrics, not the largest thing on the line. */
+  font-size: var(--type-subhead);
+  font-family: var(--font-display);
   line-height: 1.15;
   text-align: left;
-}
-
-.map-settlement__summary .clock__period {
-  font-family: var(--font-display);
-  font-size: var(--type-heading);
-  font-weight: var(--wt-regular);
   color: var(--text-secondary);
 }
 
 .map-settlement__summary .clock__span {
-  color: var(--text-muted);
+  /* A trailing gap rather than a leading one, so when "Settlement period 31"
+     wraps (a phone) it starts flush left. Each phrase is an unbreakable inline
+     block, so a wrap only ever falls between them, never inside "Settlement
+     period 32". */
+  display: inline-block;
+  margin-right: 0.5rem;
+  white-space: nowrap;
+  font-size: var(--type-subhead-label);
+  font-weight: var(--wt-bold);
+  color: inherit;
 }
 
-.map-settlement__summary .clock__age {
-  margin-left: auto;
-  /* app.css's shared .clock__age sets 0.4rem; matched here to the farm
-     list's own dot-to-text gap (.source-row's 4px column-gap) instead, so
-     the two dot-and-label pairs on this page read as one convention
-     (Owen). Scoped to the map's settlement row only — `/` keeps app.css's
-     own value unchanged. */
+.map-settlement__summary .clock__span[hidden] {
+  display: none;
+}
+
+.map-settlement__summary .clock__time {
+  font-size: var(--type-subhead);
+  font-weight: var(--wt-semibold);
+  letter-spacing: -0.01em;
+}
+
+.map-settlement__summary .clock__period {
+  display: inline-block;
+  white-space: nowrap;
+  font-size: var(--type-subhead-label);
+  font-weight: var(--wt-regular);
+  color: inherit;
+}
+
+/* The freshness dot and age, in the footer since 4d (views/masthead.ts builds
+   it as its own `.clock`, so app.css's freshness states still apply). The dot
+   is static green — no pulse — and its gap matches the farm list's own
+   dot-to-text 4px, so the page's dot-and-label pairs read as one convention. */
+.map-freshness {
+  margin: 0;
+}
+
+.map-freshness .clock__age {
   gap: 4px;
-}
-
-/* The freshness dot pulses between the tracked-wind bar's two blues while the
-   reading is fresh (Owen, at the 4c.1 gate). Only `fresh`: the ageing, stale,
-   failed and pending dots keep the looks 010/016/017 gave them, and an
-   animation would override their background. At rest (and under reduced motion,
-   where --pulse-iterations is 0) it holds --signal-ok, the bar's navy. */
-.map-masthead__clock[data-freshness='fresh'] .clock__age::before {
-  animation: signal-pulse var(--dur-pulse) var(--ease-in-out) var(--pulse-iterations) alternate;
-}
-
-@keyframes signal-pulse {
-  from {
-    background-color: var(--bar-on);
-  }
-  to {
-    background-color: var(--bar-off);
-  }
 }
 
 /* The warning half of the old standfirst slot (views/masthead.ts): a full
@@ -229,6 +250,7 @@ body {
 .map-masthead__notice {
   flex-basis: 100%;
   margin: 0.35rem 0 0;
+  font-family: var(--font-body);
   font-size: var(--type-small);
   font-weight: var(--wt-regular);
   line-height: 1.4;
@@ -239,46 +261,66 @@ body {
   display: none;
 }
 
-/* --- The bar and its source list (spec 4b §6.5, 4c §4c.2–4c.3) ----------------
- * One native <details>: the bar (with its chevron) is the summary, the tracked
- * farms are the content. views/sources.ts owns the DOM; main.ts opens it on
- * desktop and leaves it shut elsewhere.
+
+/* --- The bar and its source list (4c §4c.3, re-cut by 4d) --------------------
+ * The labels, then the bar, then the farms (views/sources.ts owns the DOM).
  *
- * The bar: one solid bar, the whole of it the declared output (the lighter
- * blue), the on-grid share the navy run at its left, the figures inside it —
- * "10,971 of 13,105 MW". Turned over in 4c: through 4b the run was the curtailed
- * share; it is now what is getting through, so it is the navy the frame draws it
- * in (--bar-on), and what is not is the lighter --bar-off. 32px tall, inset 8px
- * from the left, vertically centred. The two figures are 20px Eczar; "of"
- * between them drops to 16px (--type-region) — the numbers are the reading,
- * "of" is only the grammar joining them (post-4c.5 fix). The fill's width is
- * set inline by the view and still transitions (app.css). Colour never carries
- * the reading alone: the label does, and the sentence above it.
+ * The labels: "10,877 MW on the grid" left in the display ink, "Held back
+ * 2,228 MW" right-aligned to the bar's end in the held-back blue — figures
+ * 24px bold, words 16px regular, all Eczar. They wrap onto two lines rather
+ * than collide on a narrow phone. The bar: 32px, the full width of the column,
+ * the navy on-grid run over the pale held-back rest. No chevron: the list is
+ * always shown (4d).
  */
-.map-sources__summary {
-  position: relative;
+.map-sources {
+  /* The sentence's descenders (g, p, y — about 0.23em below its baseline) eat
+     into the 32px above the labels, so it read ≈27–28px (Owen). Half the
+     descender depth back, scaled to the headline's size so every tier matches:
+     5px at 40px, 4px at 32px, 2.5px at 20px. */
+  margin-top: calc(var(--type-display) * 0.125);
+}
+.map-sources__labels {
   display: flex;
-  gap: 0.5rem;
-  align-items: stretch;
-  list-style: none;
-  cursor: pointer;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  column-gap: var(--gap-md);
+  /* When they wrap (a phone), "Held back …" drops to its own line, still
+     right-aligned to the bar's end, clear of the line above. */
+  row-gap: var(--gap-xs);
+  margin-bottom: var(--gap-xs);
+  font-family: var(--font-display);
+  font-size: var(--type-subhead-label);
+  line-height: 1.15;
 }
 
-.map-sources__summary::-webkit-details-marker {
-  display: none;
+.map-sources__label {
+  margin: 0;
+  white-space: nowrap;
 }
 
-.map-sources__summary:focus-visible {
-  outline: 2px solid var(--text-primary);
-  outline-offset: 2px;
+.map-sources__label--on {
+  color: var(--text-primary);
+}
+
+.map-sources__label--held {
+  margin-left: auto;
+  color: var(--held-text);
+}
+
+.map-sources__label--held[data-held='none'] {
+  color: var(--text-muted);
+}
+
+.map-sources__figure {
+  font-size: var(--type-subhead);
+  font-weight: var(--wt-semibold);
+  letter-spacing: -0.01em;
 }
 
 .map-sources .share {
   position: relative;
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  align-items: center;
+  display: block;
   height: 2rem;
   border-radius: 0;
   background: var(--bar-off);
@@ -295,71 +337,60 @@ body {
   box-shadow: none;
 }
 
-.map-sources .share__label {
-  position: relative;
-  padding-left: 0.5rem;
-  padding-right: 1rem;
-  font-family: var(--font-display);
-  font-size: var(--type-heading);
-  font-weight: var(--wt-regular);
-  line-height: 1;
-  white-space: nowrap;
-  color: var(--bar-label);
-}
-
-/* "of", between the two figures: smaller than either (see the section
-   comment above) — its own span rather than a size change on the whole
-   label. */
-.map-sources .share__label-of {
-  font-size: var(--type-region);
-}
-
-/* The chevron: a 32px square in --ink-box with a small filled triangle,
-   pointing down when the list is open and right when it is shut. The same
-   size and box treatment as .map-settlement__chevron below — one toggle
-   convention, not two. */
-.map-sources__chevron {
-  flex: 0 0 2rem;
-  height: 2rem;
-  display: grid;
-  place-items: center;
-  background: var(--ink-box);
-}
-
-.map-sources__chevron::before {
-  content: '';
-  width: 10px;
-  height: 6px;
-  background: var(--text-secondary);
-  clip-path: polygon(0 0, 100% 0, 50% 100%);
-  transform: rotate(-90deg);
-  transition: transform var(--dur-quick) var(--ease-in-out);
-}
-
-.map-sources[open] .map-sources__chevron::before {
-  transform: none;
-}
-
 /* No reading, nothing to show: the bar becomes an empty gauge rather than
-   assert a total, and there is no list or chevron to offer. */
+   assert a total, and there are no labels or list to offer. */
 .map-sources[data-state='pending'] .share,
 .map-sources[data-state='failed'] .share {
   background: var(--ink-raised);
   box-shadow: inset 0 0 0 1px var(--ink-line);
 }
 
-.map-sources:not([data-state='ok']) .map-sources__chevron,
-.map-sources:not([data-state='ok']) .map-sources__body {
+.map-sources:not([data-state='ok']) .map-sources__labels {
+  visibility: hidden;
+}
+
+.map-sources:not([data-state='ok']) .map-sources__body,
+.map-sources:not([data-state='ok']) .map-sources__open {
   display: none;
 }
 
-.map-sources:not([data-state='ok']) .map-sources__summary {
-  cursor: default;
+/* "▶ Show wind farms": a phone's way into the list (views/sources.ts), the
+   page's text toggle as a button. Its cap height sits ≈20px under the bar, the
+   step the first mini-bar has on wider screens. */
+.map-sources__open {
+  appearance: none;
+  display: flex;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
 }
 
-/* The plain sentence for the bar (aria-hidden), visually removed but never
-   display:none — a screen reader still gets the reading, and it names the
-   summary. */
+.map-sources__open[hidden] {
+  display: none;
+}
+
+/* Opened on a phone, the list takes the toggle's place: the same 12px under the
+   bar and the same 24px line, so the first farm's text sits exactly where
+   "Show wind farms" was (Owen). */
+.map-sources[data-folds] .map-sources__body {
+  margin-top: 0.75rem;
+}
+
+.map-sources__open .map-toggle {
+  margin-left: -6px;
+}
+
+.map-sources__open:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+
+/* The batch announcement: visually removed but never display:none, so a
+   screen reader still hears it. */
 .map-sources__sr {
   position: absolute;
   width: 1px;
@@ -371,38 +402,61 @@ body {
   white-space: nowrap;
 }
 
-/* The list. Two columns from tablet up, one on a phone (--sources-cols, in
-   grid.css), filled top to bottom so the largest farms run down the first
-   column and on into the second: a ranking, read down, not across. */
+/* The list, filled row-first (4d): a batch only ever adds rows at the foot, so
+   nothing already showing moves between the columns. */
 .map-sources__body {
-  /* The frame: 10.5px from the bar's foot to the first 20px row's top. */
-  margin-top: 0.65rem;
+  /* 18px from the bar's foot to the first row box (Owen), so the big bar to the
+     first mini-bar reads like the step between mini-bars. */
+  margin-top: 1.125rem;
 }
 
+.map-sources {
+  container: sources / inline-size;
+}
+
+/* One column unless the list itself is wide enough for two whole rows side by
+   side — the longest label, both figures and a usable bar, twice, and the 16px
+   between (4d): about 688px. Chosen by the list's width, not the tier, since a
+   row now carries two figures; in practice two columns only on a wide tablet. */
 .map-sources__list {
+  --sources-cols: 1;
+  display: grid;
+  grid-template-columns: repeat(var(--sources-cols), minmax(0, 1fr));
+  /* 20px between the columns (Owen). */
+  column-gap: 1.25rem;
   margin: 0;
   padding: 0;
   list-style: none;
-  column-count: var(--sources-cols);
-  column-gap: 1rem;
 }
 
-.map-sources__item {
-  break-inside: avoid;
+@container sources (min-width: 43rem) {
+  .map-sources__list {
+    --sources-cols: 2;
+  }
 }
 
-/* A row, on the frame's 20px pitch: dot, name, a 64px mini-bar, the figure. The
-   button is 6px wider than its column each side, so the hover and selected
-   tints bleed past the text edge and the dot and figure stay on the column's. */
+.map-sources__item[hidden] {
+  display: none;
+}
+
+/* A row, 24px tall (4d — and WCAG 2.2's 24px target): dot, name, a 64px
+   mini-bar, the figure. The button is 6px wider than its column each side, so
+   the hover and selected tints bleed past the text edge and the dot and figure
+   stay on the column's. */
 .source-row {
   appearance: none;
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: 0.45rem minmax(0, 1fr) 64px 3.125rem;
+  /* The label column is the list's longest label (views/sources.ts measures it
+     into --source-label-w), so every mini-bar starts at one edge and takes an
+     equal share of what is left, between the on-grid figure (left) and the
+     held-back one (right) — the big bar's pattern in small (4d). The bars never
+     go under 48px: where a column can't fit that, the label gives way. */
+  grid-template-columns: 0.45rem minmax(0, var(--source-label-w, max-content)) 3.125rem minmax(48px, 1fr) 3.125rem;
   column-gap: 4px;
   align-items: center;
   width: calc(100% + 12px);
-  min-height: 1.25rem;
+  min-height: 1.5rem;
   margin: 0 -6px;
   padding: 0 6px;
   border: 0;
@@ -429,18 +483,14 @@ body {
   outline-offset: 0;
 }
 
-/* Same size as the settlement row's own freshness dot (app.css
-   .clock__age::before, 0.45rem) — Owen's call, matched exactly rather than
-   independently chosen. The grid column above is sized to match, so there's
-   no leftover slack around a now-smaller circle (the same class of bug the
-   settlement toggle's height caused — see the map-settlement__summary
-   align-items comment). */
+/* Same size as the footer's freshness dot (app.css .clock__age::before,
+   0.45rem) — Owen's call, matched exactly rather than independently chosen. */
 .source-row__dot {
   width: 0.45rem;
   height: 0.45rem;
   box-sizing: border-box;
   border-radius: 50%;
-  background: var(--bar-off);
+  background: var(--bar-on);
 }
 
 /* Silent (no declaration): hollow and dashed, as its marker is on the map. */
@@ -454,14 +504,15 @@ body {
   border-color: var(--highlight);
 }
 
-/* The name's grid cell: the name itself plus, when 4c.5's feed has answered
-   for this farm, its windspeed running straight on from it ("Seagreen ≋ 34
-   km/h"), as the frame has it — not a column of its own. `min-width: 0` lets
-   it truncate rather than push the mini-bar and MW figure out of the row. */
+/* The name's grid cell: the name plus, when 4c.5's feed has answered for this
+   farm, its windspeed running straight on from it ("Seagreen ≋ 34 km/h").
+   `min-width: 0` lets it truncate rather than push the bar and figure out. */
 .source-row__label {
   display: flex;
   align-items: baseline;
-  gap: 0.35em;
+  /* 4px either side of the ≋ (Owen): this gap before it, the windspeed's own
+     gap after it. */
+  gap: 4px;
   min-width: 0;
   overflow: hidden;
 }
@@ -470,26 +521,25 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--font-display);
-  font-size: 0.75rem;
+  /* 4d: Mukta bold, not Eczar — the list reads as data beside the serif
+     headings (Owen). */
+  font-family: var(--font-body);
+  font-size: var(--type-row);
   font-weight: var(--wt-bold);
-  line-height: 1.25rem;
+  line-height: 1.5rem;
   color: var(--text-secondary);
 }
 
-/* Same numeric treatment as the MW figure (--text-muted, Mukta) — both are
-   read alongside the name, not styled as prose. --text-muted rather than the
-   frame's own #7a7769: that value is 3.58:1 on this cream, below AA's 4.5:1
-   for normal text, the same gap 027 already found and fixed once for prose
-   generally (see tokens-light.css) — this is that fix applied here too
-   rather than the frame's literal value (Owen). Empty (no reading yet, or
-   the feed never answered for this farm) costs nothing: an empty inline
-   element takes no space. */
+/* --text-muted rather than the frame's own #7a7769, which is 3.58:1 on this
+   cream (027's fix, applied here too). */
 .source-row__windspeed {
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
   font-family: var(--font-body);
-  font-size: 0.75rem;
-  line-height: 1.25rem;
+  font-size: var(--type-row);
+  line-height: 1.5rem;
   white-space: nowrap;
   color: var(--text-muted);
 }
@@ -513,77 +563,108 @@ body {
   transition: width var(--dur-base) var(--ease-out);
 }
 
+/* The on-grid figure is right-aligned against the bar's start; the held-back
+   one left-aligned against its end (Owen), so each figure sits on its own end
+   of the bar. */
 .source-row__mw {
   font-family: var(--font-body);
-  font-size: 0.75rem;
-  line-height: 1.25rem;
-  /* Left, not right: the 3.125rem column is wider than most figures, so
-     right-aligning left the gap to the bar only ever reading as 4px for
-     the widest number in the list — everything shorter floated in blank
-     column space. Left-aligning pins every row's figure straight against
-     the bar's own 4px column-gap, at the cost of the numbers no longer
-     sharing a ones-place edge on the right. */
-  text-align: left;
+  font-size: var(--type-row);
+  line-height: 1.5rem;
+  text-align: right;
   white-space: nowrap;
-  color: var(--text-muted);
 }
 
-/* "and 68 more…": a row's shape without its bar, a hollow dot in place of a
-   filled one. */
-.map-sources__more {
-  appearance: none;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  height: 1.25rem;
-  margin: 0 0 0 -6px;
-  padding: 0 6px;
-  border: 0;
-  border-radius: 3px;
-  background: none;
-  font-family: var(--font-display);
-  font-size: 0.75rem;
-  font-weight: var(--wt-regular);
-  line-height: 1.25rem;
+.source-row__mw--held {
+  text-align: left;
+}
+
+.source-row__mw--on {
   color: var(--text-primary);
-  cursor: pointer;
+}
+
+.source-row__mw--held {
+  color: var(--held-text);
+}
+
+.source-row__mw--held[data-held='none'] {
+  color: var(--text-secondary);
+}
+
+/* The controls' cell: "Show 8 more farms" left, "Collapse" right once the list
+   has grown. Always the list's last cell. */
+.map-sources__item--more:not([hidden]) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .map-sources__more[hidden] {
   display: none;
 }
 
-.source-row__dot--hollow {
+/* "Show 8 more farms": a row's shape without its bar, a hollow dot in place of
+   a filled one, underlined because it is a control (4d). */
+.map-sources__more {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 1.5rem;
+  margin: 0 0 0 -6px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 3px;
   background: none;
-  border: 1px solid var(--bar-off);
+  font-family: var(--font-body);
+  font-size: var(--type-row);
+  font-weight: var(--wt-regular);
+  line-height: 1.5rem;
+  color: var(--text-secondary);
+  cursor: pointer;
 }
 
-/* --- The settlement disclosure (spec 4b §6.5, 4c §4c.4; post-4c.5 re-cut) ------
- * The settlement-period row is the summary; the page's one consolidated
- * explanation is its body (views/settlement.ts). It replaces colophonView's own
- * "How this number is worked out" toggle on this page — that `<details>` is
- * detached in main.ts rather than styled here, since `/` still uses it as is.
- *
- * The row no longer sits in its own boxed pill (that was the 4c.4 frame's
- * reading; dropped post-4c.5, Owen's call): the heading now runs flush with
- * the rest of the column, at the same left edge as the headline and the bar
- * above it, with only its own toggle keeping a background — the same 32px
- * --ink-box square as the bar's own chevron (.map-sources__chevron), 8px
- * gap between heading and toggle. Closed by default (the settlement.ts
- * header explains why).
+.map-sources__more-text,
+.map-toggle__text {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+.map-sources__more:hover,
+.map-sources__open:hover .map-toggle,
+.map-settlement__summary:hover .map-toggle,
+.map-band__summary:hover .map-toggle {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--ink-box) 45%, transparent);
+}
+
+.map-sources__collapse {
+  margin: 0 -6px 0 auto;
+}
+
+.source-row__dot--hollow {
+  background: none;
+  border: 1px solid var(--bar-on);
+}
+
+/* --- The settlement disclosure (4c §4c.4, re-cut by 4d) ------------------------
+ * The heading row is the summary (the whole row toggles); the page's one
+ * explanation is its body (views/settlement.ts). The toggle is text now — "▶
+ * Show method" / "▼ Hide method", underlined, right-aligned — not 4c's boxed
+ * chevron. Closed on first load.
  */
 .map-settlement {
-  /* The headline block's grid gap (--gap-group, 32px) is shared with the
-     sentence-to-bar gap above; this one is 8px tighter (Owen), so it pulls
-     in on top of the shared gap rather than the token itself changing (that
-     would shrink the sentence-to-bar gap too, which nobody asked for). */
+  /* The farm rows are 24px boxes whose text sits ≈8px above their foot (the
+     baseline is 8.25px up for the MW figures and the control, 9.5px for the
+     names), so a box-to-cap gap of 32px reads ≈40px. Pulling in by 8px makes it
+     read as the same 32px as the sentence-to-bar gap above (Owen). */
   margin-top: -0.5rem;
 }
 
 .map-settlement__summary {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  align-items: baseline;
+  gap: var(--gap-md);
   list-style: none;
   cursor: pointer;
 }
@@ -597,56 +678,82 @@ body {
   outline-offset: 2px;
 }
 
-/* The toggle: the same 32px --ink-box square as the bar's own
-   (.map-sources__chevron) — one convention, not two — the triangle drawn on
-   ::before rather than the element itself so the element can be the box. */
-.map-settlement__chevron {
-  flex: 0 0 2rem;
-  height: 2rem;
-  display: grid;
-  place-items: center;
-  background: var(--ink-box);
+/* The text toggle, shared by the method disclosure and the two country
+   summaries (4d): "▶ Show method", "▶ Show summary". */
+.map-toggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4em;
+  /* The same 6px tint bleed and 3px corners as "Show 8 more farms", so the
+     two controls hover alike. */
+  padding: 0 6px;
+  border-radius: 3px;
+  font-family: var(--font-body);
+  font-size: var(--type-row);
+  line-height: 1.5rem;
+  color: var(--text-secondary);
 }
 
-.map-settlement__chevron::before {
+/* Right-aligned on the heading row: the tint bleeds out to the right. The
+   negative block margins keep its 24px hover box from standing taller than the
+   trimmed heading beside it, which would push the row down. */
+.map-settlement__toggle {
+  margin: -0.25rem -6px -0.25rem 0;
+}
+
+/* Left-aligned under a country's legend: the tint bleeds out to the left, so
+   the triangle sits on the panel's own edge. */
+.map-band__summary .map-toggle {
+  margin-left: -6px;
+}
+
+/* The triangle, drawn on ::before so it never joins the underline: right when
+   shut, down when open. */
+.map-toggle::before {
   content: '';
-  width: 10px;
-  height: 6px;
-  background: var(--text-secondary);
+  align-self: center;
+  width: 8px;
+  height: 5px;
+  background: currentColor;
   clip-path: polygon(0 0, 100% 0, 50% 100%);
   transform: rotate(-90deg);
   transition: transform var(--dur-quick) var(--ease-in-out);
 }
 
-.map-settlement[open] .map-settlement__chevron::before {
+.map-settlement[open] .map-toggle::before,
+.map-band__more[open] .map-toggle::before {
   transform: none;
 }
 
-.map-settlement__sr {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
 .map-settlement__body {
-  margin-top: 0.75rem;
+  margin-top: 1rem;
   display: grid;
   gap: 1em; /* Owen — scales with .map-settlement__p's own font-size (1rem today) rather than a fixed rem */
 }
 
+/* Two columns wherever the farm list has two (the same 43rem of text column,
+   4d, Owen), paragraphs kept whole. */
+@container text (min-width: 43rem) {
+  .map-settlement__body {
+    display: block;
+    columns: 2;
+    column-gap: 1.25rem;
+  }
+
+  .map-settlement__p {
+    break-inside: avoid;
+  }
+
+  .map-settlement__p + .map-settlement__p {
+    margin-top: 1em;
+  }
+}
+
 .map-settlement__p {
   margin: 0;
-  font-size: 1rem; /* 16px (Owen) — was 0.85em/13.6px */
+  font-size: 1rem; /* 16px (Owen) */
   font-weight: var(--wt-light);
-  /* Unitless, not "1.25em" as spec'd: identical result here (no child
-     inherits a different font-size to compute against), and unitless is
-     what the rest of this file's line-heights already use. Was 1.55, read
-     as looser than the paragraph gap below it — Owen. */
   line-height: 1.25;
   color: var(--text-muted);
 }
@@ -804,33 +911,32 @@ body {
   /* The strip at the top of the square kept clear for the name: 12px in, one
      line of it (15px), and a little air. The island gets the rest. */
   --inset-label-band: 1.875rem;
-  position: relative;
+  /* 4d: its own overlay, pinned to the top-right corner of the drawn map and
+     sized with it — main.ts (positionOverlays) sets left, top and width. The
+     stroke is 1px of --inset-stroke (Owen). */
+  position: absolute;
+  z-index: 2;
   box-sizing: border-box;
-  width: min(120px, 100%);
   aspect-ratio: 1;
-  margin-bottom: var(--gap-lg);
-  border: 1px solid var(--ink-box);
+  border: 1px solid var(--inset-stroke);
   display: none;
 }
 
-/* The island takes the square below the name's band; it scales to fit the
-   width it is given, so a phone's narrower square shrinks it rather than
-   letting it run under the name. */
+/* The island's svg is the whole square, drawn at its own pixel size, with the
+   farm's dot at the centre (main.ts, drawInset). */
 .map__inset {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   display: block;
   width: 100%;
-  height: calc(100% - var(--inset-label-band));
+  height: 100%;
 }
 
 .map__inset-label {
   position: absolute;
+  /* 12px in from the outer edge: 11px plus the 1px stroke. */
   top: 0.6875rem;
-  left: var(--inset-label-left);
-  right: var(--inset-label-right);
+  left: 0.6875rem;
   margin: 0;
   font-family: var(--font-display);
   font-size: 0.75rem;
@@ -927,19 +1033,23 @@ body[data-panel-style='card'] .panel {
   display: contents;
 }
 
+/* 4d: the region name is a subheading like the bar's figures — 24px semibold
+   from tablet up, 16px on a phone — and its intensity the secondary size
+   beside it, 16px / 12px (Owen). */
 .map-band__place {
   grid-area: place;
   margin: 0;
   font-family: var(--font-display);
-  font-size: var(--type-region);
-  font-weight: var(--wt-bold);
+  font-size: var(--type-subhead);
+  font-weight: var(--wt-semibold);
+  letter-spacing: -0.01em;
   line-height: 1.2;
 }
 
 .map-band__intensity {
   grid-area: intensity;
   font-family: var(--font-display);
-  font-size: var(--type-region);
+  font-size: var(--type-subhead-label);
   font-weight: var(--wt-regular);
   line-height: 1.2;
   white-space: nowrap;
@@ -1008,11 +1118,33 @@ body[data-panel-style='card'] .panel {
   height: 0.5rem;
 }
 
-.map-band__caption {
+/* 4d: the caption sits behind "▶ Show summary" (views/band.ts), at every tier. */
+.map-band__more {
   grid-area: caption;
-  max-height: var(--caption-max-h);
-  overflow: var(--caption-overflow);
-  margin: var(--caption-gap) 0 0;
+  /* Optically 20px from the legend's last baseline to "Show summary"'s cap
+     height (Owen). The toggle's 24px line box and the legend row's own leading
+     add ≈13px, so with the band's 8px row gap the box itself sits 1px higher
+     (measured 19.4–20.4px across tiers). */
+  margin-top: -1px;
+}
+
+.map-band__summary {
+  display: flex;
+  list-style: none;
+  cursor: pointer;
+}
+
+.map-band__summary::-webkit-details-marker {
+  display: none;
+}
+
+.map-band__summary:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
+}
+
+.map-band__caption {
+  margin: var(--gap-xs) 0 0;
   font-size: var(--type-body);
   font-weight: var(--wt-regular);
   line-height: 1.17;
@@ -1056,8 +1188,8 @@ body[data-panel-style='card'] .panel {
 @supports (text-box: trim-both cap alphabetic) {
   .map-masthead__wordmark,
   .map-headline__sentence,
-  .map-sources .share__label,
-  .map-settlement__summary .clock__period,
+  .map-sources__label,
+  .map-settlement__summary .map-masthead__clock,
   .map-settlement__p,
   .map-band__place,
   .map-band__intensity,
@@ -1097,7 +1229,7 @@ body[data-panel-style='card'] .panel {
 .map-foot .colophon {
   padding-top: 0;
   border-top: 0;
-  font-size: var(--type-small);
+  font-size: var(--type-row);
 }
 
 /* 4c: the two source rows sit tight (no row gap of their own) and the byline
@@ -1105,11 +1237,41 @@ body[data-panel-style='card'] .panel {
    value to move rather than a gap shared by all three rows. The coloured squares
    are gone (main.ts), so a row is now just its name, descriptor and status word. */
 .map-foot .sources {
-  gap: 0 1rem;
+  gap: 0 var(--gap-md);
 }
 
+/* 4d: the footer reads "Carbon Intensity • Elexon Insights ● Updated 6 minutes
+   ago" — names only, a bullet between them, then the freshness. The feed
+   descriptors are dropped, and a source's health word ("not answering") only
+   shows when it has something to say. */
 .map-foot .source__detail {
-  display: var(--source-detail-display);
+  display: none;
+}
+
+.map-foot .source__name {
+  font-weight: var(--wt-regular);
+}
+
+.map-foot__feeds {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.map-foot .source {
+  gap: 0.4em;
+}
+
+/* The bullet is the second source's first flex item, so the source's own gap
+   supplies the space after it and this margin the space before. */
+.map-foot .source + .source::before {
+  content: '•';
+  margin-left: 0.4em;
+  color: var(--text-secondary);
+}
+
+.map-foot .source[data-health='ok'] .source__status {
+  display: none;
 }
 
 .map-foot .sources .colophon__byline {
@@ -1128,14 +1290,16 @@ body[data-panel-style='card'] .panel {
   margin-inline: 0.25em;
 }
 
-.map-foot .byline__link {
+.map-foot .byline__link,
+.map-foot__link {
   color: inherit;
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 0.2em;
 }
 
-.map-foot .byline__link:hover {
+.map-foot .byline__link:hover,
+.map-foot__link:hover {
   color: var(--text-primary);
 }
 

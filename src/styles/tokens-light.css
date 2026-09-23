@@ -41,7 +41,10 @@
    * is the one size that steps by breakpoint tier, 40/32/32/20px, so it is
    * set in grid.css with the other tier tokens, not here.
    */
-  --type-region: 1rem; /* wordmark, region name + intensity, "of" in the breakdown bar's label — Eczar */
+  /* 4d: the large figures — the headline's share, the bar's two figures, the
+     settlement times — are Eczar SemiBold, measured against Owen's frame. */
+  --wt-semibold: 600;
+  --type-region: 1rem; /* wordmark and the method toggle's neighbours — Eczar. Region names and intensities use --type-subhead / --type-subhead-label since 4d */
   --type-heading: 1.25rem; /* 20px — the breakdown bar's two figures, the settlement-period heading — Eczar */
   --type-body: 0.75rem; /* band sentences, tooltip body, method note — Mukta */
   --type-small: 0.75rem; /* settlement row, farm list, legend, toggle, byline, border label — Mukta */
@@ -57,6 +60,8 @@
      button (4c.3 / 4c.4). Text on it is --text-primary or --text-secondary;
      --text-muted is 4.14:1 here, so never that. */
   --ink-box: #dbd3c4;
+  /* 4d: the Shetland square's 2px outline (Owen). */
+  --inset-stroke: #cdc7ba;
 
   /* Step 4b (DECISIONS 028): the display ink is navy, not near-black — the
      masthead wordmark, the headline, region names and the bar label all read
@@ -126,9 +131,8 @@
    * step that clears 4.5:1 (4.56:1). DECISIONS 028. Its uses have gone one by
    * one: the freshness dot (4c.1, now the bar blues), the byline's domain (4c.1,
    * now the byline's own muted colour) and the old farm list's MW figures (4c.2,
-   * the list is gone and the frame draws its successors in the wind navy). It
-   * has no user on /map now; kept in case 4c.4's disclosure wants a link colour,
-   * and to be deleted if it does not.
+   * the list is gone and the frame draws its successors in the wind navy). 4d
+   * brings it back as --held-text (below), the held-back figures in text.
    */
   --link: #405ec9;
 
@@ -145,25 +149,27 @@
    * label: 8.54:1 on the navy.
    */
   --bar-on: #2e469a;
-  --bar-off: #4865cb;
+  /* 4d: the held-back run is a pale periwinkle, read off Owen's frame by eye
+     (the Figma MCP was rate-limited; confirm against node 49:746). Its
+     labels sit above the bar now, so it carries no text: 1.95:1 on cream,
+     3.49:1 against --bar-on beside it. */
+  --bar-off: #94a3e1;
   --bar-label: #ffffff;
+  /* 4d: every held-back figure and word in text — the headline's percentage,
+     "Held back 2,228 MW". The frame draws them #4865CB (4.18:1); this is
+     --link's AA step of it (4.56:1), which the 16px regular "Held back"
+     needs. */
+  --held-text: var(--link);
 
   /* --- Signal -------------------------------------------------------------
    * Tuned to read as text on cream (masthead clock, staleness notices) at
-   * AA, not just as a dot fill — DECISIONS 027's contrast table. `ok` is
-   * the tracked-wind bar's navy, and the freshness dot pulses between that and
-   * the bar's lighter blue (--bar-off) while the reading is fresh — Owen's
-   * call at the 4c.1 gate, in place of the frame's static green. Both blues
-   * clear 3:1 on cream (6.79, 4.18) and on the settlement box (5.75, 3.53).
-   * DECISIONS 029.
+   * AA, not just as a dot fill — DECISIONS 027's contrast table. 4d: `ok`
+   * is a static green in the footer, as Owen's frame draws it, replacing 4c.1's
+   * navy/light-blue pulse (the pulse and its tokens are gone). The frame's own
+   * green reads about #4CA05A, 2.58:1 on cream; this is the same hue darkened
+   * to clear 3:1 (3.18:1).
    */
-  --signal-ok: var(--bar-on);
-
-  /* The freshness dot's pulse: one full breath, navy to light blue and back.
-     Reduced motion sets the iteration count to 0 (below), the same way
-     tokens.css collapses the durations, so the dot simply holds --signal-ok. */
-  --dur-pulse: 2.4s;
-  --pulse-iterations: infinite;
+  --signal-ok: #3f8f4f;
   --signal-ageing: #7d5f1c;
   --signal-stale: #943e15;
   --signal-failed: #b13d2c;

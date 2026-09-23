@@ -56,11 +56,7 @@ const CONTRAST_ROWS: ContrastRow[] = [
   { fg: '--text-primary', bg: '--ink-ground', kind: 'text', use: 'wordmark, headline, region names' },
   { fg: '--text-secondary', bg: '--ink-ground', kind: 'text', use: 'sentences, farm names, legend values' },
   { fg: '--text-muted', bg: '--ink-ground', kind: 'text', use: 'settlement row, legend names, byline' },
-  { fg: '--link', bg: '--ink-ground', kind: 'text', use: 'no user on /map since 4c.2; kept for a possible link in 4c.4' },
-  { fg: '--text-secondary', bg: '--ink-box', kind: 'text', use: 'settlement row and bar chevron, on the filled box' },
-  { fg: '--text-primary', bg: '--ink-box', kind: 'text', use: 'display ink on the filled box' },
-  { fg: '--bar-label', bg: '--bar-on', kind: 'text', use: 'bar label on the on-grid run' },
-  { fg: '--bar-label', bg: '--bar-off', kind: 'text', use: 'bar label where it runs over the rest of the bar (a small on-grid share)' },
+  { fg: '--held-text', bg: '--ink-ground', kind: 'text', use: 'held-back figures in text: the headline figure, "Held back 2,228 MW" (4d)' },
   { fg: '--signal-ageing', bg: '--ink-ground', kind: 'text', use: 'ageing notice' },
   { fg: '--signal-stale', bg: '--ink-ground', kind: 'text', use: 'stale notice' },
   { fg: '--signal-failed', bg: '--ink-ground', kind: 'text', use: 'failed notice' },
@@ -72,10 +68,15 @@ const CONTRAST_ROWS: ContrastRow[] = [
   { fg: '--fuel-wind', bg: '--ink-raised', kind: 'text', use: 'source rows: figures on the selected tint' },
   { fg: '--text-primary', bg: '--ink-raised', kind: 'text', use: 'source rows: farm names on the selected tint' },
   { fg: '--wind-live', bg: '--curtailed', kind: 'graphic', use: 'held-down marker edge on its fill' },
-  { fg: '--signal-ok', bg: '--ink-ground', kind: 'graphic', use: 'freshness dot, at rest (the bar navy)' },
-  { fg: '--bar-off', bg: '--ink-ground', kind: 'graphic', use: 'freshness dot, the light end of its pulse; the source rows\' dots and mini-bar rest' },
-  { fg: '--signal-ok', bg: '--ink-box', kind: 'graphic', use: 'freshness dot, at rest, on the settlement box' },
-  { fg: '--bar-off', bg: '--ink-box', kind: 'graphic', use: 'freshness dot, light end, on the settlement box' },
+  { fg: '--signal-ok', bg: '--ink-ground', kind: 'graphic', use: 'freshness dot in the footer, static green (4d)' },
+  {
+    fg: '--bar-off',
+    bg: '--ink-ground',
+    kind: 'graphic',
+    use: 'held-back run of the bar and the mini-bars, against the cream',
+    disclosed:
+      'Owen\'s 4d pale periwinkle. It always sits against --bar-on (3.49:1, below), and the held-back figure is printed above the bar in words, so the fill never has to be read against the cream alone.',
+  },
   { fg: '--fuel-gas', bg: '--ink-ground', kind: 'graphic', use: 'gas segment' },
   { fg: '--fuel-nuclear', bg: '--ink-ground', kind: 'graphic', use: 'nuclear segment' },
   { fg: '--fuel-solar', bg: '--ink-ground', kind: 'graphic', use: 'solar segment', disclosed: 'Misses by 0.02. The frame\'s own hex, adopted as drawn (DECISIONS 029). Read beside its legend name and figure, never alone.' },
@@ -90,7 +91,7 @@ const CONTRAST_ROWS: ContrastRow[] = [
     kind: 'graphic',
     use: 'the two runs of the bar against each other',
     disclosed:
-      'Two fills of one bar, read by the label inside it ("10,971 of 13,105 MW") and the sentence above it, never by the boundary between them. The Figma pair, kept as drawn: --bar-off is the frame\'s own #4865CB.',
+      'Two fills of one bar, read by the labels above it ("10,877 MW on the grid", "Held back 2,228 MW") and the headline, never by the boundary alone. Clears 3:1 since 4d.',
   },
 ];
 
@@ -166,10 +167,9 @@ function fixtureHeadlines(): HTMLElement {
     const state = fixtureState(fixtureName);
     const view = mapHeadlineView();
     view.update(state);
-    // The bar and the farm list are the sources view (4c.3); shown open, as they are on desktop.
+    // The bar and the farm list are the sources view (4c.3; always shown since 4d).
     const sources = mapSourcesView({ onSelect: () => undefined });
     sources.update(state);
-    sources.el.open = true;
     view.el.append(sources.el);
     wrap.append(
       el('div', { class: 'plate__bars-column' }, el('h3', { class: 'plate__bars-title', text: fixtureName }), view.el)
