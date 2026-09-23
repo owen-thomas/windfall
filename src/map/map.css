@@ -120,6 +120,7 @@ body {
   grid-column: var(--col-text);
   grid-row: 2;
   align-self: var(--text-align);
+  max-width: var(--text-max, none);
   display: grid;
   /* minmax(0, …), not the implicit `auto`: an auto track will not shrink below
      its widest item's min-content, and at 345px that pushed the whole block
@@ -312,10 +313,18 @@ body {
   color: var(--text-muted);
 }
 
+.map-sources__label[hidden] {
+  display: none;
+}
+
 .map-sources__figure {
   font-size: var(--type-subhead);
   font-weight: var(--wt-semibold);
   letter-spacing: -0.01em;
+}
+
+.map-sources .share[hidden] {
+  display: none;
 }
 
 .map-sources .share {
@@ -580,6 +589,18 @@ body {
 
 .source-row__mw--on {
   color: var(--text-primary);
+}
+
+/* A day with nothing held back (data-mode="on"): every mini-bar would be one
+   solid run, so the rows drop it and the held-back figure, and read name,
+   windspeed, on-grid MW — the figure at the row's end (Owen). */
+.map-sources[data-mode='on'] .source-row {
+  grid-template-columns: 0.45rem minmax(0, 1fr) max-content;
+}
+
+.map-sources[data-mode='on'] .source-row__bar,
+.map-sources[data-mode='on'] .source-row__mw--held {
+  display: none;
 }
 
 .source-row__mw--held {
@@ -1030,7 +1051,13 @@ body[data-panel-style='card'] .panel {
 }
 
 .map-band__head {
-  display: contents;
+  display: var(--band-head-display);
+  grid-area: head;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  column-gap: 0.75rem;
+  row-gap: 0.5rem;
 }
 
 /* 4d: the region name is a subheading like the bar's figures — 24px semibold

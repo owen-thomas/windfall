@@ -396,6 +396,8 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
         // gauge, no labels, and no list.
         setAttr(root, 'data-state', state.pending ? 'pending' : 'failed');
         shareFill.style.width = '0%';
+        shareBar.hidden = false;
+        heldLabel.hidden = false;
         if (selectedFarm !== null) select(null);
         return;
       }
@@ -404,6 +406,12 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
       setAttr(root, 'data-state', 'ok');
       setAttr(heldLabel, 'data-held', reading.allClear ? 'none' : 'some');
       setText(onGridFigureEl, reading.onGridLabel);
+      // With nothing held back the bar is one solid run that says nothing the
+      // headline hasn't ("100% … on the grid"), so it goes (Owen).
+      // "Nothing held back" goes with it — the headline already says so — and
+      // the rows drop their mini-bars (map.css, data-mode="on").
+      shareBar.hidden = reading.allClear;
+      heldLabel.hidden = reading.allClear;
       if (reading.allClear) {
         setText(heldWords, 'Nothing held back');
         setText(heldFigureEl, '');

@@ -17,7 +17,8 @@
  *
  *   Desktop L   ≥1440px (90rem)      two-column
  *   Desktop M   1280–1439px (80rem)  two-column — same layout, one type step down
- *   Tablet      600–1279px (37.5rem) stacked
+ *   Desktop S   1024–1279px (64rem)  two-column — text 1–6, panels 3 columns
+ *   Tablet      600–1023px (37.5rem) stacked, text block capped at 44rem
  *   Mobile      ≤599px               stacked   (the defaults below)
  *
  * 4d moved the tablet break down from 744px (46.5rem): no phone held upright
@@ -26,7 +27,8 @@
  * The tablet margin is fluid across the new range so its farm columns keep
  * their room (see --page-margin below).
  *
- * The layout flips at exactly 1280px.
+ * The layout flips at exactly 1024px (1280px until 4d moved it — see the
+ * Desktop S block).
  *
  * Grid: 12 columns and a 24px gutter at every tier. Widths are column-based,
  * never fixed px, so blocks hold their ratios within a tier. The mix panels
@@ -113,6 +115,9 @@
      paragraph rather than a ragged-left block (Owen). */
   --band-cols: minmax(0, 1fr);
   --band-areas: 'place' 'bar' 'intensity' 'legend' 'caption';
+  /* Stacked, the name and intensity are separate rows (intensity under the
+     bar), so their wrapper steps aside; from desktop it is a wrapping row. */
+  --band-head-display: contents;
   --legend-flow: column;
   --scotland-align: start;
   --scotland-swatch-order: 0;
@@ -147,6 +152,10 @@
 @media (min-width: 37.5rem) {
   :root {
     --tier: tablet;
+    /* 4d: stacked, the text block stops at 44rem (704px) so the headline keeps
+       a readable measure on a large tablet — just over the 43rem the farm
+       list needs for two columns (Owen). */
+    --text-max: 44rem;
     /* 64px from 744px up — the Tablet frame's margin (spec §5.1 says 24px;
        DECISIONS 028) — easing down to 36px at 600px, linearly, so the two farm
        columns stay ≈250px wide at the bottom of the range (4d). */
@@ -165,19 +174,27 @@
   }
 }
 
-/* --- Desktop M (1280–1439px): two columns ---------------------------------- */
-@media (min-width: 80rem) {
+/* --- Desktop S (1024–1279px) and M (1280–1439px): two columns --------------
+ * 4d moved the two-column switch down from 1280px to 1024px (Owen): stacked, a
+ * 1279px screen ran the headline across a 1,151px text column. From 1024 to
+ * 1279 the text takes columns 1–6 (no spare column: at 1024 five columns are
+ * 359px, too narrow for the bar's two labels on one line) and the mix panels
+ * three columns (206px at 1024; two would be 129px). 1280 restores the frame's
+ * 1–5 and two-column panels — the block after this one.
+ */
+@media (min-width: 64rem) {
   :root {
-    --tier: desktop-m;
+    --tier: desktop-s;
     --layout: two-col;
-    /* Text: columns 1–5. Column 6: the gap. Map: columns 7–12, the full
-       height of the viewport. */
-    --col-text: 1 / span 5;
+    /* Text: columns 1–6 below 1280 (1–5 from there). Map: columns 7–12, the
+       full height of the viewport. */
+    --col-text: 1 / span 6;
     --col-map: 7 / -1;
     --row-map: 1 / span 3;
     --row-foot: 3;
     --map-cols: 6;
-    --mix-span: 2;
+    --mix-span: 3;
+    --text-max: none;
     --anchor-scotland-lat: 57.52;
     --anchor-england-lat: 54.72;
 
@@ -195,12 +212,26 @@
     --text-lift: 2.25rem; /* padding that lifts the centred block 18px: the frames sit it above true centre */
 
     /* Name and intensity on one line; the legend flows. */
-    --band-cols: minmax(0, 1fr) auto;
-    --band-areas: 'place intensity' 'bar bar' 'legend legend' 'caption caption';
+    /* 4d: name and intensity share a row only while they fit — a wrapping
+       flex row, not two grid columns, which overlapped them by up to 18px in
+       a 172px panel at 1280 once the name went to 24px (Owen). */
+    --band-cols: minmax(0, 1fr);
+    --band-areas: 'head' 'bar' 'legend' 'caption';
+    --band-head-display: flex;
     --legend-flow: row;
     --legend-gap: 0rem;
     --bar-gap: 0.25rem;
     --source-detail-display: inline;
+  }
+}
+
+/* --- Desktop M (1280–1439px): the frame's own columns --------------------------- */
+@media (min-width: 80rem) {
+  :root {
+    --tier: desktop-m;
+    /* Text: columns 1–5. Column 6: the gap. */
+    --col-text: 1 / span 5;
+    --mix-span: 2;
   }
 }
 
