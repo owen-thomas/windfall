@@ -271,29 +271,40 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
   /**
    * The label column is as wide as the longest label in the whole list — every
    * farm, shown or not — so the mini-bars all start at one edge and share one
-   * width, flexing into whatever the column leaves (Owen). Measured with the
-   * rows' own fonts, since hidden rows have no layout to read.
+   * width, flexing into whatever the column leaves (Owen). Measured on a
+   * hidden copy of a row's label, so the page's own fonts and CSS decide the
+   * width (a canvas measurement ran a pixel or two short of Eczar as the page
+   * sets it, and clipped the longest name).
    */
-  const measureCtx = document.createElement('canvas').getContext('2d');
-  const LABEL_GAP = 4;
+  const measureName = el('span', { class: 'source-row__name' });
+  const measureSpeed = el('span', { class: 'source-row__windspeed' });
+  const measurer = el(
+    'span',
+    {
+      class: 'source-row__label',
+      'aria-hidden': 'true',
+      style: 'position:absolute;visibility:hidden;pointer-events:none;width:max-content;overflow:visible',
+    },
+    measureName,
+    measureSpeed
+  );
+  root.append(measurer);
   function measureLabels() {
-    const first = rows.values().next().value as Row | undefined;
-    if (!measureCtx || !first) return;
-    const nameStyle = getComputedStyle(first.name);
-    const bold = `${nameStyle.fontWeight} ${nameStyle.fontSize} ${nameStyle.fontFamily}`;
-    const regular = `400 ${nameStyle.fontSize} ${nameStyle.fontFamily}`;
     let widest = 0;
     for (const row of rows.values()) {
-      measureCtx.font = bold;
-      let w = measureCtx.measureText(row.name.textContent ?? '').width;
+      setText(measureName, row.name.textContent ?? '');
       const speed = row.windspeed.lastChild?.textContent;
       if (speed) {
-        measureCtx.font = regular;
-        w += LABEL_GAP + measureCtx.measureText('≋').width + LABEL_GAP + measureCtx.measureText(speed).width;
+        measureSpeed.replaceChildren(
+          el('span', { class: 'source-row__glyph', text: '≋' }),
+          el('span', { text: speed })
+        );
+      } else {
+        measureSpeed.replaceChildren();
       }
-      widest = Math.max(widest, w);
+      widest = Math.max(widest, measurer.getBoundingClientRect().width);
     }
-    list.style.setProperty('--source-label-w', `${Math.ceil(widest) + 1}px`);
+    if (widest > 0) list.style.setProperty('--source-label-w', `${Math.ceil(widest)}px`);
   }
   void document.fonts?.ready.then(measureLabels);
 

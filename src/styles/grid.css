@@ -17,8 +17,8 @@
  *
  *   Desktop L   ≥1440px (90rem)      two-column
  *   Desktop M   1280–1439px (80rem)  two-column — same layout, one type step down
- *   Desktop S   1024–1279px (64rem)  two-column — text 1–6, panels 3 columns
- *   Tablet      600–1023px (37.5rem) stacked, text block capped at 44rem
+ *   Desktop S   1024–1279px (64rem)  two-column — panels 3 columns
+ *   Tablet      600–1023px (37.5rem) stacked, method text two-up
  *   Mobile      ≤599px               stacked   (the defaults below)
  *
  * 4d moved the tablet break down from 744px (46.5rem): no phone held upright
@@ -118,6 +118,8 @@
   /* Stacked, the name and intensity are separate rows (intensity under the
      bar), so their wrapper steps aside; from desktop it is a wrapping row. */
   --band-head-display: contents;
+  --band-head-direction: row;
+  --method-cols: 1;
   --legend-flow: column;
   --scotland-align: start;
   --scotland-swatch-order: 0;
@@ -152,10 +154,10 @@
 @media (min-width: 37.5rem) {
   :root {
     --tier: tablet;
-    /* 4d: stacked, the text block stops at 44rem (704px) so the headline keeps
-       a readable measure on a large tablet — just over the 43rem the farm
-       list needs for two columns (Owen). */
-    --text-max: 44rem;
+    /* 4d: the method text runs two-up across the whole tablet range (Owen).
+       (The 44rem text cap tried here read as a premature max width, so the
+       text block is full width again.) */
+    --method-cols: 2;
     /* 64px from 744px up — the Tablet frame's margin (spec §5.1 says 24px;
        DECISIONS 028) — easing down to 36px at 600px, linearly, so the two farm
        columns stay ≈250px wide at the bottom of the range (4d). */
@@ -176,51 +178,60 @@
 
 /* --- Desktop S (1024–1279px) and M (1280–1439px): two columns --------------
  * 4d moved the two-column switch down from 1280px to 1024px (Owen): stacked, a
- * 1279px screen ran the headline across a 1,151px text column. From 1024 to
- * 1279 the text takes columns 1–6 (no spare column: at 1024 five columns are
- * 359px, too narrow for the bar's two labels on one line) and the mix panels
- * three columns (206px at 1024; two would be 129px). 1280 restores the frame's
- * 1–5 and two-column panels — the block after this one.
+ * 1279px screen ran the headline across a 1,151px text column. The text keeps
+ * the frame's columns 1–5 and its spare column 6 (a 1–6 trial sat too tight
+ * against the map — Owen); the bar's labels wrap where they must. The mix
+ * panels take three columns (206px at 1024; two would be 129px), and from
+ * 1280 the frame's two — the block after this one.
  */
 @media (min-width: 64rem) {
   :root {
     --tier: desktop-s;
     --layout: two-col;
-    /* Text: columns 1–6 below 1280 (1–5 from there). Map: columns 7–12, the
-       full height of the viewport. */
-    --col-text: 1 / span 6;
+    /* Text: columns 1–5. Column 6: the gap. Map: columns 7–12, the full
+       height of the viewport. */
+    --col-text: 1 / span 5;
     --col-map: 7 / -1;
     --row-map: 1 / span 3;
     --row-foot: 3;
     --map-cols: 6;
-    --mix-span: 3;
-    --text-max: none;
+    /* Two columns, as at 1280: three made the panels *wider* as the window
+       narrowed below 1280 (206px at 1024 against 172 at 1280), running them
+       into the map (Owen). */
+    --mix-span: 2;
+    --method-cols: 1;
+    /* The bold figures step down to 20px in the narrow text column (359px at
+       1024): at 24px the bar's two labels need ≈394px and "Held back" wrapped
+       under "on the grid" (Owen). 1280 restores 24px. */
+    --type-subhead: 1.25rem;
     --anchor-scotland-lat: 57.52;
     --anchor-england-lat: 54.72;
 
     /* The map is pinned to the viewport, full height, so it stays put and
        keeps its fit however long the text column grows (the method note
-       opening, say). The text block is centred on the *screen*, not in
-       whatever is left between masthead and footer — the two outer rows
-       share the spare height equally, so a taller footer cannot pull the
-       block off-centre — and never smaller than their content. */
-    --page-rows: minmax(min-content, 1fr) auto minmax(min-content, 1fr);
+       opening, say).
+
+       4d: the text block no longer centres on the screen. Centring made the
+       rows above and below it equal, so the row above grew to match the
+       footer and, with the taller 4d block, sat the headline 256–318px down
+       (Owen: "sits quite low"). It now hangs under the masthead, its cap
+       height ≈22% of the way down the screen (--text-offset), and the footer
+       keeps to the foot of the last row. */
+    --page-rows: auto auto 1fr;
     --map-position: sticky;
     --map-align: start;
     --map-height: max(100svh, 36rem);
-    --text-align: center;
-    --text-lift: 2.25rem; /* padding that lifts the centred block 18px: the frames sit it above true centre */
+    --text-align: start;
+    --text-offset: clamp(1.5rem, 22svh - 7.25rem, 10rem);
+    --text-lift: 3rem; /* the least gap between the text block and the footer */
 
-    /* Name and intensity on one line; the legend flows. */
-    /* 4d: name and intensity share a row only while they fit — a wrapping
-       flex row, not two grid columns, which overlapped them by up to 18px in
-       a 172px panel at 1280 once the name went to 24px (Owen). */
+    /* 1024–1279: the panels keep the phone and tablet arrangement — name, bar,
+       intensity under the bar, the mix as a list — which fits a 129–159px
+       panel (Owen). 1280 takes the desktop arrangement (next block). */
     --band-cols: minmax(0, 1fr);
-    --band-areas: 'head' 'bar' 'legend' 'caption';
-    --band-head-display: flex;
-    --legend-flow: row;
-    --legend-gap: 0rem;
-    --bar-gap: 0.25rem;
+    --band-areas: 'place' 'bar' 'intensity' 'legend' 'caption';
+    --band-head-display: contents;
+    --band-head-direction: row;
     --source-detail-display: inline;
   }
 }
@@ -229,9 +240,16 @@
 @media (min-width: 80rem) {
   :root {
     --tier: desktop-m;
-    /* Text: columns 1–5. Column 6: the gap. */
-    --col-text: 1 / span 5;
-    --mix-span: 2;
+    --type-subhead: 1.5rem; /* 24px */
+    /* 4d: name, then the intensity under it — never side by side, which read
+       too tight and made the two panels differ by reading (Owen) — then the
+       bar, and the mix flowing two to a row. */
+    --band-areas: 'head' 'bar' 'legend' 'caption';
+    --band-head-display: flex;
+    --band-head-direction: column;
+    --legend-flow: row;
+    --legend-gap: 0rem;
+    --bar-gap: 0.25rem;
   }
 }
 
@@ -239,7 +257,7 @@
 @media (min-width: 90rem) {
   :root {
     --tier: desktop-l;
-    --type-display: 2.5rem; /* 40px */
+    --type-display: 2.5rem; /* 40px (48px was tried in 4d and read too big — Owen) */
     --lh-display: 1.1;
     /* The 1440 frame's text block is columns 1–5 plus the gutter after them
        (557px; the 1280 frame is exactly 1–5). It is what lets the headline

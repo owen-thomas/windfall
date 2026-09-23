@@ -120,7 +120,7 @@ body {
   grid-column: var(--col-text);
   grid-row: 2;
   align-self: var(--text-align);
-  max-width: var(--text-max, none);
+  margin-top: var(--text-offset, 0);
   display: grid;
   /* minmax(0, …), not the implicit `auto`: an auto track will not shrink below
      its widest item's min-content, and at 345px that pushed the whole block
@@ -142,9 +142,6 @@ body {
  * layout) — see views/headline.ts's own docs.
  */
 .map-headline {
-  /* The method text's columns follow the farm list's (4d), so both read off
-     the text column's width. */
-  container: text / inline-size;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   /* 4d: 32px between the three sections — sentence, bar and farms, settlement —
@@ -200,7 +197,7 @@ body {
   font-family: var(--font-display);
   line-height: 1.15;
   text-align: left;
-  color: var(--text-secondary);
+  color: var(--text-primary); /* #152767 — the display ink, like the other headings (Owen) */
 }
 
 .map-settlement__summary .clock__span {
@@ -530,13 +527,13 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  /* 4d: Mukta bold, not Eczar — the list reads as data beside the serif
-     headings (Owen). */
-  font-family: var(--font-body);
-  font-size: var(--type-row);
-  font-weight: var(--wt-bold);
+  /* 4d: Eczar 16px in the display ink (Owen) — regular, the page's own
+     secondary-heading style ("on the grid", "Settlement period"). */
+  font-family: var(--font-display);
+  font-size: var(--type-region);
+  font-weight: var(--wt-regular);
   line-height: 1.5rem;
-  color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 /* --text-muted rather than the frame's own #7a7769, which is 3.58:1 on this
@@ -749,26 +746,19 @@ body {
 
 .map-settlement__body {
   margin-top: 1rem;
-  display: grid;
-  gap: 1em; /* Owen — scales with .map-settlement__p's own font-size (1rem today) rather than a fixed rem */
+  /* Two-up across the tablet range, one column elsewhere (--method-cols, in
+     grid.css; 4d, Owen). Paragraphs are kept whole. */
+  columns: var(--method-cols);
+  column-gap: 1.25rem;
 }
 
-/* Two columns wherever the farm list has two (the same 43rem of text column,
-   4d, Owen), paragraphs kept whole. */
-@container text (min-width: 43rem) {
-  .map-settlement__body {
-    display: block;
-    columns: 2;
-    column-gap: 1.25rem;
-  }
+.map-settlement__p {
+  break-inside: avoid;
+}
 
-  .map-settlement__p {
-    break-inside: avoid;
-  }
-
-  .map-settlement__p + .map-settlement__p {
-    margin-top: 1em;
-  }
+/* 1em between paragraphs — scales with their own font-size (Owen). */
+.map-settlement__p + .map-settlement__p {
+  margin-top: 1em;
 }
 
 .map-settlement__p {
@@ -776,7 +766,7 @@ body {
   font-size: 1rem; /* 16px (Owen) */
   font-weight: var(--wt-light);
   line-height: 1.25;
-  color: var(--text-muted);
+  color: var(--text-secondary); /* #4A4D41, as the country summaries (Owen) */
 }
 
 /* --- The map cell ------------------------------------------------------------
@@ -1053,9 +1043,10 @@ body[data-panel-style='card'] .panel {
 .map-band__head {
   display: var(--band-head-display);
   grid-area: head;
+  flex-direction: var(--band-head-direction);
   flex-wrap: wrap;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: flex-start;
   column-gap: 0.75rem;
   row-gap: 0.5rem;
 }

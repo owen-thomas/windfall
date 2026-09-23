@@ -95,7 +95,26 @@ export function mapSettlementView(clockEl: Element): View {
   const root = el('details', { class: 'map-settlement' }, summary, body);
   root.addEventListener('toggle', () => {
     setText(toggleText, root.open ? 'Hide method' : 'Show method');
+    if (root.open) requestAnimationFrame(revealBody);
   });
+
+  /**
+   * Opening the method grows the text column below the fold — on desktop the
+   * block is centred on the screen, so most of what opens lands off it (Owen).
+   * Scroll just far enough to show all of it, 24px clear of the bottom, but
+   * never so far that the heading row goes off the top; if it's taller than
+   * the screen, the heading sits 24px from the top instead.
+   */
+  function revealBody() {
+    const margin = 24;
+    const rect = root.getBoundingClientRect();
+    const overflow = rect.bottom + margin - window.innerHeight;
+    if (overflow <= 0) return;
+    const by = Math.min(overflow, rect.top - margin);
+    if (by <= 0) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    window.scrollBy({ top: by, behavior: reduce ? 'auto' : 'smooth' });
+  }
 
   return {
     el: root,
