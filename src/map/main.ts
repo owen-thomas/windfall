@@ -273,8 +273,8 @@ function bootMap(): void {
   colophon.el
     .querySelector('.colophon__byline')!
     .replaceChildren(
-      'Built by Owen Thomas',
-      el('span', { class: 'byline__sep', 'aria-hidden': 'true', text: '✺' }),
+      // 4d (Owen): "Built by owenthomas.work".
+      'Built by ',
       el('a', { class: 'byline__link', href: 'https://owenthomas.work', text: 'owenthomas.work' }),
     );
 

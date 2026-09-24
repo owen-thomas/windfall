@@ -96,6 +96,8 @@
      "larger headings are 24"), 16px / 12px on a phone, where the larger pair
      took too much of the line (Owen). */
   --type-subhead: 0.875rem; /* 14px under 400px (a narrow phone), 16px from 400px — below */
+  /* 4d: the farm names — 12px on a phone (Owen), Eczar 16px from tablet. */
+  --type-farm-name: 0.75rem;
   --type-subhead-label: 0.75rem; /* 12px */
   /* 4d: the farm rows, the list's control, the method toggle and the footer —
      12px, measured against Owen's frame. */
@@ -170,6 +172,7 @@
     --lh-display: 1.125;
     --type-subhead: 1.5rem; /* 24px */
     --type-subhead-label: 1rem; /* 16px */
+    --type-farm-name: 1rem; /* 16px */
     --type-wordmark: 1rem; /* 16px */
     --type-legend: 0.75rem; /* 12px */
     --anchor-england-lat: 55.1;
@@ -200,9 +203,8 @@
        into the map (Owen). */
     --mix-span: 2;
     --method-cols: 1;
-    /* The bold figures step down to 20px in the narrow text column (359px at
-       1024): at 24px the bar's two labels need ≈394px and "Held back" wrapped
-       under "on the grid" (Owen). 1280 restores 24px. */
+    /* The bold figures are 20px on desktop until HD (1440; Owen) — in the
+       narrow text column (359px at 1024) 24px also wrapped the bar's labels. */
     --type-subhead: 1.25rem;
     --anchor-scotland-lat: 57.52;
     --anchor-england-lat: 54.72;
@@ -211,19 +213,17 @@
        keeps its fit however long the text column grows (the method note
        opening, say).
 
-       4d: the text block no longer centres on the screen. Centring made the
-       rows above and below it equal, so the row above grew to match the
-       footer and, with the taller 4d block, sat the headline 256–318px down
-       (Owen: "sits quite low"). It now hangs under the masthead, its cap
-       height ≈22% of the way down the screen (--text-offset), and the footer
-       keeps to the foot of the last row. */
-    --page-rows: auto auto 1fr;
+       4d: the text block floats in the middle of the space between masthead
+       and footer (Owen), so opening the method grows it upward as well as
+       down. Not centred on the *screen* any more: that made the rows above and
+       below equal, and the row above grew to the footer's height, sitting the
+       headline 256–318px down. */
+    --page-rows: auto 1fr auto;
     --map-position: sticky;
     --map-align: start;
     --map-height: max(100svh, 36rem);
-    --text-align: start;
-    --text-offset: clamp(1.5rem, 22svh - 7.25rem, 10rem);
-    --text-lift: 3rem; /* the least gap between the text block and the footer */
+    --text-align: center;
+    --text-lift: 2.25rem; /* padding that lifts the centred block 18px: the frames sit it above true centre */
 
     /* 1024–1279: the panels keep the phone and tablet arrangement — name, bar,
        intensity under the bar, the mix as a list — which fits a 129–159px
@@ -240,7 +240,6 @@
 @media (min-width: 80rem) {
   :root {
     --tier: desktop-m;
-    --type-subhead: 1.5rem; /* 24px */
     /* 4d: name, then the intensity under it — never side by side, which read
        too tight and made the two panels differ by reading (Owen) — then the
        bar, and the mix flowing two to a row. */
@@ -257,6 +256,7 @@
 @media (min-width: 90rem) {
   :root {
     --tier: desktop-l;
+    --type-subhead: 1.5rem; /* 24px from HD (Owen) */
     --type-display: 2.5rem; /* 40px (48px was tried in 4d and read too big — Owen) */
     --lh-display: 1.1;
     /* The 1440 frame's text block is columns 1–5 plus the gutter after them

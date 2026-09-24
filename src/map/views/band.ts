@@ -82,7 +82,7 @@ export function mapBandView(spec: BandSpec): View {
       if (!region && state.pending) {
         setAttr(root, 'data-state', 'pending');
         setText(place, spec.placeholderName);
-        setTextCrossfade(intensity, 'Waiting for Carbon Intensity');
+        setTextCrossfade(intensity, 'Waiting for carbon intensity');
         for (const { seg, label } of segments.values()) {
           seg.style.flexBasis = '0%';
           setText(label, '');
@@ -91,14 +91,14 @@ export function mapBandView(spec: BandSpec): View {
           legend.replaceChildren();
           legendKey = '';
         }
-        setTextCrossfade(caption, now ? unknownOrStateCaption(spec, now, state) : spec.caption.unknown);
+        setTextCrossfade(caption, now ? unknownOrStateCaption(spec, now, state) : unknownCaption(spec));
         return;
       }
 
       if (!region) {
         setAttr(root, 'data-state', 'failed');
         setText(place, spec.placeholderName);
-        setTextCrossfade(intensity, 'Carbon Intensity unavailable');
+        setTextCrossfade(intensity, 'Carbon intensity unavailable');
         for (const { seg, label } of segments.values()) {
           seg.style.flexBasis = '0%';
           setText(label, '');
@@ -107,7 +107,7 @@ export function mapBandView(spec: BandSpec): View {
           legend.replaceChildren();
           legendKey = '';
         }
-        setTextCrossfade(caption, spec.caption.unknown);
+        setTextCrossfade(caption, unknownCaption(spec));
         return;
       }
 
@@ -145,13 +145,26 @@ export function mapBandView(spec: BandSpec): View {
   };
 }
 
+/**
+ * The caption for when the constraint can't be read. /map's own wording of
+ * ../../view/band.ts's `unknown` line (which `/` keeps): contractions and
+ * "half hour", as the rest of the page is written (4d, Owen).
+ */
+function unknownCaption(spec: BandSpec): string {
+  // England's `unknown` ("English demand leans on gas whenever northern wind
+  // can't reach it") is the cause-and-effect claim 4d took out of its main
+  // sentence, so /map says only what it can't read.
+  if (spec.lead === 'gas') return 'England’s grid mix can’t be read this half hour.';
+  return spec.caption.unknown.replace(/cannot/g, 'can’t').replace(/half-hour/g, 'half hour');
+}
+
 /** The pending state can still have a curtailment reading even while the grid mix hasn't arrived; the caption's constraint clause is data it owns independently of the bar (../../view/band.ts's own pattern). */
 function unknownOrStateCaption(
   spec: BandSpec,
   now: CurtailmentNow | null | undefined,
   state: AppState
 ): string {
-  if (!now) return spec.caption.unknown;
+  if (!now) return unknownCaption(spec);
   const tense = speaksOfNow(state.curtailment?.fetchedAt, now.settlement, state.now) ? 'now' : 'past';
   return spec.caption[now.curtailedMW > 0 ? 'constrained' : 'clear'][tense];
 }
@@ -183,7 +196,8 @@ function twoClauseCaption(
     const past = now ? !speaksOfNow(state.curtailment?.fetchedAt, now.settlement, state.now) : false;
     const coming = past ? 'was coming' : 'is coming';
     const share = `${formatPct(leadPct)} of England’s power ${coming} from gas, at ${words}.`;
-    if (!now) return `${spec.caption.unknown} ${share}`;
+    // No curtailment reading: the mix alone, no claim about Scotland's wind.
+    if (!now) return share[0].toUpperCase() + share.slice(1);
     if (now.curtailedMW <= 0) return share[0].toUpperCase() + share.slice(1);
     return `While Scotland’s wind ${past ? 'was' : 'is'} held back, ${share}`;
   }

@@ -33,6 +33,24 @@ export interface MapMastheadView extends View {
   freshness: HTMLElement;
 }
 
+/**
+ * The sources not answering fully, in words — "Elexon not answering", "NESO
+ * partly answering", "NESO and Elexon not answering" — or '' when both are.
+ * The same reading of each feed's health as colophon.ts's old footer words.
+ */
+function sourcesDown(state: AppState): string {
+  const health = (error: string | null | undefined, overall: string | undefined) =>
+    error ? 'failed' : (overall ?? 'failed');
+  const feeds = [
+    { name: 'NESO', health: health(state.gridError, state.grid?.health.overall) },
+    { name: 'Elexon', health: health(state.curtailmentError, state.curtailment?.health.overall) },
+  ].filter((f) => f.health !== 'ok');
+  if (feeds.length === 0) return '';
+  const word = (h: string) => (h === 'partial' ? 'partly answering' : 'not answering');
+  if (feeds.length === 2 && feeds[0].health === feeds[1].health) return `NESO and Elexon ${word(feeds[0].health)}`;
+  return feeds.map((f) => `${f.name} ${word(f.health)}`).join(', ');
+}
+
 export function mapMastheadView(): MapMastheadView {
   // 4d: the time leads, bold and large, "to" smaller; the period number follows.
   const start = el('span', { class: 'clock__time' });
@@ -106,24 +124,29 @@ export function mapMastheadView(): MapMastheadView {
       const reading = overallAge(state);
 
       if (!reading && state.pending) {
-        setText(age, 'Reading');
+        setText(age, 'Waiting for data');
         setFreshness('pending');
         setNotice('');
         return;
       }
 
       if (!reading) {
-        setText(age, 'No reading');
+        setText(age, 'Can’t reach our data');
         setFreshness('failed');
-        setNotice('Windfall is not reaching its data sources. Nothing on this page is current.');
+        // No red notice under the heading any more (Owen): the headline and this
+        // status line already say it.
+        setNotice('');
         return;
       }
 
-      setFreshness(reading.freshness);
-      setText(
-        age,
-        reading.freshness === 'stale' ? `Last updated ${formatAge(reading.ms)}` : `Updated ${formatAge(reading.ms)}`
-      );
+      // 4d: a source that isn't answering is said here, in the one status line,
+      // rather than as a red word beside its name in the footer (Owen) —
+      // "Updated moments ago · Elexon not answering", with the dot amber.
+      const down = sourcesDown(state);
+      const stale = reading.freshness === 'stale';
+      setFreshness(stale ? 'stale' : down ? 'partial' : reading.freshness);
+      const ageText = stale ? `Last updated ${formatAge(reading.ms)}` : `Updated ${formatAge(reading.ms)}`;
+      setText(age, down ? `${ageText} · ${down}` : ageText);
 
       setNotice('');
     },

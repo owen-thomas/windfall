@@ -51,28 +51,38 @@
   --type-caption: 0.6875rem; /* inset captions, the mobile legend — Mukta */
 
   /* --- Ground ------------------------------------------------------------ */
-  --ink-void: #e9e5dc;
-  --ink-ground: #e9e5dc;
-  --ink-raised: #f5f2ea;
-  --ink-line: #d8d2c4;
-  --ink-line-strong: #b8b0a0;
+  /* 4d: the ground is #E6E4DD — the old cream (#E9E5DC) dialled back to a
+     less saturated, faintly solar-tinted stone (Owen). Its lines, boxes and
+     inset stroke keep the cream's own lightness steps at the new saturation.
+     Contrast on it: #152767 10.87, #4A4D41 6.80, #65624F 4.84, --held-text
+     4.51, --signal-ok 3.14, the white island 1.27. */
+  --ink-void: #e6e4dd;
+  --ink-ground: #e6e4dd;
+  --ink-raised: #f2f1eb;
+  --ink-line: #d4d1c6;
+  --ink-line-strong: #b3b0a3;
   /* The frame's filled box: the settlement-period row and the bar's chevron
      button (4c.3 / 4c.4). Text on it is --text-primary or --text-secondary;
      --text-muted is 4.14:1 here, so never that. */
-  --ink-box: #dbd3c4;
+  --ink-box: #d6d3c7;
   /* 4d: the Shetland square's 2px outline (Owen). */
-  --inset-stroke: #cdc7ba;
+  --inset-stroke: #c9c6bc;
 
   /* Step 4b (DECISIONS 028): the display ink is navy, not near-black — the
      masthead wordmark, the headline, region names and the bar label all read
      from this one token. */
-  --text-primary: #152767;
-  --text-secondary: #4a4d41; /* the frame's value (was #4a4d40); the one-unit difference is invisible */
-  /* Darkened from the step-1 provisional #7a7768 (3.58:1) to clear AA's
-     4.5:1 for normal text — DECISIONS 027. The 4b Figma frames still carry
-     the old #7a7769 on the settlement row, legend names and byline; it is
-     deliberately not re-adopted (DECISIONS 028). */
-  --text-muted: #65624f;
+  /* 4d: the text greys follow the ground (Owen). Blue is kept for what is
+     about the megawatts themselves — --data-ink below, and the bar blues.
+     Two greys: the dark one for the logo, headline, headings and names (the
+     #545248 step was folded into it), the lighter for everything that
+     describes them, at #6A665B — the nearest tone to the #7A7669 first tried
+     that clears AA for body-size text. On #E6E4DD: 9.22 and 4.50. */
+  --text-primary: #3a3831; /* logo, headline, border line, focus rings */
+  --text-secondary: #3a3831; /* headings, place and farm names, toggle hover */
+  --text-muted: #6a665b; /* paragraphs, windspeeds, legend, toggles, footer */
+  /* The megawatt figures: the bar's on-grid label, each farm's on-grid MW,
+     the 100% headline figure. The old display navy. */
+  --data-ink: #152767;
 
   /*
    * --- Fuels ---------------------------------------------------------------
@@ -107,7 +117,7 @@
   --fuel-solar: #9a822e;
   --fuel-hydro: #5f86a3;
   --fuel-biomass: #7c9a2e;
-  --fuel-imports: #a89e8c;
+  --fuel-imports: #a49e8d; /* 4d: re-tinted to the ground (Owen) */
   --fuel-coal: #6b5f56;
   --fuel-other: #8a8272;
 

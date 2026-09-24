@@ -29,7 +29,7 @@
  */
 
 import { el, setAttr, setTextCrossfade, type View } from '../../view/dom';
-import { formatMWFloor, formatPctFloor } from '../../lib/format';
+import { formatMWFloor, formatPctFloor, formatTime } from '../../lib/format';
 import { speaksOfNow, type AppState } from '../../lib/state';
 import { readOnGrid } from '../onGrid';
 
@@ -59,31 +59,32 @@ export function mapHeadlineView(): View {
       const present = speaksOfNow(data?.fetchedAt, data?.now?.settlement, state.now);
 
       if (!data?.now && state.pending) {
+        // 4d copy (Owen): one plain sentence in the page's own voice, no bold
+        // "Reading." lead in a different colour.
         setAttr(root, 'data-state', 'pending');
         setTextCrossfade(lead, '');
-        setTextCrossfade(figure, 'Reading.');
-        setTextCrossfade(
-          tail,
-          ' Windfall is asking Elexon what is being held down this half-hour. Nothing is claimed ' +
-            'until it answers.'
-        );
+        setTextCrossfade(figure, '');
+        setTextCrossfade(tail, 'We’re asking Elexon how much of Scotland’s wind is being held back this half hour.');
         return;
       }
 
       if (!data || !data.now) {
         setAttr(root, 'data-state', 'failed');
         setTextCrossfade(lead, '');
-        setTextCrossfade(figure, 'Unavailable.');
+        setTextCrossfade(figure, '');
         setTextCrossfade(
           tail,
           state.curtailmentError
-            ? ' Windfall could not reach its own reading of the balancing mechanism.'
-            : ' Elexon’s balancing data did not answer this time. The generation mix above is unaffected.'
+            ? 'We can’t reach our data right now, so there are no figures for this half hour.'
+            : 'Elexon hasn’t sent this half hour’s switch-offs yet. The grid mix on the map is unaffected.'
         );
         return;
       }
 
       const reading = readOnGrid(data.now);
+      // An old reading names its own half hour rather than "when this was last
+      // read" (Owen): "… between 13:30 and 14:00."
+      const when = `between ${formatTime(data.now.settlement.periodStart)} and ${formatTime(data.now.settlement.periodEnd)}`;
 
       if (reading.allClear) {
         setAttr(root, 'data-state', 'none');
@@ -93,7 +94,7 @@ export function mapHeadlineView(): View {
           tail,
           present
             ? ' of Scotland’s tracked wind is currently on the grid.'
-            : ' of Scotland’s tracked wind was on the grid when this was last read.'
+            : ` of Scotland’s tracked wind was on the grid ${when}.`
         );
         return;
       }
@@ -109,7 +110,7 @@ export function mapHeadlineView(): View {
         tail,
         present
           ? ' of Scotland’s tracked wind is currently being held back from the grid.'
-          : ' of Scotland’s tracked wind was being held back from the grid when this was last read.'
+          : ` of Scotland’s tracked wind was held back from the grid ${when}.`
       );
     },
   };

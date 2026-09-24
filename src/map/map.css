@@ -120,7 +120,6 @@ body {
   grid-column: var(--col-text);
   grid-row: 2;
   align-self: var(--text-align);
-  margin-top: var(--text-offset, 0);
   display: grid;
   /* minmax(0, …), not the implicit `auto`: an auto track will not shrink below
      its widest item's min-content, and at 345px that pushed the whole block
@@ -168,15 +167,17 @@ body {
   font-weight: var(--wt-semibold);
 }
 
-/* Pending's "Reading" is not a claim yet, so it stays muted. */
-.map-headline[data-state='pending'] .map-headline__figure {
-  color: var(--text-muted);
-}
 
 /* The figure is the held-back share (4d), in the held-back blue. When nothing
    is held back ("100% … on the grid") it is the display ink like the rest. */
 .map-headline[data-state='curtailing'] .map-headline__figure {
   color: var(--held-text);
+}
+
+/* 100% on the grid: a megawatt claim too, so the data ink, not the headline's
+   grey (4d, Owen). */
+.map-headline[data-state='none'] .map-headline__figure {
+  color: var(--data-ink);
 }
 
 /* The settlement heading, seated in the method disclosure's summary by main.ts
@@ -197,7 +198,7 @@ body {
   font-family: var(--font-display);
   line-height: 1.15;
   text-align: left;
-  color: var(--text-primary); /* #152767 — the display ink, like the other headings (Owen) */
+  color: var(--text-secondary); /* the headings' grey (Owen) */
 }
 
 .map-settlement__summary .clock__span {
@@ -237,10 +238,28 @@ body {
    dot-to-text 4px, so the page's dot-and-label pairs read as one convention. */
 .map-freshness {
   margin: 0;
+  /* app.css's .clock is 0.8rem; the footer is one size (12px) throughout. */
+  font-size: var(--type-row);
+}
+
+/* Failed: a hollow ring like the waiting state's, not app.css's "×" (Owen). */
+.map-freshness[data-freshness='failed'] .clock__age::before {
+  content: '';
+  width: 0.45rem;
+  height: 0.45rem;
+  background: none;
+  box-shadow: inset 0 0 0 1px currentColor;
 }
 
 .map-freshness .clock__age {
   gap: 4px;
+}
+
+/* The footer is one colour, the lighter grey (Owen). Stale and failed keep
+   their warning colours (app.css), which outrank this. */
+.map-freshness .clock__age,
+.map-freshness[data-freshness='pending'] .clock__age {
+  color: var(--text-muted);
 }
 
 /* The warning half of the old standfirst slot (views/masthead.ts): a full
@@ -298,7 +317,7 @@ body {
 }
 
 .map-sources__label--on {
-  color: var(--text-primary);
+  color: var(--data-ink);
 }
 
 .map-sources__label--held {
@@ -357,6 +376,12 @@ body {
 
 .map-sources:not([data-state='ok']) .map-sources__body,
 .map-sources:not([data-state='ok']) .map-sources__open {
+  display: none;
+}
+
+/* 4d: with no reading (waiting, offline) the whole bar block goes — labels,
+   empty gauge and list — rather than an empty gauge standing in (Owen). */
+.map-sources:not([data-state='ok']) {
   display: none;
 }
 
@@ -530,10 +555,10 @@ body {
   /* 4d: Eczar 16px in the display ink (Owen) — regular, the page's own
      secondary-heading style ("on the grid", "Settlement period"). */
   font-family: var(--font-display);
-  font-size: var(--type-region);
+  font-size: var(--type-farm-name);
   font-weight: var(--wt-regular);
   line-height: 1.5rem;
-  color: var(--text-primary);
+  color: var(--text-secondary);
 }
 
 /* --text-muted rather than the frame's own #7a7769, which is 3.58:1 on this
@@ -585,7 +610,7 @@ body {
 }
 
 .source-row__mw--on {
-  color: var(--text-primary);
+  color: var(--data-ink);
 }
 
 /* A day with nothing held back (data-mode="on"): every mini-bar would be one
@@ -637,7 +662,7 @@ body {
   font-size: var(--type-row);
   font-weight: var(--wt-regular);
   line-height: 1.5rem;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   cursor: pointer;
 }
 
@@ -652,7 +677,7 @@ body {
 .map-sources__open:hover .map-toggle,
 .map-settlement__summary:hover .map-toggle,
 .map-band__summary:hover .map-toggle {
-  color: var(--text-primary);
+  color: var(--text-secondary);
   background: color-mix(in srgb, var(--ink-box) 45%, transparent);
 }
 
@@ -700,6 +725,7 @@ body {
    summaries (4d): "▶ Show method", "▶ Show summary". */
 .map-toggle {
   flex: 0 0 auto;
+  color: var(--text-muted);
   display: inline-flex;
   align-items: baseline;
   gap: 0.4em;
@@ -710,7 +736,6 @@ body {
   font-family: var(--font-body);
   font-size: var(--type-row);
   line-height: 1.5rem;
-  color: var(--text-secondary);
 }
 
 /* Right-aligned on the heading row: the tint bleeds out to the right. The
@@ -766,7 +791,7 @@ body {
   font-size: 1rem; /* 16px (Owen) */
   font-weight: var(--wt-light);
   line-height: 1.25;
-  color: var(--text-secondary); /* #4A4D41, as the country summaries (Owen) */
+  color: var(--text-muted); /* paragraph copy (Owen) */
 }
 
 /* --- The map cell ------------------------------------------------------------
@@ -957,7 +982,7 @@ body {
      when Eczar arrives over its fallback. */
   line-height: 1.25;
   white-space: nowrap;
-  color: var(--text-primary);
+  color: var(--text-secondary);
 }
 
 .map__debug {
@@ -982,15 +1007,21 @@ body {
   border-radius: 4px;
 }
 
+/* 4d: no box (Owen). The wash — a translucent cream scrim with a ring outside
+   the panel — read as a beige box wherever a panel sat over the white island,
+   or alone on the waiting screen. Legibility over the island and the wind
+   trails now comes from a soft glow of the ground colour around the text
+   itself, which draws no shape. */
 body[data-panel-style='wash'] .panel {
-  background: rgb(233 229 220 / 0.6);
-  backdrop-filter: blur(3px);
-  box-shadow: 0 0 0 0.375rem rgb(233 229 220 / 0.6);
+  text-shadow:
+    0 0 2px var(--ink-ground),
+    0 0 6px var(--ink-ground),
+    0 0 10px var(--ink-ground);
 }
 
 body[data-panel-style='card'] .panel {
-  background: rgb(245 242 234 / 0.92);
-  box-shadow: 0 0 0 0.375rem rgb(245 242 234 / 0.92), 0 0 0 calc(0.375rem + 1px) var(--ink-line);
+  background: color-mix(in srgb, var(--ink-raised) 92%, transparent);
+  box-shadow: 0 0 0 0.375rem color-mix(in srgb, var(--ink-raised) 92%, transparent), 0 0 0 calc(0.375rem + 1px) var(--ink-line);
   backdrop-filter: blur(6px);
 }
 
@@ -1062,6 +1093,7 @@ body[data-panel-style='card'] .panel {
   font-weight: var(--wt-semibold);
   letter-spacing: -0.01em;
   line-height: 1.2;
+  color: var(--text-secondary);
 }
 
 .map-band__intensity {
@@ -1071,7 +1103,7 @@ body[data-panel-style='card'] .panel {
   font-weight: var(--wt-regular);
   line-height: 1.2;
   white-space: nowrap;
-  color: var(--text-primary);
+  color: var(--text-secondary);
 }
 
 /* Pending and failed: the intensity slot carries a sentence ("Waiting for
@@ -1128,7 +1160,7 @@ body[data-panel-style='card'] .panel {
 
 .map-band .legend dd {
   font-weight: var(--wt-regular);
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }
 
 .map-band .legend__swatch {
@@ -1166,7 +1198,7 @@ body[data-panel-style='card'] .panel {
   font-size: var(--type-body);
   font-weight: var(--wt-regular);
   line-height: 1.17;
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }
 
 /* Scotland's panel, right-aligned against the margin on mobile (--scotland-align
@@ -1268,6 +1300,7 @@ body[data-panel-style='card'] .panel {
 
 .map-foot .source__name {
   font-weight: var(--wt-regular);
+  color: var(--text-muted);
 }
 
 .map-foot__feeds {
@@ -1285,11 +1318,20 @@ body[data-panel-style='card'] .panel {
 .map-foot .source + .source::before {
   content: '•';
   margin-left: 0.4em;
-  color: var(--text-secondary);
+  color: var(--text-muted);
 }
 
-.map-foot .source[data-health='ok'] .source__status {
+/* 4d: no per-source health words in the footer — "unreachable" beside each
+   name was a leftover; a source that isn't answering is said once, in the
+   freshness line (views/masthead.ts). */
+.map-foot .source__status {
   display: none;
+}
+
+/* A source not answering while the reading is otherwise fresh: the ageing
+   amber, a caution rather than an alarm. */
+.map-freshness[data-freshness='partial'] .clock__age::before {
+  background: var(--signal-ageing);
 }
 
 .map-foot .sources .colophon__byline {
@@ -1318,12 +1360,12 @@ body[data-panel-style='card'] .panel {
 
 .map-foot .byline__link:hover,
 .map-foot__link:hover {
-  color: var(--text-primary);
+  color: var(--text-secondary);
 }
 
 /* --- State toggle --------------------------------------------------------- */
 .toggle {
-  background: rgb(245 242 234 / 0.92);
+  background: color-mix(in srgb, var(--ink-raised) 92%, transparent);
   border-color: var(--ink-line);
   font-family: var(--font-body);
 }
