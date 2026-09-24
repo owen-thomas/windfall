@@ -567,7 +567,8 @@ body {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: baseline;
-  gap: 4px;
+  /* Tighter after the ≋ than before it (Owen): the glyph belongs to the speed. */
+  gap: 2px;
   font-family: var(--font-body);
   font-size: var(--type-row);
   line-height: 1.5rem;
