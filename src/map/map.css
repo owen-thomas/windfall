@@ -332,11 +332,15 @@ body {
   display: none;
 }
 
+/* The swatch sits on the text's baseline and is exactly its x-height tall
+   (Owen): 1ex, which for Eczar matches the lowercase glyphs to a tenth of a
+   pixel. An empty flex item's baseline is its bottom edge, so baseline
+   alignment seats it on the line. */
 .map-sources__swatch {
   flex: none;
-  align-self: center;
-  width: 0.8em;
-  height: 0.8em;
+  align-self: baseline;
+  width: 1ex;
+  height: 1ex;
   margin-right: 0.5em;
 }
 
