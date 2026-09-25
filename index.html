@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#070a0d" />
+    <meta name="color-scheme" content="light" />
+    <meta name="theme-color" content="#e6e4dd" />
     <title>Windfall — Scotland's wind, switched off</title>
     <meta
       name="description"
@@ -42,7 +42,8 @@
     />
   </head>
   <body>
-    <div id="app" data-boot="pending"></div>
+    <!-- The whole tree below #map-app is built by src/map/main.ts. -->
+    <div id="map-app"></div>
     <noscript>
       <p>
         Windfall reads Britain's grid live and needs JavaScript. The underlying data is public:
@@ -50,6 +51,6 @@
         (data.elexon.co.uk).
       </p>
     </noscript>
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/map/main.ts"></script>
   </body>
 </html>

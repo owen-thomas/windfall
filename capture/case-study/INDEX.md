@@ -93,6 +93,22 @@ second-person ban, exclamation-mark ban) for each fixture.
 
 ---
 
+## retired/ — `/` and `/flow` on the day they were retired
+
+Captured from `https://www.windfall.scot` on 2026-09-25 (retina, 2×), just before `/map`
+replaced the index and `/flow` was removed — the last record of both pages as they were
+deployed. Script: `scripts/capture-retired.ts`.
+
+| File | Page | Provenance |
+|---|---|---|
+| `index-live-desktop.png` | `/`, the original dashboard, 1440×900, full page | **Genuine live reading** |
+| `index-live-mobile.png` | `/`, 375×812, full page | **Genuine live reading** |
+| `index-curtailing-desktop.png` | `/`, 1440×900, full page | Fixture (`?state=curtailing`) |
+| `flow-desktop.png` | `/flow`, the flow experiment, 1440×900, after 20s | Its fictional seven sources, as shipped |
+| `flow-mobile.png` | `/flow`, 375×812, after 20s | Its fictional seven sources, as shipped |
+
+---
+
 ## What's not in this pack
 
 - **Real generated narration examples** — blocked on the dry-run limitation above.

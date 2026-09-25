@@ -1,0 +1,8 @@
+{
+  "redirects": [
+    { "source": "/map", "destination": "/", "permanent": true },
+    { "source": "/map/", "destination": "/", "permanent": true },
+    { "source": "/flow", "destination": "/", "permanent": true },
+    { "source": "/flow/", "destination": "/", "permanent": true }
+  ]
+}

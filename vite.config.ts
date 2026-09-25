@@ -75,8 +75,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        flow: resolve(__dirname, 'flow/index.html'),
-        map: resolve(__dirname, 'map/index.html'),
       },
     },
   },

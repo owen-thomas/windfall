@@ -61,13 +61,13 @@ async function main() {
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 
     console.log('Capturing live...');
-    await page.goto(`${BASE}/map/`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(SETTLE_MS);
     await page.screenshot({ path: join(OUT_DIR, 'live.png') });
 
     for (const state of FIXTURE_STATES) {
       console.log(`Capturing ${state}...`);
-      await page.goto(`${BASE}/map/?state=${state}&dev=1`, { waitUntil: 'networkidle' });
+      await page.goto(`${BASE}/?state=${state}&dev=1`, { waitUntil: 'networkidle' });
       await page.waitForTimeout(SETTLE_MS);
       await page.screenshot({ path: join(OUT_DIR, `${state}.png`) });
     }
@@ -75,7 +75,7 @@ async function main() {
     // Card vs wash (Part B.3, DECISIONS 027) — captured on the curtailing
     // fixture, which has the fullest panel set on screen.
     console.log('Capturing panel treatment pair...');
-    await page.goto(`${BASE}/map/?state=curtailing&dev=1`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/?state=curtailing&dev=1`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(SETTLE_MS);
     await page.screenshot({ path: join(OUT_DIR, 'panels-wash.png') });
     await page.keyboard.press('c');
@@ -91,21 +91,21 @@ async function main() {
 
     // Border tooltip: hover, tap/click, keyboard focus (Part A.5).
     console.log('Capturing border tooltip — hover...');
-    await page.goto(`${BASE}/map/?state=curtailing&dev=1`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/?state=curtailing&dev=1`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(SETTLE_MS);
     await page.hover('.map__border-hit');
     await page.waitForTimeout(300);
     await page.screenshot({ path: join(OUT_DIR, 'border-tooltip-hover.png') });
 
     console.log('Capturing border tooltip — tap...');
-    await page.goto(`${BASE}/map/?state=curtailing&dev=1`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/?state=curtailing&dev=1`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(SETTLE_MS);
     await page.click('.map__border-hit');
     await page.waitForTimeout(300);
     await page.screenshot({ path: join(OUT_DIR, 'border-tooltip-tap.png') });
 
     console.log('Capturing border tooltip — keyboard focus...');
-    await page.goto(`${BASE}/map/?state=curtailing&dev=1`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE}/?state=curtailing&dev=1`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(SETTLE_MS);
     await page.keyboard.press('Tab');
     await page.waitForTimeout(300);
@@ -116,7 +116,7 @@ async function main() {
     // Swatch plate — full page, since it scrolls.
     console.log('Capturing swatch plate...');
     const platePage = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-    await platePage.goto(`${BASE}/map/?plate=tokens`, { waitUntil: 'networkidle' });
+    await platePage.goto(`${BASE}/?plate=tokens`, { waitUntil: 'networkidle' });
     await platePage.waitForTimeout(500);
     await platePage.screenshot({ path: join(OUT_DIR, 'swatch-plate.png'), fullPage: true });
     await platePage.close();

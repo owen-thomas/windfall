@@ -72,12 +72,12 @@ async function main() {
     // is actually doing), then the six fixture states.
     const desktop = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     console.log('Capturing live...');
-    await desktop.goto(`${BASE}/map/`, { waitUntil: 'networkidle' });
+    await desktop.goto(`${BASE}/`, { waitUntil: 'networkidle' });
     await desktop.waitForTimeout(SETTLE_MS);
     await desktop.screenshot({ path: join(OUT_DIR, 'live.png') });
 
     for (const state of FIXTURE_STATES) {
-      const url = `${BASE}/map/?state=${state}&dev=1`;
+      const url = `${BASE}/?state=${state}&dev=1`;
       console.log(`Capturing ${state}...`);
       await desktop.goto(url, { waitUntil: 'networkidle' });
       await desktop.waitForTimeout(SETTLE_MS);
@@ -88,7 +88,7 @@ async function main() {
     // Mobile: curtailing only, for reference (Part C).
     const mobile = await browser.newPage({ viewport: { width: 375, height: 812 } });
     console.log('Capturing mobile-curtailing...');
-    await mobile.goto(`${BASE}/map/?state=curtailing&dev=1`, { waitUntil: 'networkidle' });
+    await mobile.goto(`${BASE}/?state=curtailing&dev=1`, { waitUntil: 'networkidle' });
     await mobile.waitForTimeout(SETTLE_MS);
     await mobile.screenshot({ path: join(OUT_DIR, 'mobile-curtailing.png') });
     await mobile.close();
