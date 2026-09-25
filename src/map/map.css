@@ -304,16 +304,16 @@ body {
      into the 32px above the labels, so it read ≈27–28px (Owen). Half the
      descender depth back, scaled to the headline's size so every tier matches:
      5px at 40px, 4px at 32px, 2.5px at 20px. */
-  margin-top: calc(var(--type-display) * 0.125);
+  margin-top: var(--sources-lift);
 }
 .map-sources__labels {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  column-gap: var(--gap-lg);
+  column-gap: var(--legend-item-gap);
   row-gap: var(--gap-xs);
-  /* 12px to the bar, as under it (Owen). */
-  margin-bottom: 0.75rem;
+  /* 12px to the bar, as under it (Owen); 8px on a phone (grid.css). */
+  margin-bottom: var(--legend-bar-gap);
   font-family: var(--font-display);
   font-size: var(--type-subhead-label);
   line-height: 1.15;
@@ -410,7 +410,7 @@ body {
      above it (Owen). The two share a baseline, and the toggle's taller 24px
      line (its hover tint) sets the row, which drops the installed figure's box
      2.5px below the row's top; the margin is the rest. */
-  margin-top: calc(0.75rem - 2.5px);
+  margin-top: var(--bar-foot-gap);
 }
 
 .map-sources__installed {
@@ -728,6 +728,12 @@ body {
      names), so a box-to-cap gap of 32px reads ≈40px. Pulling in by 8px makes it
      read as the same 32px as the sentence-to-bar gap above (Owen). */
   margin-top: -0.5rem;
+}
+
+/* With the farm list shut, the settlement line follows the foot's text rather
+   than a farm row, so it pulls in by its own amount (grid.css). */
+.map-sources:has(> .map-sources__body[hidden]) + .map-settlement {
+  margin-top: var(--settlement-after-foot);
 }
 
 .map-settlement__summary {

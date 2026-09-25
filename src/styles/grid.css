@@ -79,14 +79,28 @@
   --map-align: stretch;
   --map-height: auto;
   --text-align: start; /* the text block sits under the masthead, not centred on the screen */
-  --text-lift: 1.5rem; /* stacked: the gap between the text block and the map */
+  --text-lift: 0.5rem; /* stacked: the gap between the text block and the map — 8px, which with the map's 24px padding puts the Shetland box 32px under the settlement line (Owen) */
   --text-bleed: 0rem;
-  --gap-masthead: 1.9rem;
+  --gap-masthead: 2rem; /* 32px, logo to headline (Owen) */
 
   /* Vertical gap between the rows inside the headline block (the sentence,
      the bar, the settlement disclosure) — flat across every tier, not a
      stepped value like the type scale below. */
   --gap-group: 2rem; /* 32px */
+  /* The bar block on a phone (Owen): 8px from the legend to the bar and from
+     the bar to the cap height of the line under it, 16px between legend items,
+     no descender nudge above the legend (the sentence's trimmed baseline is
+     already 32px from the legend's cap height). The foot's baseline-aligned
+     row already seats its 12px texts' cap height 7.7px under the bar, so its
+     margin is the 0.3px left. Tablet and up keep their own values, below. */
+  --sources-lift: 0px;
+  --legend-bar-gap: 0.5rem;
+  --legend-item-gap: 1rem;
+  --bar-foot-gap: 0.3px;
+  /* With the list shut, the settlement line follows the foot's text rather than
+     a farm row: 4.1px more pull takes the foot's baseline to the settlement
+     line's cap height to 32px. */
+  --settlement-after-foot: calc(-0.5rem - 4.1px);
 
   /* Type that steps by tier. */
   --type-display: 1.5rem; /* 24px (4d, Owen: was 20px, too slight for the page's claim) */
@@ -167,6 +181,12 @@
     --page-top: 3.375rem; /* 54px: the frames' masthead cap-height sits at y=54 */
     --page-bottom: 3.5rem;
     --gap-masthead: 2.875rem;
+    --text-lift: 1.5rem;
+    --sources-lift: calc(var(--type-display) * 0.125);
+    --legend-bar-gap: 0.75rem;
+    --legend-item-gap: var(--gap-lg);
+    --bar-foot-gap: calc(0.75rem - 2.5px);
+    --settlement-after-foot: -0.5rem;
     --mix-span: 3;
     --type-display: 2rem; /* 32px */
     --lh-display: 1.125;
