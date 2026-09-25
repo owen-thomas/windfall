@@ -1389,3 +1389,99 @@ This closes 4c.5, and with it the whole of Windfall_Map_Spec_4c.md.
   - Contrast on #E6E4DD: primary 9.22, secondary 6.16, **muted 3.57, below AA's 4.5:1 for body-size text** (paragraphs at 16px light, the 12px footer and toggles). This is the gap 027 fixed once before, when the frame's #7A7769 measured 3.58. Flagged to Owen; #6A665B is the nearest tone that passes (4.50). Imports as a fill: 2.10, the same disclosed graphic exception as before.
 - **Two greys, both passing AA (Owen).** Content that was #545248 is now #3A3831 (`--text-secondary` folded into `--text-primary`'s value: headings, farm and place names, toggle hover), 9.22:1. Content that was #7A7669 is now #6A665B (`--text-muted`: paragraphs, windspeeds, legend, toggles, footer), 4.50:1, clearing AA for body-size text. The megawatt blues are unchanged.
 - **≋ sits closer to its speed (Owen):** 4px between the name and the ≋, now 2px between the ≋ and "35 km/h" (was 4), so the glyph reads as part of the windspeed. The label column is measured from a hidden copy of a real label, so it picks the change up automatically.
+
+## 037 — The map's wind: calmer, off the coast, covering the land
+
+**Date:** 2026-09-24
+**Phase:** Post-4d, the flow retune §5.3 deferred to step 6 (taken early, knowingly: Owen's call, the island being drawn)
+**Decision:** The map's flow no longer runs on /flow's tuned defaults. It is slower and calmer, it runs off the coast instead of sliding along it, and each particle heads for a point drawn evenly across the land south of its farm, most of them born partway along that journey (`baseFieldMode: 'blanket'`).
+
+**Why:** Owen's read of the old flow was "looks like sperm": short comet trails with heavy heads, each particle wriggling on its own, curling and bouncing at the coast, and converging into rivers. The reference was a wind map: even cover, one general direction.
+
+- **Calmer.** Speed 90→45 px/s, turn rate 0.25→0.1, the fine per-particle noise octave off (`fineNoiseWeight: 0`), sway broader and slower. Trails longer and finer: wash 0.13→0.03 per 60fps frame, stroke 2.2→1.1.
+- **Two trail bugs fixed on the way.** The fade was per frame, so trails were half as long on a 120Hz screen; it is now dt-aware. And a small destination-out fade never reaches zero in an 8-bit canvas: pixels stuck at alpha ~9/255 built a haze (11k pixels after a minute). The fade is now applied in steps of at least 0.14, plus a half-second pass through an SVG alpha transfer (`a' = 1.02a − 0.02`) that clears the floor.
+- **Off the coast (`coastMode: 'exit'`).** No rescue, no clamped glide: a particle that reaches the edge is drawn to the coastline and re-born. The conform band stays, as a gentle turn ahead of the coast; without it narrow Scotland shed nearly every particle before any reached England. The density-recycling death was turned off too: the farms cluster in the central belt, crowded by construction, and it was killing half the flow there.
+- **Covering the land.** Each particle picks a destination evenly by area among land cells south of its farm (a general southward direction), follows one of ~47 region route fields to get there, and heads straight for its own point at the end. Route fields are Dijkstra with a coast penalty (so routes keep inland) and a gradient blur across ~96px (so they cross narrow necks at full width, not down one best line). 85% of particles are born between farm and destination, leaning toward the far end, so the whole route fills and not just its Scottish end. Concentration (share of the flow in the busiest 5% of the island): head-for-cities 0.32, blanket 0.19. Across the border neck, particle counts varied 1.16× their mean before the blur, 0.70× after, for ~40% more particles leaving over the coast.
+
+**Tried and set aside:**
+- *Head south (the geodesic field).* Reaches England, but every route converges on one spine: a river down the Pennines.
+- *Spread from the farms (the divergent field).* Without the coast rescue it has a sink at the border; from cold, 717 particles piled there and none crossed.
+- *Head for cities, weighted by population* (13 cities, built-up-area figures from memory, flagged as unchecked in `src/map/cities.ts`). Better than south, and a story ("the wind goes where people are"), but it still funnels, leaves Wales, the south-west and East Anglia empty, and overclaims: the grid pools power, it doesn't route a farm's output to a city. Kept behind the dev panel's field button.
+
+**Performance:** building 13 city fields took ~1s on every load and resize and froze the page; rewritten to share the grid and allocate nothing in the inner loop, 39ms for all 13, identical output. 47 region fields build in ~30ms at a 12px cell.
+
+## 038 — The flow is strictly proportional to what is on the grid
+
+**Date:** 2026-09-24
+**Phase:** Post-4d
+**Decision:** How many particles show, and whose they are, follow the reading and nothing else:
+- **Density** = the tracked farms' combined MW on the grid ÷ their installed capacity (13,105 MW), of a 2,000-particle pool, with no floor. A typical period (~22%) shows ~440; nothing on the grid shows nothing.
+- **Share** = each farm's MW on the grid ÷ the total. Allocated by quota, not by random draw: every farm generating anything gets one particle, the rest are shared by MW, and each respawn goes to the farm furthest below its share. Farms at 0 MW get none, selected or not, and a farm dropping to 0 has its particles re-born elsewhere at once.
+- A farm's only particle is born at the farm, so every producing farm shows a thread leaving its marker.
+
+**This reverses the spec's "a silent or fully curtailed farm still shows a thread"** (§5.1) and 020-era rate function (floor 1, cap 20, by each farm's share of its own capacity, so a small farm flat out emitted as much as Seagreen). Owen: "I thought we were only showing wind particles proportional to what's on the grid." The density floor (20%) went for the same reason. Still texture, not a figure (020): nobody is meant to read MW off it.
+
+**Also tried and removed:** a 12% minimum share for a selected farm, so a picked farm's thread could be followed. It made a 1 MW farm show 64–93 particles, and the boosted particles outlived the selection. With it gone, selecting a farm keeps its honest share; its particles are re-born at the farm (keeping their farm — an earlier version re-drew it, which halved Moray West's count on selection).
+
+**Known cost:** the one-particle minimum over-represents the smallest farms (a 2 MW farm is a third of a particle, drawn as one), and on a still or fully held-down day the map is nearly empty. Both are the honest reading.
+
+## 039 — Capacity is the scale: bars, markers and the list
+
+**Date:** 2026-09-25
+**Phase:** Post-4d
+**Decision:** Installed capacity is the one scale the page draws size with, and colour is the state:
+- **Main bar** spans the fleet's installed capacity: navy on the grid, periwinkle held back, the rest a pale idle track (`--ink-raised`). Legend of the two that carry the story ("2,913 MW on the grid", "2,196 MW held back"); "13,105 MW installed" quietly under the bar's end, always "installed", never "capacity" (the page's issue is the *grid's* capacity).
+- **Farm rows** ranked by capacity, then MW on the grid. Each bar's length is the farm's capacity against the largest farm's, strictly proportional; figures left of the bar, "166 / 584 MW" (held back in its own blue, only when there is any).
+- **Markers** are dots whose area is the farm's capacity (6px across at the smallest, 16px for Seagreen): solid navy with anything on the grid, periwinkle keylined in `--held-text` with everything held back, a navy keyline with nothing. The list's dots use the same rule (`farmStateOf`).
+- **Island** filled `--ink-raised`, the same "nothing happening here" tone as the idle tracks; the Scotland/England border a 5px cut in the page colour.
+
+**The headline still measures against declared output (026).** So "at least 42%" sits over a periwinkle run that is ~17% of the bar: it is the held-back share of the bar's coloured part. Knowingly accepted over switching the headline to capacity, which would understate curtailment most on the windiest days.
+
+**Tried and rejected on the way:**
+- *Idle as a labelled third segment* ("7,996 MW idle"): the bar became mostly about weather, the held-back run the smallest thing on it, and "capacity" next to "held back" read as connected.
+- *Markers as pies* (navy/periwinkle/grey wedges): unreadable at 3–4px, and the hatched held-down marker (drawn larger than a working farm's) made curtailed farms loom. Simplified to state dots.
+- *Held-back figure at the far right of the bar*: pushed away from its colour by a long idle track.
+
+**Accessibility:** no WCAG size minimum applies to a display-only marker (2.5.8's 24px is for targets); 6px across is the floor for a point symbol that carries a state. Periwinkle alone is ~2.2:1 on the island, under 1.4.11's 3:1, hence the `--held-text` keyline (~4.5:1). Navy fill and keyline pass easily.
+
+## 040 — Wind speed removed
+
+**Date:** 2026-09-25
+**Phase:** Post-4d
+**Decision:** Every wind speed reference is gone: the "≋ 34 km/h" on each farm row, the Scotland caption's "Average wind speed", `/api/windspeed` and its Open-Meteo call, its Vercel function config, the client fetch, state, types, formatter and the dev-server cache (036).
+
+**Why:** Owen asked what average wind speed would put the fleet at full capacity. It can't be answered from this feed, and so the figure can't do the explanatory work its placement implied: it is Open-Meteo's `wind_speed_10m`, while hubs sit at 80–150m (30–50% stronger over land); output against speed is a cubed curve capped at rated speed, so a mean across 76 sites predicts nothing about fleet output; declared output is already net of outages; the biggest farms are offshore. As colour it wasn't worth the room it took from the story.
+
+## 041 — Motion, second pass
+
+**Date:** 2026-09-25
+**Phase:** Post-4d
+**Decision:** Within 020's rules (no figure is tweened; nothing slower than `--dur-slow`; reduced motion removes duration, never information):
+- **Entrances** (`src/map/enter.ts`): the main bar's runs and the mix bars grow in from the left; farm rows, the bar's legend and the mix legends cascade in 45ms apart; "Show wind farms" and each "Show more" batch cascade the rows they reveal. Transform and opacity only, so an entrance never fights a bar's width.
+- **Readings slide**: bar runs, farm tracks and mix segments move to new widths (420ms). Numbers still crossfade.
+- **A farm that changes state** between two real readings fades to its new colour and sends out one ring (900ms). 14 rings for the 14 farms that change between the live and curtailing fixtures; none on first load, on redraw, or to or from unknown.
+- **The flow arrives from the farms**: the first reading ramps the particle count in over 4s, every particle born at its farm; later readings ease the count over 1s; selecting a farm dims the flow over ~180ms, at the markers' pace.
+- **Also:** the selection ring sits a fixed 3px outside every dot (it was a scale, so small farms got no gap); list toggle "Show / Hide wind farms" at every tier, "Show more", "Collapse" back to the first count (not all the way shut).
+
+**Considered and not built:** counting the headline or bar figures between readings (020: never).
+
+## 042 — States without a reading keep the bar and the list
+
+**Date:** 2026-09-25
+**Phase:** Post-4d
+**Decision:** Waiting, offline and degraded now keep the bar block (reversing 035's "the whole bar block is hidden"): the bar as an empty installed track with no legend, "13,105 MW installed", the toggle, and every farm at its capacity. Capacity comes from the same static unit list the endpoint tracks (`api/_lib/bmus.ts` via `src/map/farmCapacity.ts`), so it needs no reading. Farms with no reading are a fourth state, `unknown` (grey keyline, map and list), so the page never calls a farm silent when it simply hasn't been read. The country mixes' empty bars get the same pale track.
+
+**Fixed on the way:**
+- **A crossfade race** (`setTextCrossfade`, shared with `/`): a second change during a swap was compared against the old text still on screen, judged unchanged, then overwritten when the first swap landed, leaving "38%" beside the waiting sentence. Swaps now always land the latest requested text.
+- **Country panels in waiting and offline**: the pending grid override named only the phone's areas, so on desktop "Show summary" was placed above the country name. The tier's own layout now stays; the head stacks.
+
+## 043 — The map becomes the index; /flow retired
+
+**Date:** 2026-09-25
+**Phase:** Step 7's cutover, taken now
+**Decision:** `/` serves the map (keeping the site's title, description, canonical and social tags). The old dashboard and `/flow` are removed, with the code only they used (`src/main.ts`, `lib/narrate.ts`, the dashboard's `view/` modules, /flow's main, controls and presets); the particle engine in `src/flow/` stays, as the map runs on it. `/map` and `/flow` redirect to `/`. Both retired pages were captured from production first (`capture/case-study/retired/`, `scripts/capture-retired.ts`).
+
+**Pending, by Owen's call:** the AI narration (`api/narration.ts` and its client fetch), which nothing on the site now calls, is archived once the new site is live, per 026's plan.
+
+
+**Social image replaced** (`public/og.png`, `scripts/build-og.ts`): rendered from the page itself at 1200×630, 2×, so type, palette, markers and flow are what a visitor sees. Evergreen by design: the site's title and a line on what it shows ("How much of Scotland's wind is held back from the grid, every half hour"), a two-dot key, and the map from the `curtailing` fixture with the flow developed. No figures, because the live headline would be stale within the half hour of a share.
