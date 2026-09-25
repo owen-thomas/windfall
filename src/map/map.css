@@ -332,15 +332,17 @@ body {
   display: none;
 }
 
-/* The swatch sits on the text's baseline and is exactly its x-height tall
-   (Owen): 1ex, which for Eczar matches the lowercase glyphs to a tenth of a
-   pixel. An empty flex item's baseline is its bottom edge, so baseline
-   alignment seats it on the line. */
+/* The swatch sits on the text's baseline and is exactly its cap height (Owen):
+   1cap, which for Eczar matches the "M" of "MW" beside it (10.4px at 16px).
+   0.65em first for a browser without the cap unit. An empty flex item's
+   baseline is its bottom edge, so baseline alignment seats it on the line. */
 .map-sources__swatch {
   flex: none;
   align-self: baseline;
-  width: 1ex;
-  height: 1ex;
+  width: 0.65em;
+  height: 0.65em;
+  width: 1cap;
+  height: 1cap;
   margin-right: 0.5em;
 }
 
