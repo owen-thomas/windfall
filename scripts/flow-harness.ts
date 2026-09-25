@@ -191,6 +191,8 @@ function run(args: Args) {
     stall: 0,
     trapped: 0,
     density: 0,
+    exit: 0,
+    arrive: 0,
   };
   const lifespans: number[] = [];
   // How far south (0..1 southness) each particle-life ever got — one

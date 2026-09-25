@@ -50,7 +50,7 @@ export interface FlowControlContext {
 }
 
 /** FieldParams keys that are plain numeric sliders — the three enum/boolean knobs are handled separately below. */
-type NumericFieldKey = Exclude<keyof FieldParams, 'baseFieldMode' | 'noiseMode' | 'densityEnabled'>;
+type NumericFieldKey = Exclude<keyof FieldParams, 'baseFieldMode' | 'noiseMode' | 'densityEnabled' | 'coastMode'>;
 
 interface FieldSliderSpec {
   key: NumericFieldKey;

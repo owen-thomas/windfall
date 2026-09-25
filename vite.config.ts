@@ -11,18 +11,9 @@ import { defineConfig, type Plugin } from 'vite';
  *
  * Cache-Control is set by the handlers but has no effect here; there is no
  * CDN in front of the dev server. That is the intended difference, and it
- * means dev always sees live upstream data — with one exception below.
- *
- * `/api/windspeed` is cached here the way the CDN caches it in production
- * (4d): Open-Meteo rate-limits by IP, and every dev reload, `?state=` fixture
- * and test page asking it afresh got this machine a 429 on 23 September 2026.
- * A good answer is reused for its `s-maxage`; a failure falls back to the last
- * good one, as `stale-if-error` does on Vercel.
+ * means dev always sees live upstream data.
  */
-const DEV_CACHED_ROUTES = new Set(['windspeed']);
-
 function devApi(): Plugin {
-  const devCache = new Map<string, { body: string; at: number; maxAgeMs: number }>();
   return {
     name: 'windfall-dev-api',
     configureServer(server) {
@@ -45,14 +36,6 @@ function devApi(): Plugin {
         const route = url.pathname.replace(/^\/api\//, '').replace(/\/+$/, '');
         if (!route || route.startsWith('_') || route.includes('..')) return next();
 
-        const cached = DEV_CACHED_ROUTES.has(route) ? devCache.get(route) : undefined;
-        if (cached && Date.now() - cached.at < cached.maxAgeMs) {
-          res.setHeader('Content-Type', 'application/json; charset=utf-8');
-          res.setHeader('X-Dev-Cache', 'HIT');
-          res.end(cached.body);
-          return;
-        }
-
         const shim = Object.assign(res, {
           status(code: number) {
             res.statusCode = code;
@@ -62,20 +45,7 @@ function devApi(): Plugin {
             if (!res.getHeader('Content-Type')) {
               res.setHeader('Content-Type', 'application/json; charset=utf-8');
             }
-            const text = JSON.stringify(body);
-            if (DEV_CACHED_ROUTES.has(route)) {
-              if (res.statusCode === 200) {
-                const maxAge = /s-maxage=(\d+)/.exec(String(res.getHeader('Cache-Control') ?? ''));
-                devCache.set(route, { body: text, at: Date.now(), maxAgeMs: (maxAge ? Number(maxAge[1]) : 300) * 1000 });
-              } else if (res.statusCode >= 500 && cached) {
-                // stale-if-error: the last good answer rather than the failure.
-                res.statusCode = 200;
-                res.setHeader('X-Dev-Cache', 'STALE');
-                res.end(cached.body);
-                return shim;
-              }
-            }
-            res.end(text);
+            res.end(JSON.stringify(body));
             return shim;
           },
         });

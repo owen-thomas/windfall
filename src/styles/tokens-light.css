@@ -79,7 +79,7 @@
      that clears AA for body-size text. On #E6E4DD: 9.22 and 4.50. */
   --text-primary: #3a3831; /* logo, headline, border line, focus rings */
   --text-secondary: #3a3831; /* headings, place and farm names, toggle hover */
-  --text-muted: #6a665b; /* paragraphs, windspeeds, legend, toggles, footer */
+  --text-muted: #6a665b; /* paragraphs, legend, toggles, footer */
   /* The megawatt figures: the bar's on-grid label, each farm's on-grid MW,
      the 100% headline figure. The old display navy. */
   --data-ink: #152767;

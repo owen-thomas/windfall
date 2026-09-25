@@ -3,43 +3,45 @@
  * Windfall_Map_Spec_4d.md): the breakdown bar, labelled above in words, and the
  * tracked farms under it, always shown.
  *
- * 4d takes the bar out of its `<details>`: no chevron, no summary. Above the
- * bar, "10,877 MW on the grid" on the left and "Held back 2,228 MW" right-
- * aligned to its end, in the held-back blue. They are real text, so the bar
- * itself is `aria-hidden` and needs no sentence of its own. The held-back run
- * is never drawn narrower than 4px while anything is held back, so a small but
- * real figure never disappears into the navy.
+ * 4d takes the bar out of its `<details>`: no chevron, no summary. The bar
+ * spans the tracked farms' installed capacity (Owen), as every farm's row and
+ * marker does: MW on the grid, MW held back, and the rest a pale idle track.
+ * Above it, a legend of the two that carry the story — "2,913 MW on the grid",
+ * "2,196 MW held back", each with its swatch; idle gets no legend item, only
+ * the quiet "13,105 MW installed" under the bar's end (Owen). They are real
+ * text, so the bar itself is `aria-hidden` and needs no sentence of its own.
+ * The held-back run is never drawn narrower than 4px while anything is held
+ * back.
  *
- * Under it, the tracked farms. The order follows the headline (Owen, 4d):
- * while anything is held back, most held back first, so the list opens on the
- * farms being switched off; when nothing is, largest declared output first. The held-back order can change as the grid operator's
- * instructions change; that is the story, not noise. The list is a grid filled
+ * Under it, the tracked farms, largest capacity first, then most MW on the
+ * grid (Owen). "▶ Show wind farms" / "▼ Hide wind farms" under the bar,
+ * left, opens and closes the whole list at every tier (Owen); it starts open
+ * where there is room for it and closed on a phone. The list is a grid filled
  * row-first (left to right, then down), and it grows in batches: 7 farms and
- * the "Show 8 more farms" control in the 8th cell (5 in one column), then 8
- * more per click. On a phone it starts folded away behind "▶ Show wind farms"
- * under the bar; opening shows five, and "Collapse" folds it all the way back. A batch of 8 is 4 rows of two, so the control
- * lands back in the last cell and nothing already on screen moves (a
- * column-first list would reflow every farm between the columns). Once the
- * list has grown, "Collapse" sits at the right of the same cell and folds it
- * back to its first count.
+ * the "Show more" control in the 8th cell (5 in one column), then 8 more per
+ * click. A batch of 8 is 4 rows of two, so the control lands back in the last
+ * cell and nothing already on screen moves (a column-first list would reflow
+ * every farm between the columns). Once the list has grown, "Collapse" sits
+ * at the right of the same cell and takes it back to its first count.
  *
- * Each row is a button, and the big bar in small (4d, Owen): a dot, the farm's
- * name and windspeed, its on-grid MW, a mini-bar filled to its on-grid share
- * (`instructedMW / declaredMW`), and its held-back MW — the right-hand figure
- * left out on a day with nothing held back. The mini-bars flex to one shared
- * width. The list is one column unless it is wide enough for two whole rows
+ * Each row is a button: a dot, the farm's name, its on-grid MW,
+ * a mini-bar, and its held-back MW — the right-hand figure left out on a day
+ * with nothing held back. The mini-bar is strictly proportional to capacity
+ * (Owen): its length is the farm's capacity against the largest farm's, split
+ * into MW on the grid, MW held back, and idle capacity (the empty track). The
+ * farm's marker on the map is the same bar wrapped into a circle. The
+ * mini-bars' column flexes to one shared width. The list is one column unless it is wide enough for two whole rows
  * side by side (a container query in map.css). Selecting a row hands the farm to `onSelect`, which
  * lights it on the map (main.ts wires the particles and the markers). The
  * selection is single, and is cleared by selecting the row again, by a click
  * anywhere outside the list, by Escape, or by folding the list back past it.
  *
- * Windspeed (4c.5) is `state.windspeed`, an independent feed that can land
- * after everything else, or not at all: a farm with no reading renders without
- * the "≋ N km/h" clause, never a zero or a guess.
- *
  * Honesty at the edges:
- * - A farm that declares nothing (`unitsDeclaring` 0) is *silent*: hollow
- *   dashed dot (as its map marker is), no share, and "—" for its megawatts.
+ * - Each row's dot is the farm's state, as its marker on the map shows it
+ *   (markers.ts's `farmStateOf`): navy with anything on the grid, periwinkle
+ *   with everything held back, a navy keyline with nothing at all.
+ * - A farm that declares nothing (`unitsDeclaring` 0) reads "—" for its
+ *   megawatts, over an all-idle bar.
  * - A farm that declares exactly 0 MW reads "0 MW" with a plain grey rail: it
  *   has no on-grid *share*, and a full lighter bar would read as "all held down".
  * - With no reading (pending, failed) the bar is an empty gauge and neither the
@@ -48,7 +50,10 @@
 import { el, setAttr, setText, type View } from '../../view/dom';
 import type { AppState } from '../../lib/state';
 import type { FarmNow } from '../../lib/types';
-import { formatMW, formatWindspeed } from '../../lib/format';
+import { formatMW } from '../../lib/format';
+import { farmStateOf } from '../markers';
+import { enter } from '../enter';
+import { FARM_CAPACITY_MW, INSTALLED_MW } from '../farmCapacity';
 import { onGridFigure, readOnGrid } from '../onGrid';
 
 /** Farms added per click of the control: four rows of two. */
@@ -63,9 +68,9 @@ function initialCount(list: HTMLElement): number {
   return cols === '2' ? 7 : 5;
 }
 
-/** On a phone the list starts folded away behind "Show wind farms" (4d, Owen):
- *  the headline and bar already make the claim, and the map comes up sooner. */
-function foldedByDefault(): boolean {
+/** On a phone the list starts closed (4d, Owen): the headline and bar already
+ *  make the claim, and the map comes up sooner. */
+function closedByDefault(): boolean {
   return getComputedStyle(document.documentElement).getPropertyValue('--tier').trim() === 'mobile';
 }
 
@@ -86,23 +91,41 @@ interface Row {
   button: HTMLButtonElement;
   dot: HTMLElement;
   name: HTMLElement;
-  windspeed: HTMLElement;
   bar: HTMLElement;
-  barFill: HTMLElement;
-  /** On-grid MW, left of the mini-bar. */
+  /** The farm's capacity, as a share of the largest farm's: the bar's own length. */
+  barTrack: HTMLElement;
+  /** On-grid MW, as a share of capacity. */
+  barOn: HTMLElement;
+  /** Held-back MW, as a share of capacity. */
+  barHeld: HTMLElement;
+  /** The figures, left of the mini-bar: "166 / 584 MW" (on the grid / held back), or "342 MW" with nothing held back. */
   on: HTMLElement;
-  /** Held-back MW, right of it — empty when nothing on the page is held back. */
-  held: HTMLElement;
 }
 
-/** Largest declared output first; ties by name, so the order is stable. */
-function byDeclared(a: FarmNow, b: FarmNow): number {
-  return b.declaredMW - a.declaredMW || a.farm.localeCompare(b.farm);
+/** Every tracked farm with only its capacity known — the list while there is no reading. */
+const UNREAD_FARMS: FarmNow[] = [...FARM_CAPACITY_MW].map(([farm, capacityMW]) => ({
+  farm,
+  capacityMW,
+  declaredMW: 0,
+  instructedMW: 0,
+  curtailedMW: 0,
+  unitsDeclaring: 0,
+  unitsCurtailed: 0,
+}));
+
+/** A farm's MW on the grid — declared minus curtailed, never negative. */
+function onGridOf(farm: FarmNow): number {
+  return Math.max(0, farm.instructedMW);
 }
 
-/** Most held back first, then as `byDeclared`. */
-function byHeld(a: FarmNow, b: FarmNow): number {
-  return b.curtailedMW - a.curtailedMW || byDeclared(a, b);
+/**
+ * The list's order (Owen): largest capacity first, then most MW on the grid,
+ * then by name, so the order is stable. Capacity barely moves, so the list
+ * holds its shape from one reading to the next and each bar's length steps
+ * down it; what changes is how each bar fills.
+ */
+function byListOrder(a: FarmNow, b: FarmNow): number {
+  return b.capacityMW - a.capacityMW || onGridOf(b) - onGridOf(a) || a.farm.localeCompare(b.farm);
 }
 
 /** A farm's held-back megawatts, floored ("at least") and clamped to what it declared. */
@@ -114,24 +137,31 @@ type Mode = 'held' | 'on';
 
 export function mapSourcesView(options: SourcesOptions): SourcesView {
   // --- The labels and the bar -----------------------------------------------
-  const onGridFigureEl = el('strong', { class: 'map-sources__figure' });
-  const onGridLabel = el(
-    'p',
-    { class: 'map-sources__label map-sources__label--on' },
-    onGridFigureEl,
-    ' on the grid'
-  );
-  const heldWords = el('span', { class: 'map-sources__words' });
-  const heldFigureEl = el('strong', { class: 'map-sources__figure' });
-  const heldLabel = el(
-    'p',
-    { class: 'map-sources__label map-sources__label--held' },
-    heldWords,
-    heldFigureEl
-  );
-  const labels = el('div', { class: 'map-sources__labels' }, onGridLabel, heldLabel);
+  // A legend above the bar (Owen): swatch, figure, word, in the bar's order.
+  function legendItem(kind: 'on' | 'held' | 'idle', word: string) {
+    const figure = el('strong', { class: 'map-sources__figure' });
+    const item = el(
+      'p',
+      { class: `map-sources__label map-sources__label--${kind}` },
+      el('span', { class: 'map-sources__swatch', 'aria-hidden': 'true' }),
+      figure,
+      ` ${word}`
+    );
+    return { item, figure };
+  }
+  const onLegend = legendItem('on', 'on the grid');
+  const heldLegend = legendItem('held', 'held back');
+  const labels = el('div', { class: 'map-sources__labels' }, onLegend.item, heldLegend.item);
+  // The bar's full length, named quietly under its end: "13,105 MW installed".
+  // "Installed", never "capacity" — the page's issue is the grid's capacity,
+  // and the farms' own is a different thing.
+  const installed = el('p', { class: 'map-sources__installed' });
 
-  const shareFill = el('div', { class: 'share__fill' });
+  const shareOn = el('span', { class: 'share__on' });
+  const shareHeld = el('span', { class: 'share__held' });
+  // The two runs in one group, so they grow in from the left together on
+  // arrival (enter.ts) while each keeps its own width transition for readings.
+  const shareFill = el('span', { class: 'share__runs' }, shareOn, shareHeld);
   const shareBar = el('div', { class: 'share', 'aria-hidden': 'true' }, shareFill);
 
   // --- The list, and the control that grows it --------------------------------
@@ -160,8 +190,8 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
   const status = el('p', { class: 'map-sources__sr', 'aria-live': 'polite' });
   const body = el('div', { class: 'map-sources__body' }, list, status);
 
-  // A phone's way in: the page's text toggle, directly under the bar. Opening
-  // shows the first five; "Collapse" folds the whole list back to this.
+  // The list's own toggle, the page's text toggle as a button, directly under
+  // the bar at every tier: "Show wind farms" / "Hide wind farms".
   const openText = el('span', { class: 'map-toggle__text', text: 'Show wind farms' });
   const open = el(
     'button',
@@ -169,16 +199,35 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
     el('span', { class: 'map-toggle' }, openText)
   );
 
-  const root = el('section', { class: 'map-sources', 'data-state': 'pending' }, labels, shareBar, open, body);
+  // "Show / Hide wind farms" and the installed figure share the line under the
+  // bar, left and right.
+  const foot = el('div', { class: 'map-sources__foot' }, open, installed);
+
+  const root = el('section', { class: 'map-sources', 'data-state': 'pending' }, labels, shareBar, foot, body);
 
   const rows = new Map<string, Row>();
   let order: string[] = [];
   /** Farms showing once the reader has asked for more; null until then, so the
    *  initial count keeps following the layout tier. */
   let shown: number | null = null;
-  /** The reader has opened the list on a phone. */
-  let opened = false;
+  /** The reader has opened (true) or closed (false) the list; null until they
+   *  do, so it follows the tier's default (closedByDefault) across resizes. */
+  let opened: boolean | null = null;
   let selectedFarm: string | null = null;
+  /** The first reading has landed and played its entrance. */
+  let arrived = false;
+
+  /** Cascade in the rows now showing from `from` on (all of them, by default). */
+  function enterRows(from = 0) {
+    if (body.hidden) return;
+    const items: HTMLElement[] = [];
+    order.forEach((farm, i) => {
+      const row = rows.get(farm);
+      if (i >= from && row && !row.item.hidden) items.push(row.item);
+    });
+    if (!moreItem.hidden) items.push(moreItem);
+    enter(items);
+  }
 
   function select(farm: string | null) {
     if (farm === selectedFarm) return;
@@ -192,79 +241,83 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
   function makeRow(farm: string): Row {
     const dot = el('span', { class: 'source-row__dot', 'aria-hidden': 'true' });
     const name = el('span', { class: 'source-row__name' });
-    // Its own span, inside the name's grid cell rather than a cell of its
-    // own — the frame runs it straight on from the name ("Seagreen ≋ 34
-    // km/h"), and an empty span here (no reading yet) costs nothing.
-    const windspeed = el('span', { class: 'source-row__windspeed' });
-    const label = el('span', { class: 'source-row__label' }, name, windspeed);
-    const barFill = el('span', { class: 'source-row__bar-fill' });
-    const bar = el('span', { class: 'source-row__bar', 'aria-hidden': 'true' }, barFill);
-    const on = el('span', { class: 'source-row__mw source-row__mw--on' });
-    const held = el('span', { class: 'source-row__mw source-row__mw--held' });
+    const label = el('span', { class: 'source-row__label' }, name);
+    const barOn = el('span', { class: 'source-row__bar-on' });
+    const barHeld = el('span', { class: 'source-row__bar-held' });
+    const barTrack = el('span', { class: 'source-row__bar-track' }, barOn, barHeld);
+    const bar = el('span', { class: 'source-row__bar', 'aria-hidden': 'true' }, barTrack);
+    const on = el('span', { class: 'source-row__mw' });
     const button = el(
       'button',
       { class: 'source-row', type: 'button', 'aria-pressed': 'false', 'data-farm': farm },
       dot,
       label,
       on,
-      bar,
-      held
+      bar
     );
     button.addEventListener('click', () => select(selectedFarm === farm ? null : farm));
     const item = el('li', { class: 'map-sources__item' }, button);
-    return { farm, item, button, dot, name, windspeed, bar, barFill, on, held };
+    return { farm, item, button, dot, name, bar, barTrack, barOn, barHeld, on };
   }
 
-  function paintRow(row: Row, farm: FarmNow, kmh: number | undefined, mode: Mode) {
-    const silent = farm.unitsDeclaring === 0 && farm.declaredMW <= 0;
+  /** `read`: false while there is no live reading — the row shows the farm's capacity and nothing else. */
+  function paintRow(row: Row, farm: FarmNow, mode: Mode, maxCapacityMW: number, read: boolean) {
+    // No reading: drawn like a silent farm (an empty track, "—"), but its dot
+    // says unknown, not silent.
+    const silent = !read || (farm.unitsDeclaring === 0 && farm.declaredMW <= 0);
     const held = farm.curtailedMW > 0;
 
     setText(row.name, farm.farm);
-    setAttr(row.dot, 'data-state', silent ? 'silent' : 'declaring');
+    setAttr(row.dot, 'data-state', farmStateOf(read ? farm : null));
 
-    // The glyph is decorative (aria-hidden); the reading itself is folded
-    // into the row's aria-label below, so nothing here needs its own.
-    if (kmh === undefined) {
-      row.windspeed.replaceChildren();
-    } else {
-      // Two spans, so the gap after the glyph is the same 4px flex gap as the
-      // one before it, not a word space (≈2.7px at 12px).
-      row.windspeed.replaceChildren(
-        el('span', { class: 'source-row__glyph', 'aria-hidden': 'true', text: '≋' }),
-        el('span', { text: formatWindspeed(kmh) })
-      );
+    // Strictly proportional (Owen): the track is the farm's capacity against
+    // the largest farm's, and the runs inside it are MW on the grid and MW
+    // held back against that capacity. What is left of the track is idle
+    // capacity — no wind behind it — so a silent farm is all track. (The big
+    // bar above measures against declared output instead, per 026; the rows
+    // answer a different question: how much of each farm is working.)
+    const capacity = Math.max(0, farm.capacityMW);
+    const pctOf = (mw: number, of: number) => (of > 0 ? Math.min(100, Math.max(0, (mw / of) * 100)) : 0);
+    row.barTrack.style.width = `${pctOf(capacity, maxCapacityMW)}%`;
+    let onPct = silent ? 0 : pctOf(farm.instructedMW, capacity);
+    let heldPct = silent ? 0 : pctOf(farm.curtailedMW, capacity);
+    if (onPct + heldPct > 100) {
+      // A reading over capacity is scaled back to fit, never drawn past the track.
+      const scale = 100 / (onPct + heldPct);
+      onPct *= scale;
+      heldPct *= scale;
     }
+    row.barOn.style.width = `${onPct}%`;
+    row.barHeld.style.width = `${heldPct}%`;
 
-    if (silent || farm.declaredMW <= 0) {
-      // Nothing to divide: a rail with no fill, never a full or empty share.
-      setAttr(row.bar, 'data-share', 'none');
-      row.barFill.style.width = '0%';
-    } else {
-      setAttr(row.bar, 'data-share', 'some');
-      const pct = Math.min(100, Math.max(0, (farm.instructedMW / farm.declaredMW) * 100));
-      row.barFill.style.width = `${pct}%`;
-    }
-
-    // The row is the big bar in small (4d, Owen): on-grid MW left of the
-    // mini-bar, held-back MW right of it. On a day with nothing held back the
-    // right-hand figure is left out, as the big bar's is ("Nothing held back").
+    // Both figures left of the mini-bar, in the bar's order and colours (Owen):
+    // "166 / 584 MW" — on the grid, then held back. A farm with nothing held
+    // back reads just "342 MW": a held-back figure only where there is one.
     const onGrid = onGridFigure(farm.instructedMW, held);
     const heldMW = heldOf(farm);
     const heldText = heldMW.toLocaleString('en-GB');
-    setText(row.on, silent ? '—' : `${onGrid} MW`);
-    setText(row.held, silent || mode === 'on' ? '' : `${heldText} MW`);
-    // A farm with nothing held back reads "0 MW" in the labels' grey rather
-    // than the held-back blue.
-    setAttr(row.held, 'data-held', heldMW > 0 ? 'some' : 'none');
+    if (silent) {
+      row.on.replaceChildren('—');
+    } else if (heldMW > 0) {
+      row.on.replaceChildren(
+        el('span', { class: 'source-row__mw-on', text: onGrid }),
+        el('span', { class: 'source-row__mw-sep', text: ' / ' }),
+        el('span', { class: 'source-row__mw-held', text: heldText }),
+        ' MW'
+      );
+    } else {
+      row.on.replaceChildren(el('span', { class: 'source-row__mw-on', text: onGrid }), ' MW');
+    }
 
-    const windLabel = kmh === undefined ? '' : `, ${formatWindspeed(kmh)}`;
     row.button.setAttribute(
       'aria-label',
-      silent
-        ? `${farm.farm}: no declaration this half-hour${windLabel}`
+      !read
+        ? `${farm.farm}: ${formatMW(capacity)} installed, no reading this half-hour`
+        : silent
+        ? `${farm.farm}: no declaration this half-hour`
         : mode === 'held'
-          ? `${farm.farm}: ${onGrid} MW on the grid, ${heldText} MW held back${windLabel}`
-          : `${farm.farm}: ${onGrid} MW on the grid of ${formatMW(farm.declaredMW)}${windLabel}`
+          ? `${farm.farm}: ${onGrid} MW on the grid, ${heldText} MW held back`
+          : `${farm.farm}: ${onGrid} MW on the grid of ${formatMW(farm.declaredMW)}`
     );
   }
 
@@ -277,7 +330,6 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
    * sets it, and clipped the longest name).
    */
   const measureName = el('span', { class: 'source-row__name' });
-  const measureSpeed = el('span', { class: 'source-row__windspeed' });
   const measurer = el(
     'span',
     {
@@ -285,39 +337,37 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
       'aria-hidden': 'true',
       style: 'position:absolute;visibility:hidden;pointer-events:none;width:max-content;overflow:visible',
     },
-    measureName,
-    measureSpeed
+    measureName
   );
   root.append(measurer);
+  // Likewise the figures' column: as wide as the widest figures in the list,
+  // so every bar starts at one edge.
+  const figureMeasurer = el('span', {
+    class: 'source-row__mw',
+    'aria-hidden': 'true',
+    style: 'position:absolute;visibility:hidden;pointer-events:none;width:max-content',
+  });
+  root.append(figureMeasurer);
   function measureLabels() {
     let widest = 0;
+    let widestFigures = 0;
     for (const row of rows.values()) {
       setText(measureName, row.name.textContent ?? '');
-      const speed = row.windspeed.lastChild?.textContent;
-      if (speed) {
-        measureSpeed.replaceChildren(
-          el('span', { class: 'source-row__glyph', text: '≋' }),
-          el('span', { text: speed })
-        );
-      } else {
-        measureSpeed.replaceChildren();
-      }
       widest = Math.max(widest, measurer.getBoundingClientRect().width);
+      setText(figureMeasurer, row.on.textContent ?? '');
+      widestFigures = Math.max(widestFigures, figureMeasurer.getBoundingClientRect().width);
     }
     if (widest > 0) list.style.setProperty('--source-label-w', `${Math.ceil(widest)}px`);
+    if (widestFigures > 0) list.style.setProperty('--source-figures-w', `${Math.ceil(widestFigures)}px`);
   }
   void document.fonts?.ready.then(measureLabels);
 
   /** Show the first `count` rows and keep the control's label honest. */
   function layout() {
-    const folds = foldedByDefault();
-    const folded = folds && !opened;
-    // map.css seats the opened list where the toggle was, so its first row's
-    // text sits on the toggle's own line.
-    setAttr(root, 'data-folds', folds ? 'true' : null);
-    body.hidden = folded;
-    open.hidden = !folded;
-    open.setAttribute('aria-expanded', String(!folded));
+    const isOpen = opened ?? !closedByDefault();
+    body.hidden = !isOpen;
+    open.setAttribute('aria-expanded', String(isOpen));
+    setText(openText, isOpen ? 'Hide wind farms' : 'Show wind farms');
 
     const initial = initialCount(list);
     // A list only one farm longer than the first count shows whole: a control
@@ -331,13 +381,9 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
 
     const rest = order.length - count;
     more.hidden = rest === 0;
-    // On a phone "Collapse" is also the way out once the list is open at all.
-    collapse.hidden = count <= initial && !folds;
-    // A list short enough to show whole still needs its way out on a phone.
-    moreItem.hidden = all && !folds;
-    if (rest > BATCH) setText(moreText, `Show ${BATCH} more farms`);
-    else if (rest > 1) setText(moreText, `Show last ${rest} farms`);
-    else setText(moreText, 'Show last farm');
+    collapse.hidden = count <= initial;
+    moreItem.hidden = more.hidden && collapse.hidden;
+    setText(moreText, 'Show more');
     return count;
   }
 
@@ -347,41 +393,37 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
     layout();
     // Carry on from where the list grew.
     rows.get(order[before])?.button.focus();
+    enterRows(before);
     const added = shown - before;
     setText(status, added === 1 ? '1 more farm shown.' : `${added} more farms shown.`);
   });
 
   open.addEventListener('click', () => {
-    opened = true;
+    const wasOpen = opened ?? !closedByDefault();
+    opened = !wasOpen;
     shown = null;
     layout();
-    rows.get(order[0])?.button.focus();
+    // Closing the list lets go of a farm picked out in it.
+    if (!opened && selectedFarm !== null) select(null);
+    if (opened) enterRows();
+    setText(status, opened ? 'Farm list shown.' : 'Farm list hidden.');
   });
 
   collapse.addEventListener('click', () => {
     shown = null;
-    if (foldedByDefault()) {
-      // On a phone, all the way back to "Show wind farms".
-      opened = false;
-      layout();
-      if (selectedFarm !== null) select(null);
-      open.focus({ preventScroll: true });
-      open.scrollIntoView({ block: 'nearest' });
-      return;
-    }
     const count = layout();
     // A selected farm whose row has just been folded away has nothing left to
     // show for it in the list; let go of it.
     if (selectedFarm !== null && order.indexOf(selectedFarm) >= count) select(null);
     // Focus was on a control that's now hidden, or a row that is; put it on
-    // "Show 8 more farms", and keep that on screen.
+    // "Show more", and keep that on screen.
     more.focus({ preventScroll: true });
     more.scrollIntoView({ block: 'nearest' });
     setText(status, 'Farm list collapsed.');
   });
 
-  // The first count (7 or 5) and a phone's fold follow the layout until the
-  // reader asks for more.
+  // The first count (7 or 5) and the list's default open/closed follow the
+  // layout until the reader asks otherwise.
   window.addEventListener('resize', () => {
     if (order.length > 0) layout();
   });
@@ -402,41 +444,52 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
     update(state: AppState) {
       const data = state.curtailment;
 
-      if (!data?.now) {
-        // The bar says nothing until there is something to say: an empty
-        // gauge, no labels, and no list.
-        setAttr(root, 'data-state', state.pending ? 'pending' : 'failed');
-        shareFill.style.width = '0%';
-        shareBar.hidden = false;
-        heldLabel.hidden = false;
-        if (selectedFarm !== null) select(null);
-        return;
-      }
+      const now = data?.now ?? null;
+      const read = now !== null;
+      // With no reading (waiting, offline) the bar, its installed figure, the
+      // toggle and the farm list all stay (Owen): capacity needs no reading
+      // (farmCapacity.ts). The runs are empty, the legend goes, and every
+      // farm's dot says unknown.
+      setAttr(root, 'data-state', read ? 'ok' : state.pending ? 'pending' : 'failed');
 
-      const reading = readOnGrid(data.now);
-      setAttr(root, 'data-state', 'ok');
-      setAttr(heldLabel, 'data-held', reading.allClear ? 'none' : 'some');
-      setText(onGridFigureEl, reading.onGridLabel);
-      // With nothing held back the bar is one solid run that says nothing the
-      // headline hasn't ("100% … on the grid"), so it goes (Owen).
-      // "Nothing held back" goes with it — the headline already says so — and
-      // the rows drop their mini-bars (map.css, data-mode="on").
-      shareBar.hidden = reading.allClear;
-      heldLabel.hidden = reading.allClear;
-      if (reading.allClear) {
-        setText(heldWords, 'Nothing held back');
-        setText(heldFigureEl, '');
-        shareFill.style.width = '100%';
+      let mode: Mode;
+      let farms: FarmNow[];
+      if (now) {
+        const reading = readOnGrid(now);
+        setText(onLegend.figure, reading.onGridLabel);
+        setText(heldLegend.figure, reading.heldLabel);
+        setText(installed, `${formatMW(reading.capacityMW)} installed`);
+        // With nothing held back, "0 MW held back" says nothing the headline
+        // hasn't, so it goes — and the rows drop their held-back figures
+        // (map.css, data-mode="on"). The bar stays: against capacity it is
+        // still on the grid against idle.
+        heldLegend.item.hidden = reading.allClear;
+
+        // The runs, as shares of capacity. A held-back run is never drawn
+        // narrower than 4px while anything is held back, so a small but real
+        // figure never disappears between the navy and the idle track.
+        const share = (mw: number) =>
+          reading.capacityMW > 0 ? Math.min(100, Math.max(0, (mw / reading.capacityMW) * 100)) : 0;
+        shareOn.style.width = `${share(reading.instructedMW)}%`;
+        shareHeld.style.width = reading.allClear ? '0%' : `max(4px, ${share(reading.heldMW)}%)`;
+        mode = reading.allClear ? 'on' : 'held';
+        farms = [...now.farms];
       } else {
-        setText(heldWords, 'Held back ');
-        setText(heldFigureEl, reading.heldLabel);
-        // Never let a real held-back run vanish: leave it at least 4px.
-        shareFill.style.width = `min(${Math.max(0, reading.pct)}%, calc(100% - 4px))`;
+        // Nothing drawn in the bar, so no legend for it (Owen).
+        setText(installed, `${formatMW(INSTALLED_MW)} installed`);
+        shareOn.style.width = '0%';
+        shareHeld.style.width = '0%';
+        mode = 'held';
+        farms = UNREAD_FARMS;
       }
 
-      const mode: Mode = reading.allClear ? 'on' : 'held';
+      // The legend fades up whenever it (re)appears, not only on first load —
+      // a page that opened on "waiting" gets it when the reading lands.
+      if (read && labels.hidden && arrived) enter([...labels.children] as HTMLElement[]);
+      labels.hidden = !read;
       setAttr(root, 'data-mode', mode);
-      const farms = [...data.now.farms].sort(mode === 'held' ? byHeld : byDeclared);
+      farms.sort(byListOrder);
+      const maxCapacityMW = farms.reduce((max, f) => Math.max(max, f.capacityMW), 0);
       const present = new Set(farms.map((f) => f.farm));
       for (const [name, row] of rows) {
         if (present.has(name)) continue;
@@ -445,10 +498,6 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
         if (selectedFarm === name) select(null);
       }
 
-      // Independent of the reading above: lands whenever it lands, and a farm
-      // this feed never answers for just gets no clause (never a guess).
-      const speeds = state.windspeed?.speeds;
-
       for (const farm of farms) {
         let row = rows.get(farm.farm);
         if (!row) {
@@ -456,7 +505,7 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
           rows.set(farm.farm, row);
           if (farm.farm === selectedFarm) row.button.setAttribute('aria-pressed', 'true');
         }
-        paintRow(row, farm, speeds?.[farm.farm], mode);
+        paintRow(row, farm, mode, maxCapacityMW, read);
       }
 
       // Re-seat the rows only when the order actually changed, so a refresh
@@ -470,6 +519,16 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
       }
       layout();
       measureLabels();
+
+      // Arrival: the bar grows in from the left, its legend and the installed
+      // figure fade up, and the rows cascade in beneath. Later readings don't
+      // replay it — the bars slide to their new widths instead (map.css).
+      if (!arrived) {
+        arrived = true;
+        enter([shareFill]);
+        enter([...labels.children, installed] as HTMLElement[]);
+        enterRows();
+      }
     },
   };
 }

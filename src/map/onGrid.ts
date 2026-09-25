@@ -3,7 +3,7 @@
  * (Windfall_Map_Spec_4c.md §4c.2–4c.3, DECISIONS 029).
  *
  * The headline's sentence ("At least 17% of Scotland's tracked wind is currently
- * being held back from the grid", 4d), the bar's two labels and fill, and every
+ * being held back from the grid", 4d), the bar's three labels and runs, and every
  * row of the source list are all this one reading, taken from `curtailment.now` and nothing else, so
  * none of them can disagree with another. `instructedMW` is `declaredMW −
  * curtailedMW` — what the balancing mechanism is letting through — over
@@ -16,6 +16,12 @@
  * label is the rounded declared total minus that floor, so the two labels
  * always add up to the declared output and neither overstates the other's
  * claim. `onGridFigure` below is the per-farm row's figure, unchanged from 4c.
+ *
+ * The bar itself spans installed capacity (Owen), like every farm's row and
+ * marker: on the grid, held back, and the rest a pale idle track — capacity
+ * with nothing declared behind it. The headline's percentage stays over
+ * declared output (026), so it is the held-back share of the bar's coloured
+ * part, not of the whole bar.
  */
 
 import { formatMW } from '../lib/format';
@@ -36,6 +42,8 @@ export interface OnGridReading {
   onGridLabel: string;
   /** The bar's held-back label: "2,228 MW", floored ("at least"). */
   heldLabel: string;
+  /** Installed capacity of every tracked farm — the bar's full length. */
+  capacityMW: number;
 }
 
 /**
@@ -48,6 +56,7 @@ export function onGridFigure(instructedMW: number, held: boolean): string {
 
 export function readOnGrid(now: Pick<CurtailmentNow, 'curtailedMW' | 'farms'>): OnGridReading {
   const declaredMW = now.farms.reduce((sum, f) => sum + f.declaredMW, 0);
+  const capacityMW = now.farms.reduce((sum, f) => sum + Math.max(0, f.capacityMW), 0);
   const allClear = now.curtailedMW <= 0;
 
   // Clamped, so a curtailed figure that ran past the declared one reads as
@@ -71,5 +80,6 @@ export function readOnGrid(now: Pick<CurtailmentNow, 'curtailedMW' | 'farms'>): 
     allClear,
     onGridLabel: formatMW(declaredWhole - heldWhole),
     heldLabel: formatMW(heldWhole),
+    capacityMW,
   };
 }

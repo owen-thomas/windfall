@@ -84,8 +84,19 @@ export interface FieldParams {
    *   shared goal merge, which is what "shortest" means; that's the
    *   funnel. Kept behind this flag purely so the two can be A/B'd against
    *   each other (browser: 'f' key toggles it; harness: --baseFieldMode).
+   * - 'targets': each particle follows the path-over-land field of its own
+   *   destination (world.targets, picked at spawn — see particles.ts), so
+   *   flow heads for /map's cities rather than one shared direction. The
+   *   east-west fan below is skipped: it would pull flow off its route.
+   *   Falls back to 'south' for a particle with no target.
+   * - 'blanket': as 'targets', but each particle's destination is a point
+   *   drawn evenly across the land (world.regions — see regions.ts), and it
+   *   follows its region's field, so flow covers the island rather than
+   *   converging on a few cities. Many particles are also born partway along
+   *   their route (particles.ts), so the whole route fills, not just its
+   *   Scottish end.
    */
-  baseFieldMode: 'divergent' | 'south';
+  baseFieldMode: 'divergent' | 'south' | 'targets' | 'blanket';
   /**
    * Master toggle for 2g's density-aware spacing mechanism (the steering
    * term below, plus particles.ts's coverage-recycling death cause). Off
@@ -167,6 +178,32 @@ export interface FieldParams {
    * not a push: it bends the journey rather than adding energy to it.
    */
   conformWeight: number;
+  /**
+   * The fine noise octave's strength relative to the coarse one. The fine
+   * octave carries each particle's own noisePhase, so it is what makes
+   * neighbouring particles wobble independently of each other; 0 leaves
+   * only the shared coarse octave, which every particle rides together.
+   */
+  fineNoiseWeight: number;
+  /**
+   * What the field does at the coast. 'steer' (/flow's default): the
+   * conform band (2i) and the tight rescue turn flow to run along the coast,
+   * because on /flow the particles alone have to draw the silhouette.
+   * 'exit': the tight rescue doesn't apply and particles.ts lets flow run
+   * off the edge, for a page where the island is drawn anyway. The conform
+   * band still bends flow gently ahead of the coast — without it, narrow
+   * Scotland sheds nearly every particle before any reach England.
+   */
+  coastMode: 'steer' | 'exit';
+  /**
+   * `baseFieldMode: 'targets'` only, 0..1: how much a particle well inland
+   * heads straight for its target rather than along the route field.
+   * Shortest routes all converge on the same inland spine, so the route
+   * field alone draws one river; a straight bearing differs from every
+   * origin, so flows stay apart. Faded out toward the coast (see
+   * sampleField), where the route field is what keeps flow on land.
+   */
+  targetDirectness: number;
 }
 
 export const DEFAULT_FIELD_PARAMS: FieldParams = {
@@ -337,6 +374,9 @@ export const DEFAULT_FIELD_PARAMS: FieldParams = {
   // rather than pushes.
   conformThreshold: 55,
   conformWeight: 0.55,
+  fineNoiseWeight: 0.35,
+  coastMode: 'steer',
+  targetDirectness: 0.7,
 };
 
 /**
@@ -370,9 +410,38 @@ export interface ParticleTraits {
    * coarse structure everyone agrees on.
    */
   noisePhase: number;
+  /**
+   * The route this particle follows, or -1: an index into world.targets
+   * under `baseFieldMode: 'targets'`, into world.regions.fields under
+   * 'blanket'.
+   */
+  targetIndex: number;
+  /** The particle's own destination point, device px — what the directness blend heads for. */
+  destX: number;
+  destY: number;
 }
 
-export const DEFAULT_TRAITS: ParticleTraits = { chirality: 0, lateralBias: 0, noisePhase: 0 };
+export const DEFAULT_TRAITS: ParticleTraits = {
+  chirality: 0,
+  lateralBias: 0,
+  noisePhase: 0,
+  targetIndex: -1,
+  destX: 0,
+  destY: 0,
+};
+
+/** The route field a particle follows under 'targets' or 'blanket', or undefined. */
+export function routeFieldFor(world: World, mode: FieldParams['baseFieldMode'], index: number) {
+  if (index < 0) return undefined;
+  if (mode === 'targets') return world.targets[index]?.field;
+  if (mode === 'blanket') return world.regions?.fields[index];
+  return undefined;
+}
+
+// Under 'blanket', within this many device px of its own destination a
+// particle heads straight for it: the route field leads to the region's
+// anchor, not to the particle's own point.
+const FINAL_APPROACH_PX = 80;
 
 const DEFAULT_NOISE_SEED = 1337;
 let defaultNoise3: Noise3 = buildPerlin3(DEFAULT_NOISE_SEED);
@@ -463,14 +532,40 @@ export function sampleField(
   // 0 it's pure straight-line south. Everything below (fan, centering,
   // noise, steering) still layers on top of this base direction exactly as
   // before — only what it follows has changed.
+  const targetField = routeFieldFor(world, params.baseFieldMode, traits.targetIndex);
   if (params.pathWeight > 0) {
-    const path =
-      params.baseFieldMode === 'south'
-        ? world.geodesicField.sample(x, y)
-        : world.divergentField.sample(x, y);
+    const path = targetField
+      ? targetField.sample(x, y)
+      : params.baseFieldMode === 'divergent'
+        ? world.divergentField.sample(x, y)
+        : world.geodesicField.sample(x, y);
     if (path.dist !== Infinity && (path.gx !== 0 || path.gy !== 0)) {
-      const pathVx = path.gx * params.driftStrength * driftScale;
-      const pathVy = path.gy * params.driftStrength * driftScale;
+      let pgx = path.gx;
+      let pgy = path.gy;
+      if (targetField) {
+        const bx = traits.destX - x;
+        const by = traits.destY - y;
+        const bLen = Math.hypot(bx, by);
+        const coastDist = world.distanceField.sample(x, y).dist;
+        // Full directness from 60px inland, none within 20px of the coast —
+        // GB is narrow (nowhere much over ~130px from the sea at /map's
+        // size), so a wider ramp leaves directness almost nowhere at full.
+        const inland = Math.min(1, Math.max(0, (coastDist - 20) / 40));
+        // (City points can sit just offshore — Liverpool, Cardiff — so the
+        // straight final approach is 'blanket' only, whose destinations are
+        // always interior cells.)
+        const finalApproach = params.baseFieldMode === 'blanket' && bLen < FINAL_APPROACH_PX;
+        const k = finalApproach ? 1 : params.targetDirectness * inland;
+        if (bLen > 1e-3 && k > 0) {
+          pgx = pgx * (1 - k) + (bx / bLen) * k;
+          pgy = pgy * (1 - k) + (by / bLen) * k;
+          const len = Math.hypot(pgx, pgy) || 1;
+          pgx /= len;
+          pgy /= len;
+        }
+      }
+      const pathVx = pgx * params.driftStrength * driftScale;
+      const pathVy = pgy * params.driftStrength * driftScale;
       vx = vx * (1 - params.pathWeight) + pathVx * params.pathWeight;
       vy = vy * (1 - params.pathWeight) + pathVy * params.pathWeight;
     }
@@ -483,7 +578,7 @@ export function sampleField(
   const halfWidth = (bounds.right - bounds.left) / 2 || 1;
   const centerX = (bounds.left + bounds.right) / 2;
   const lateralPos = Math.min(1, Math.max(-1, (x - centerX) / halfWidth));
-  vx += params.driftSpread * s * lateralPos * params.driftStrength;
+  if (!targetField) vx += params.driftSpread * s * lateralPos * params.driftStrength;
 
   const { dist, gx, gy } = world.distanceField.sample(x, y);
 
@@ -507,7 +602,7 @@ export function sampleField(
   // docs for why 'transverse' is the default and what 'isotropicCurl'
   // (the mechanism this replaced) got wrong.
   const FINE_FREQ_RATIO = 3.5;
-  const FINE_WEIGHT_RATIO = 0.35;
+  const FINE_WEIGHT_RATIO = params.fineNoiseWeight;
   if (params.noiseWeight > 0) {
     const width = bounds.right - bounds.left || 1;
     const coarseFreq = params.noiseScale / width;
@@ -636,6 +731,8 @@ export function sampleField(
     vx = (newBx / newLen) * baseLen;
     vy = (newBy / newLen) * baseLen;
   }
+
+  if (params.coastMode === 'exit') return { vx, vy, driftScale };
 
   // --- Boundary steering (rescue near the coast).
   if (dist < params.steerThreshold) {

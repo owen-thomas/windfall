@@ -186,7 +186,10 @@ const STALL_DURATION = 1.5; // seconds
 // rolling window directly — "genuinely stopped getting anywhere" is a
 // simpler, more robust signal than any specific force balance.
 const TRAPPED_CHECK_INTERVAL = 1.2; // seconds between displacement checks
-const TRAPPED_MIN_DISPLACEMENT = 25; // device px of net progress required per interval
+// Device px of net progress required per interval, at the default speed of
+// 90 — step() scales it by style.speed / 90, so a deliberately slow flow
+// isn't read as a stuck one.
+const TRAPPED_MIN_DISPLACEMENT = 25;
 // How many *consecutive* failed windows (measured from the same anchor —
 // the anchor only advances on a passing check, see the step() logic below)
 // before a particle is actually declared trapped. Originally 1 (any single
@@ -274,9 +277,60 @@ export interface ParticleStyle {
    * is the one remaining literal "radius near a source" parameter.
    */
   spawnJitterRadius: number;
+  /** Mean advection speed, device px/sec, before driftScale and speed jitter. Also sizes the age budget, so a slower particle is given the time to travel as far. */
+  speed: number;
+  /**
+   * How quickly a heading eases toward the field's direction — a blend
+   * fraction per frame at 60fps (converted to dt-aware in step()). Lower is
+   * more momentum: wider arcs, less twitching after every local wobble in
+   * the field.
+   */
+  turnRate: number;
+  /**
+   * How a newborn particle picks its destination from world.targets (only
+   * used under `baseFieldMode: 'targets'`): odds are
+   * weight^targetWeightExponent / (route distance)^targetDistanceExponent.
+   * A weight exponent above 1 lets the biggest targets win more than their
+   * share; a distance exponent of 0 ignores how far away a target is.
+   */
+  targetWeightExponent: number;
+  targetDistanceExponent: number;
+  /**
+   * Under `baseFieldMode: 'blanket'`, the share of particles born at their
+   * farm, 0..1. The rest are born at a random point between their farm and
+   * their destination, as if already travelling — still
+   * drawn from farms in proportion to output, so emission stays honest, but
+   * the whole route fills rather than only its Scottish end.
+   */
+  farmBirthShare: number;
+  /**
+   * How far toward the destination a mid-journey birth lands, 0+. Every
+   * line starts at a farm, so births spread evenly along each line still
+   * pile up near the farms, where the lines overlap; 0 is that even spread,
+   * higher leans births toward the far end to even out the cover.
+   */
+  midJourneyBias: number;
 }
 
-export const DEFAULT_PARTICLE_STYLE: ParticleStyle = { jitterAmount: 1, spawnJitterRadius: 4 };
+export const DEFAULT_PARTICLE_STYLE: ParticleStyle = {
+  jitterAmount: 1,
+  spawnJitterRadius: 4,
+  speed: 90,
+  turnRate: 0.25,
+  targetWeightExponent: 1,
+  targetDistanceExponent: 0.5,
+  farmBirthShare: 1,
+  midJourneyBias: 0,
+};
+
+// A particle heading for a target dies on arrival within this many device px
+// of it (by route distance) — the flow's ending under 'targets', instead of
+// running out of age or off the coast.
+const TARGET_ARRIVE_PX = 14;
+
+// How far to either side of the farm-to-destination line a mid-journey birth
+// can land, device px (see midJourneyBirth).
+const MID_JOURNEY_SCATTER_PX = 40;
 
 /**
  * How one source is picked out from the rest (Windfall_Map_Spec_4c.md §4c.3,
@@ -289,9 +343,16 @@ export interface HighlightStyle {
   color: string;
   dimAlpha: number;
   widthScale: number;
+  /** Time constant, seconds, of the dimming easing in and out; 0 switches it at once. */
+  fadeSeconds: number;
 }
 
-export const DEFAULT_HIGHLIGHT_STYLE: HighlightStyle = { color: '#0a7cff', dimAlpha: 0.22, widthScale: 1.35 };
+export const DEFAULT_HIGHLIGHT_STYLE: HighlightStyle = {
+  color: '#0a7cff',
+  dimAlpha: 0.22,
+  widthScale: 1.35,
+  fadeSeconds: 0,
+};
 
 /**
  * Draw a hue/weight jitter bucket (-1, 0, or 1) with `jitterAmount` scaling
@@ -307,13 +368,7 @@ function jitteredBucket(jitterAmount: number): number {
   return Math.random() < 0.5 ? -1 : 1;
 }
 
-// Heading-ease rate, expressed at a 60fps baseline and converted to a
-// dt-aware blend fraction in step() — see the step2 plan feedback: the
-// step 1 fixed 0.25-per-frame ease was implicitly tuned to 60fps and any
-// retuning of downstream field weights would only have held at 60fps.
-const EASE_RATE_AT_60FPS = 0.25;
-
-export type DeathCause = 'age' | 'strike' | 'stall' | 'trapped' | 'density';
+export type DeathCause = 'age' | 'strike' | 'stall' | 'trapped' | 'density' | 'exit' | 'arrive';
 
 export interface ParticleSystemOptions {
   /**
@@ -343,6 +398,22 @@ export interface ParticleSystemOptions {
    * default.
    */
   style?: ParticleStyle;
+  /**
+   * The field params the page will step with. respawn() needs the base
+   * field mode to know how to pick a destination, and the constructor
+   * spawns every particle before the first step() call hands them over.
+   * step() keeps it current after that.
+   */
+  fieldParams?: FieldParams;
+  /**
+   * How a respawning particle's source is chosen. 'random' (default, /flow):
+   * drawn by rate. 'quota' (/map): every source with any rate gets one
+   * particle, the rest are shared by rate, and each respawn goes to the
+   * source furthest below its share — so sources with similar rates always
+   * get similar counts, and none that is emitting at all is ever at zero.
+   * See pickSourceIndex.
+   */
+  allocation?: 'random' | 'quota';
 }
 
 /**
@@ -354,6 +425,12 @@ export interface ParticleSystemOptions {
  */
 export class ParticleSystem {
   readonly count: number;
+  /**
+   * How many of the pool (indices 0..activeCount-1) are stepped and drawn —
+   * see setActiveFraction. The pool itself never resizes, so a change is
+   * cheap and nothing reallocates.
+   */
+  activeCount: number;
   x: Float32Array;
   y: Float32Array;
   px: Float32Array; // previous position, for segment drawing
@@ -362,9 +439,11 @@ export class ParticleSystem {
   hy: Float32Array;
   age: Float32Array;
   maxAge: Float32Array;
-  speed: Float32Array; // device px/sec, with per-particle jitter (pre-driftScale)
+  speed: Float32Array; // per-particle multiplier on style.speed (the jitter), so a speed change applies live
   sourceIndex: Int16Array;
 
+  /** coastMode 'exit': set on the frame a particle reaches the coast, so that frame's segment (up to the coast) is still drawn before it respawns at the start of the next step. */
+  exiting: Uint8Array;
   /** Consecutive coast-graze count since the last clean (non-clamped) frame. */
   strikes: Uint8Array;
   /** Seconds this particle has spent under STALL_DRIFT_SCALE, consecutively. */
@@ -383,6 +462,11 @@ export class ParticleSystem {
   chirality: Float32Array;
   lateralBias: Float32Array;
   noisePhase: Float32Array;
+  /** Index into world.targets this particle heads for, or -1 — see ParticleTraits.targetIndex. */
+  targetIndex: Int16Array;
+  /** Own destination point, device px — see ParticleTraits.destX. */
+  destX: Float32Array;
+  destY: Float32Array;
 
   // Step 3 (art pass) persistent per-particle traits: fixed-at-spawn
   // texture, not resampled per frame — see palette.ts's docs on why these
@@ -405,6 +489,8 @@ export class ParticleSystem {
   private highlightId: string | null = null;
   private highlightIndex = -1;
   private highlightStyle: HighlightStyle = DEFAULT_HIGHLIGHT_STYLE;
+  /** How far the other sources are dimmed right now, 0..1 — eased toward 1 while one is picked out. */
+  private dimLevel = 0;
 
   /** Total elapsed sim time, for the curl-noise field's time axis. */
   private time = 0;
@@ -427,7 +513,16 @@ export class ParticleSystem {
   /** Step 4: live respawn-time style knobs — see `ParticleStyle`'s own docs. */
   style: ParticleStyle;
 
+  /** The params of the latest step() (or the constructor's options) — respawn() reads the base field mode from it. */
+  private fieldParams: FieldParams;
+
   private cumulativeRates: number[] = [];
+  /** 'quota' allocation: active particles per source, kept current by respawn() and recountSources(). */
+  private sourceCounts = new Int32Array(0);
+  /** Whether particle i is currently counted in sourceCounts. */
+  private counted: Uint8Array;
+  /** Scratch buffer for pickTargetIndex, reused so respawn stays allocation-free. */
+  private targetOdds: number[] = [];
   private totalRate = 0;
 
   constructor(
@@ -436,6 +531,8 @@ export class ParticleSystem {
     private options: ParticleSystemOptions = {},
   ) {
     this.count = count;
+    this.activeCount = count;
+    this.activeTarget = count;
     this.x = new Float32Array(count);
     this.y = new Float32Array(count);
     this.px = new Float32Array(count);
@@ -447,6 +544,7 @@ export class ParticleSystem {
     this.speed = new Float32Array(count);
     this.sourceIndex = new Int16Array(count);
     this.strikes = new Uint8Array(count);
+    this.exiting = new Uint8Array(count);
     this.stallTime = new Float32Array(count);
     this.checkpointX = new Float32Array(count);
     this.checkpointY = new Float32Array(count);
@@ -456,18 +554,25 @@ export class ParticleSystem {
     this.chirality = new Float32Array(count);
     this.lateralBias = new Float32Array(count);
     this.noisePhase = new Float32Array(count);
+    this.targetIndex = new Int16Array(count).fill(-1);
+    this.counted = new Uint8Array(count);
+    this.destX = new Float32Array(count);
+    this.destY = new Float32Array(count);
     this.hueBucket = new Int8Array(count);
     this.weightBucket = new Int8Array(count);
     this.densityField = buildDensityField(world.mask);
     this.style = this.options.style ?? { ...DEFAULT_PARTICLE_STYLE };
+    this.fieldParams = this.options.fieldParams ?? DEFAULT_FIELD_PARAMS;
 
     this.buildRateTable();
+    this.sourceCounts = new Int32Array(world.sources.length);
     for (let i = 0; i < count; i++) {
       this.respawn(i);
       // Stagger initial ages so the field doesn't pulse as one wave of
       // particles ages out in lockstep.
       this.age[i] = Math.random() * this.maxAge[i];
     }
+    this.recountSources();
   }
 
   setWorld(world: World) {
@@ -479,18 +584,43 @@ export class ParticleSystem {
     // just means a brief cold start for the density signal, which decays
     // back to steady-state within a couple of DENSITY_RECYCLE_DURATIONs.
     this.densityField = buildDensityField(world.mask);
+    this.recountSources();
+  }
+
+  /** Rebuild sourceCounts from scratch: every active particle counted against its source. */
+  private recountSources() {
+    const n = this.world.sources.length;
+    if (this.sourceCounts.length !== n) this.sourceCounts = new Int32Array(n);
+    else this.sourceCounts.fill(0);
+    this.counted.fill(0);
+    for (let i = 0; i < this.activeCount; i++) {
+      const src = this.sourceIndex[i];
+      if (src >= 0 && src < n) {
+        this.sourceCounts[src]++;
+        this.counted[i] = 1;
+      }
+    }
   }
 
   /**
-   * Pick one source out of the field (or, with null, put the field back). A
-   * paint change only: no particle is added, moved or re-timed, so nothing is
-   * rebuilt and the flow does not restart. The old, full-strength trails fade
-   * out over the same few frames every trail does.
+   * Pick one source out of the field (or, with null, put the field back).
+   * Otherwise a paint change: nothing is rebuilt and the flow does not
+   * restart. The one exception is under 'blanket', where the picked source's
+   * own particles are re-born at it (see below). The old, full-strength
+   * trails fade out over the same few frames every trail does.
    */
   setHighlightSource(sourceId: string | null, style?: Partial<HighlightStyle>) {
     this.highlightId = sourceId;
     if (style) this.highlightStyle = { ...DEFAULT_HIGHLIGHT_STYLE, ...style };
     this.resolveHighlight();
+    // A picked farm's particles are born at the farm (see respawn), so its
+    // flow reads from the farm outward. The ones already out mid-journey are
+    // re-born there now rather than lingering, scattered, until they age out.
+    if (this.highlightIndex >= 0 && this.fieldParams.baseFieldMode === 'blanket') {
+      for (let i = 0; i < this.activeCount; i++) {
+        if (this.sourceIndex[i] === this.highlightIndex) this.respawn(i, true);
+      }
+    }
   }
 
   private resolveHighlight() {
@@ -519,12 +649,88 @@ export class ParticleSystem {
    */
   refreshRates() {
     this.buildRateTable();
+    this.recountSources();
+    // A source now at rate 0 emits nothing, and its particles already out go
+    // too — re-born from the sources still emitting — so a source switched
+    // off stops showing flow at once, not only as its particles age out.
+    if (this.totalRate > 0) {
+      for (let i = 0; i < this.activeCount; i++) {
+        if (this.world.sources[this.sourceIndex[i]]?.source.rate === 0) this.respawn(i);
+      }
+    }
+  }
+
+  /**
+   * Show only this fraction of the pool, 0..1 — /map ties it to how much of
+   * the tracked farms' capacity is on the grid. Particles that go inactive
+   * simply stop; their trails fade as any trail does. Particles that become
+   * active are respawned first, so none resumes from wherever it stopped.
+   */
+  setActiveFraction(fraction: number, options: { rampSeconds?: number; fromSources?: boolean } = {}) {
+    const next = Math.round(this.count * Math.min(1, Math.max(0, fraction)));
+    const ramp = options.rampSeconds ?? 0;
+    // `fromSources`: until the ramp is done, every particle is born at its
+    // source, fresh — the flow is seen leaving the farms and spreading, not
+    // appearing everywhere at once (/map's arrival).
+    this.fromSourcesUntil = options.fromSources ? this.time + Math.max(ramp, 0) : -Infinity;
+    if (ramp <= 0) {
+      this.activeTarget = next;
+      this.applyActiveCount(next);
+      return;
+    }
+    // Eased over `ramp` seconds by step(), not jumped: a change of density is
+    // texture following the reading, so it can move at the flow's own pace.
+    this.activeTarget = next;
+    this.rampPerSecond = Math.abs(next - this.activeCount) / ramp;
+  }
+
+  /** Where setActiveFraction has asked the active count to get to. */
+  private activeTarget = 0;
+  private rampPerSecond = 0;
+  /** Fractional particles carried between frames while ramping. */
+  private rampCarry = 0;
+  /** Sim time until which every birth is at its source (see setActiveFraction). */
+  private fromSourcesUntil = -Infinity;
+
+  /** Move the active count to `next` now: newly active particles are respawned, one at a time so each respawn's quota sees the pool as it stands. */
+  private applyActiveCount(next: number) {
+    if (next < this.activeCount) {
+      this.activeCount = next;
+      this.recountSources();
+      return;
+    }
+    const fresh = this.time < this.fromSourcesUntil;
+    for (let i = this.activeCount; i < next; i++) {
+      this.activeCount = i + 1;
+      this.respawn(i);
+      // Staggered like the constructor's, so a jump in output doesn't start a
+      // wave of particles that then all age out together — except when born
+      // at their sources on arrival, where the ramp itself staggers them.
+      this.age[i] = fresh ? 0 : Math.random() * this.maxAge[i] * 0.5;
+    }
+  }
+
+  /**
+   * Respawn every particle with the given params — for a change of base
+   * field mode, where a particle's route index means something different
+   * under the new mode. Ages are staggered as at construction.
+   */
+  respawnAll(fieldParams: FieldParams) {
+    this.fieldParams = fieldParams;
+    this.recountSources();
+    for (let i = 0; i < this.count; i++) {
+      this.respawn(i);
+      this.age[i] = Math.random() * this.maxAge[i] * 0.5;
+    }
   }
 
   private pickSourceIndex(): number {
+    if (this.options.allocation === 'quota') return this.pickSourceByQuota();
     const r = Math.random() * this.totalRate;
+    // Strictly less-than, so a source at rate 0 is never drawn — not even
+    // on the rare draw of exactly 0 that `<=` would hand to a leading one.
     for (let i = 0; i < this.cumulativeRates.length; i++) {
-      if (r <= this.cumulativeRates[i]) return i;
+      if (r < this.cumulativeRates[i]) return i;
     }
     return this.cumulativeRates.length - 1;
   }
@@ -543,7 +749,7 @@ export class ParticleSystem {
     }
     const { top, bottom } = this.world.projection.bounds;
     const span = Math.max(1, bottom - top);
-    const avgSpeed = 90; // midpoint of the speed jitter range drawn below
+    const avgSpeed = this.style.speed; // midpoint of the speed jitter range drawn below
     // Coast steering + curl noise lengthen the actual path well beyond a
     // straight line north-south; 1.35x is a conservative pad, not measured.
     const curveFactor = 1.35;
@@ -551,8 +757,52 @@ export class ParticleSystem {
     return { min: crossingTime * 0.5, extra: crossingTime * 0.9 };
   }
 
-  private respawn(i: number) {
-    const srcIdx = this.pickSourceIndex();
+  /**
+   * 'quota' allocation: every source with any rate is owed one particle, the
+   * rest of the active pool is owed by rate, and the source furthest below
+   * what it is owed gets this one. Deterministic up to ties (broken at
+   * random), so two sources at the same rate hold the same count rather than
+   * one of them happening to draw none. If the pool is smaller than the
+   * number of emitting sources, the one-each floor can't all be met, and the
+   * furthest-below rule shares what there is by rate.
+   */
+  private pickSourceByQuota(): number {
+    const sources = this.world.sources;
+    let emitting = 0;
+    for (const resolved of sources) if (resolved.source.rate > 0) emitting++;
+    if (emitting === 0 || this.totalRate <= 0) return 0;
+    const shared = Math.max(0, this.activeCount - emitting);
+    const floor = this.activeCount >= emitting ? 1 : 0;
+    let best = 0;
+    let bestDeficit = -Infinity;
+    for (let j = 0; j < sources.length; j++) {
+      const rate = sources[j].source.rate;
+      if (rate <= 0) continue;
+      const owed = floor + (shared * rate) / this.totalRate;
+      const deficit = owed - this.sourceCounts[j] + Math.random() * 1e-6;
+      if (deficit > bestDeficit) {
+        bestDeficit = deficit;
+        best = j;
+      }
+    }
+    return best;
+  }
+
+  /** `keepSource`: re-birth this particle from the source it already belongs to, rather than drawing a new one. */
+  private respawn(i: number, keepSource = false) {
+    // Out of the count first, so the quota sees this particle as free.
+    if (this.counted[i]) {
+      this.sourceCounts[this.sourceIndex[i]]--;
+      this.counted[i] = 0;
+    }
+    const srcIdx = keepSource ? this.sourceIndex[i] : this.pickSourceIndex();
+    // 'quota': a source's only particle is born at the source, so every
+    // emitting source always shows a thread leaving it.
+    const onlyThread = this.options.allocation === 'quota' && (this.sourceCounts[srcIdx] ?? 0) === 0;
+    if (i < this.activeCount && srcIdx < this.sourceCounts.length) {
+      this.sourceCounts[srcIdx]++;
+      this.counted[i] = 1;
+    }
     const resolved = this.world.sources[srcIdx];
     // Small radius jitter so particles from one source don't all trace
     // the exact same line — source outflow proper is step 3. Radius is
@@ -577,6 +827,46 @@ export class ParticleSystem {
       sy = resolved.position[1];
     }
 
+    // Destination and route, then (under 'blanket') possibly a birth partway
+    // along that route rather than at the farm.
+    const mode = this.fieldParams.baseFieldMode;
+    let route = Infinity;
+    let heading: [number, number] | null = null;
+    if (mode === 'blanket') {
+      const pick = this.pickBlanketDestination(sx, sy);
+      this.targetIndex[i] = pick ? pick.region : -1;
+      this.destX[i] = pick ? pick.x : sx;
+      this.destY[i] = pick ? pick.y : sy;
+      if (pick) {
+        const field = this.world.regions!.fields[pick.region];
+        // A picked farm's particles always start at the farm: the point of
+        // picking it is to see its flow leave it.
+        const fromSource = this.time < this.fromSourcesUntil;
+        if (
+          srcIdx !== this.highlightIndex &&
+          !onlyThread &&
+          !fromSource &&
+          Math.random() >= this.style.farmBirthShare
+        ) {
+          const born = this.midJourneyBirth(sx, sy, pick.x, pick.y);
+          if (born) {
+            sx = born.x;
+            sy = born.y;
+            heading = born.heading;
+          }
+        }
+        route = field.sample(sx, sy).dist;
+      }
+    } else if (mode === 'targets') {
+      this.targetIndex[i] = this.pickTargetIndex(sx, sy);
+      const target = this.world.targets[this.targetIndex[i]];
+      this.destX[i] = target ? target.position[0] : sx;
+      this.destY[i] = target ? target.position[1] : sy;
+      if (target) route = target.field.sample(sx, sy).dist;
+    } else {
+      this.targetIndex[i] = -1;
+    }
+
     this.x[i] = sx;
     this.y[i] = sy;
     this.px[i] = sx;
@@ -586,15 +876,18 @@ export class ParticleSystem {
     // unscaled expressions exactly.
     const j = this.style.jitterAmount;
     // Initial heading: mostly southward with a little spread.
-    const angle = Math.PI / 2 + (Math.random() - 0.5) * 0.8 * j; // canvas: +y is south
+    // A particle born mid-route starts along its route instead.
+    const baseAngle = heading ? Math.atan2(heading[1], heading[0]) : Math.PI / 2; // canvas: +y is south
+    const angle = baseAngle + (Math.random() - 0.5) * 0.8 * j;
     this.hx[i] = Math.cos(angle);
     this.hy[i] = Math.sin(angle);
     this.age[i] = 0;
     const { min, extra } = this.ageBudgetRange();
     this.maxAge[i] = min + Math.random() * extra;
-    this.speed[i] = 90 * (1 + (Math.random() - 0.5) * 0.4 * j);
+    this.speed[i] = 1 + (Math.random() - 0.5) * 0.4 * j;
     this.sourceIndex[i] = srcIdx;
     this.strikes[i] = 0;
+    this.exiting[i] = 0;
     this.stallTime[i] = 0;
     this.checkpointX[i] = sx;
     this.checkpointY[i] = sy;
@@ -606,16 +899,134 @@ export class ParticleSystem {
     this.noisePhase[i] = Math.random() * 1000; // decorrelates the fine noise octave's time axis — a phase, not a spread, so unscaled by j
     this.hueBucket[i] = jitteredBucket(j);
     this.weightBucket[i] = jitteredBucket(j);
+
+    if (Number.isFinite(route)) {
+      // Long enough to make the whole route at the slowest drift speed the
+      // field produces (driftScale bottoms out near half), with room to spare
+      // for the sway — arrival, not age, should end a targeted life.
+      this.maxAge[i] = Math.max(this.maxAge[i], (2.5 * route) / Math.max(1, this.style.speed));
+    }
+  }
+
+  /**
+   * An even draw of a destination across the land, restricted to cells no
+   * further north than the farm (a little slack aside) so flow keeps a
+   * general southward direction. Rejection-sampled from world.regions'
+   * interior cells; null if there are no regions, or no reachable cell turns
+   * up within a few tries (a farm at the very south of the land).
+   */
+  private pickBlanketDestination(x: number, y: number): { region: number; x: number; y: number } | null {
+    const regions = this.world.regions;
+    if (!regions || regions.insideCells.length === 0) return null;
+    const { cellSize, gridWidth, insideCells, cellRegion, fields } = regions;
+    for (let attempt = 0; attempt < 24; attempt++) {
+      const cell = insideCells[(Math.random() * insideCells.length) | 0];
+      const cx = ((cell % gridWidth) + Math.random() - 0.5) * cellSize;
+      const cy = (((cell / gridWidth) | 0) + Math.random() - 0.5) * cellSize;
+      if (cy < y - cellSize) continue;
+      const region = cellRegion[cell];
+      if (region < 0 || !Number.isFinite(fields[region].sample(x, y).dist)) continue;
+      if (!this.world.mask.isInside(cx, cy)) continue;
+      return { region, x: cx, y: cy };
+    }
+    return null;
+  }
+
+  /**
+   * The birthplace of a particle born mid-journey: a random point on the
+   * straight line from its farm to its destination, scattered sideways. Not
+   * a point on the route field's own path — shortest routes merge, so births
+   * placed on them all land in the same few channels and draw the river
+   * this mode exists to avoid. Retried a few times if the point falls in the
+   * sea (a line across a firth); null if none lands, and the particle is
+   * born at its farm instead.
+   */
+  private midJourneyBirth(
+    fx: number,
+    fy: number,
+    dx: number,
+    dy: number,
+  ): { x: number; y: number; heading: [number, number] } | null {
+    const lx = dx - fx;
+    const ly = dy - fy;
+    const len = Math.hypot(lx, ly);
+    if (len < 1) return null;
+    const ux = lx / len;
+    const uy = ly / len;
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const t = Math.pow(Math.random(), 1 / (1 + this.style.midJourneyBias));
+      const side = (Math.random() - 0.5) * 2 * MID_JOURNEY_SCATTER_PX;
+      const x = fx + lx * t - uy * side;
+      const y = fy + ly * t + ux * side;
+      if (this.world.mask.isInside(x, y)) return { x, y, heading: [ux, uy] };
+    }
+    return null;
+  }
+
+  /**
+   * Weighted draw of a destination for a particle born at (x, y) — see
+   * ParticleStyle.targetWeightExponent. Route distance is normalised by the
+   * world's north-south span so the distance exponent means the same thing
+   * at any viewport size, with a small floor so a target right beside the
+   * spawn point doesn't take every particle. -1 when there are no targets,
+   * or none reachable from here.
+   */
+  private pickTargetIndex(x: number, y: number): number {
+    const { targets } = this.world;
+    if (targets.length === 0) return -1;
+    const { top, bottom } = this.world.projection.bounds;
+    const span = Math.max(1, bottom - top);
+    const { targetWeightExponent: a, targetDistanceExponent: b } = this.style;
+    let total = 0;
+    const odds = this.targetOdds;
+    odds.length = targets.length;
+    for (let t = 0; t < targets.length; t++) {
+      const route = targets[t].field.sample(x, y).dist;
+      const w = Number.isFinite(route)
+        ? Math.pow(targets[t].target.weight, a) * Math.pow(route / span + 0.05, -b)
+        : 0;
+      odds[t] = w;
+      total += w;
+    }
+    if (total <= 0) return -1;
+    let r = Math.random() * total;
+    for (let t = 0; t < targets.length; t++) {
+      r -= odds[t];
+      if (r <= 0) return t;
+    }
+    return targets.length - 1;
   }
 
   step(dt: number, fieldParams: FieldParams = DEFAULT_FIELD_PARAMS) {
     const { world } = this;
     const { mask } = world;
+    this.fieldParams = fieldParams;
     this.time += dt;
-    // dt-aware ease: EASE_RATE_AT_60FPS is "per frame at 60fps"; converting
-    // it to a continuous per-second rate means tuned values hold at any
-    // frame rate, not just 60fps.
-    const ease = 1 - Math.pow(1 - EASE_RATE_AT_60FPS, dt * 60);
+
+    // Ramp the active count toward its target (setActiveFraction).
+    if (this.activeCount !== this.activeTarget && this.rampPerSecond > 0) {
+      this.rampCarry += this.rampPerSecond * dt;
+      const move = Math.floor(this.rampCarry);
+      if (move > 0) {
+        this.rampCarry -= move;
+        const next =
+          this.activeTarget > this.activeCount
+            ? Math.min(this.activeTarget, this.activeCount + move)
+            : Math.max(this.activeTarget, this.activeCount - move);
+        this.applyActiveCount(next);
+      }
+    } else {
+      this.rampCarry = 0;
+    }
+
+    // Ease the selection's dimming in and out (HighlightStyle.fadeSeconds).
+    const dimTarget = this.highlightIndex >= 0 ? 1 : 0;
+    const fade = this.highlightStyle.fadeSeconds;
+    this.dimLevel = fade > 0 ? this.dimLevel + (dimTarget - this.dimLevel) * (1 - Math.exp(-dt / fade)) : dimTarget;
+    // dt-aware ease: style.turnRate is "per frame at 60fps" (step 1's fixed
+    // 0.25 was implicitly tuned to 60fps); converting it to a continuous
+    // per-second rate means tuned values hold at any frame rate.
+    const ease = 1 - Math.pow(1 - this.style.turnRate, dt * 60);
 
     // 2g: decay + recompute the occupancy grid's gradient/mean once per
     // frame, from last frame's final deposits — not once per particle.
@@ -628,7 +1039,12 @@ export class ParticleSystem {
       this.densityField.decayAndUpdateGradient(decayFactor);
     }
 
-    for (let i = 0; i < this.count; i++) {
+    for (let i = 0; i < this.activeCount; i++) {
+      if (this.exiting[i]) {
+        this.options.onDeath?.(i, 'exit', this.age[i]);
+        this.respawn(i);
+        continue;
+      }
       this.px[i] = this.x[i];
       this.py[i] = this.y[i];
 
@@ -636,6 +1052,9 @@ export class ParticleSystem {
         chirality: this.chirality[i],
         lateralBias: this.lateralBias[i],
         noisePhase: this.noisePhase[i],
+        targetIndex: this.targetIndex[i],
+        destX: this.destX[i],
+        destY: this.destY[i],
       };
       const { vx: fx, vy: fy, driftScale } = sampleField(
         [this.x[i], this.y[i]],
@@ -664,7 +1083,7 @@ export class ParticleSystem {
       // "slowing to a stop in the far south" death condition and turns a
       // raised age budget into coast-scraping instead of a gentle stop
       // (step2 plan feedback).
-      const effectiveSpeed = this.speed[i] * driftScale;
+      const effectiveSpeed = this.style.speed * this.speed[i] * driftScale;
       this.x[i] += this.hx[i] * effectiveSpeed * dt;
       this.y[i] += this.hy[i] * effectiveSpeed * dt;
       this.age[i] += dt;
@@ -684,7 +1103,14 @@ export class ParticleSystem {
       // miss. Sampling once per pixel of segment length is what makes
       // the containment guarantee hold for the rendered line itself.
       const clamped = clampToMask(this.px[i], this.py[i], this.x[i], this.y[i], mask);
-      if (clamped.left) {
+      if (clamped.left && fieldParams.coastMode === 'exit') {
+        // Run off the edge: this frame draws up to the coast, and the
+        // particle respawns at the start of the next step (see `exiting`).
+        this.x[i] = clamped.x;
+        this.y[i] = clamped.y;
+        this.exiting[i] = 1;
+        continue;
+      } else if (clamped.left) {
         // 2a: rescue instead of kill. Clamp back to the last
         // confirmed-inside sample and slide the heading along the local
         // tangent (project out the normal component) rather than
@@ -744,7 +1170,7 @@ export class ParticleSystem {
           this.x[i] - this.checkpointX[i],
           this.y[i] - this.checkpointY[i],
         );
-        if (progressed < TRAPPED_MIN_DISPLACEMENT) {
+        if (progressed < TRAPPED_MIN_DISPLACEMENT * (this.style.speed / DEFAULT_PARTICLE_STYLE.speed)) {
           this.trappedFailStreak[i]++;
           if (this.trappedFailStreak[i] >= TRAPPED_FAIL_STREAK) trapped = true;
         } else {
@@ -785,8 +1211,19 @@ export class ParticleSystem {
       // Order matters only for reporting which cause "wins" when several
       // thresholds are crossed in the same frame — containment and the
       // respawn itself don't depend on it.
+      let arrived = false;
+      if (fieldParams.baseFieldMode === 'targets' && this.targetIndex[i] >= 0) {
+        // Route distance, not straight-line: a city's point can sit just
+        // offshore, and its field is seeded at the nearest land cell.
+        const target = world.targets[this.targetIndex[i]];
+        arrived = target !== undefined && target.field.sample(this.x[i], this.y[i]).dist < TARGET_ARRIVE_PX;
+      } else if (fieldParams.baseFieldMode === 'blanket' && this.targetIndex[i] >= 0) {
+        arrived = Math.hypot(this.destX[i] - this.x[i], this.destY[i] - this.y[i]) < TARGET_ARRIVE_PX;
+      }
+
       let cause: DeathCause | null = null;
-      if (this.age[i] > this.maxAge[i]) cause = 'age';
+      if (arrived) cause = 'arrive';
+      else if (this.age[i] > this.maxAge[i]) cause = 'age';
       else if (this.strikes[i] > STRIKE_LIMIT) cause = 'strike';
       else if (this.stallTime[i] > STALL_DURATION) cause = 'stall';
       else if (trapped) cause = 'trapped';
@@ -823,7 +1260,7 @@ export class ParticleSystem {
       for (const bucket of this.renderBuckets) bucket.length = 0;
     }
 
-    for (let i = 0; i < this.count; i++) {
+    for (let i = 0; i < this.activeCount; i++) {
       const bucketIndex =
         this.sourceIndex[i] * 9 + (this.hueBucket[i] + 1) * 3 + (this.weightBucket[i] + 1);
       this.renderBuckets[bucketIndex].push(i);
@@ -835,7 +1272,7 @@ export class ParticleSystem {
     // While a source is picked out, every other source draws at reduced opacity
     // (the selection reads by contrast, not by hue alone) and the picked one is
     // drawn last, on top, in the highlight colour.
-    ctx.globalAlpha = highlighted >= 0 ? dimAlpha : 1;
+    ctx.globalAlpha = 1 - (1 - dimAlpha) * this.dimLevel;
     for (let b = 0; b < numBuckets; b++) {
       const indices = this.renderBuckets[b];
       if (indices.length === 0) continue;

@@ -67,7 +67,7 @@ import '@fontsource/mukta/700.css';
 import './map.css';
 
 import { DEFAULT_FIELD_PARAMS, type FieldParams } from '../flow/field';
-import { DEFAULT_PARTICLE_STYLE, ParticleSystem } from '../flow/particles';
+import { DEFAULT_PARTICLE_STYLE, ParticleSystem, type ParticleStyle } from '../flow/particles';
 import { renderDebugOverlay, type DebugLayer } from '../flow/debug';
 import { LIGHT_PALETTE } from '../flow/palette';
 import { buildWorld, type World } from '../flow/world';
@@ -78,14 +78,23 @@ import {
   buildFarmSources,
   FARM_SITES,
   isOffMainFit,
-  markerStateFor,
-  type FarmMarkerState,
 } from './farmSources';
-import { createFarmMarkerLayer, setMarkerHighlight, styleFarmMarker, type FarmMarkerLayer } from './markers';
-import { DEFAULT_RATE_PARAMS, type RateParams } from './rate';
+import {
+  createFarmMarker,
+  createFarmMarkerLayer,
+  positionFarmMarker,
+  setMarkerHighlight,
+  styleFarmMarker,
+  type FarmMarkerLayer,
+  type FarmReading,
+} from './markers';
+import { flowDensity } from './rate';
+import { prefersReducedMotion } from '../lib/motion';
 import { createMapControlPanel } from './controls';
+import { CITIES } from './cities';
+import { FARM_CAPACITY_MW } from './farmCapacity';
 import { renderSwatchPlate } from './swatchPlate';
-import { fetchCoreFeeds, fetchWindspeed } from '../lib/client';
+import { fetchCoreFeeds } from '../lib/client';
 import { msUntilRolloverCheck } from '../lib/settlement';
 import { scenarioByName, SCENARIOS } from '../lib/scenarios';
 import { emptyFeeds, type AppState } from '../lib/state';
@@ -184,7 +193,7 @@ function bootMap(): void {
   insetSvg.setAttribute('class', 'map__inset');
   insetSvg.setAttribute('aria-hidden', 'true');
   const insetIslandPaths: SVGPathElement[] = [];
-  const insetMarkers = new Map<string, SVGCircleElement>();
+  const insetMarkers = new Map<string, SVGGElement>();
   const insetBox = el(
     'div',
     { class: 'map__inset-box' },
@@ -324,12 +333,53 @@ function bootMap(): void {
   const toggle = showToggle ? toggleView(scenarioName, selectScenario) : null;
   if (toggle) foot.append(toggle.el);
 
-  // The field stays on /flow's own tuned defaults — the drawn-island retune
-  // waits for step 6, after the border spike (§5.3).
-  const fieldParams: FieldParams = { ...DEFAULT_FIELD_PARAMS };
-  const palette = { ...LIGHT_PALETTE };
-  const particleCount = 1400;
-  const rateParams: RateParams = { ...DEFAULT_RATE_PARAMS };
+  // Map wind tuning: /flow's defaults were tuned for a field that had to draw
+  // the island's silhouette on its own (§5.3). With the island drawn, the map
+  // wants calmer air — slower, longer and finer trails, wider turns, and no
+  // per-particle wobble (the fine noise octave), so neighbours move together
+  // the way wind does rather than each wriggling on its own. The density push
+  // is capped lower so spacing corrections read as drift, not shoves. The
+  // coast is drawn, so the flow no longer traces it: particles keep their
+  // course and run off the edge (coastMode 'exit').
+  const fieldParams: FieldParams = {
+    ...DEFAULT_FIELD_PARAMS,
+    noiseScale: 2,
+    noiseWeight: 0.3,
+    noiseSpeed: 0.03,
+    fineNoiseWeight: 0,
+    densityMaxPush: 30,
+    coastMode: 'exit',
+    // Prototype: 'blanket' — each particle heads for a point drawn evenly
+    // across the land south of its farm, and most are born partway along
+    // that route, so flow covers the island instead of running as a river
+    // from Scotland. 'targets' (the cities, cities.ts) is the previous
+    // prototype, still on the panel's field button. Without the coast
+    // rescue, the divergent field (away from the farms) has a sink at the
+    // border and never reaches England.
+    baseFieldMode: 'blanket',
+    pathWeight: 0.9,
+    targetDirectness: 0.8,
+    // Recycling respawns a particle that lingers somewhere crowded. The farms
+    // cluster in the central belt, which is crowded by construction, so it
+    // was killing half the flow there before any reached England.
+    densityRecycleThreshold: Infinity,
+  };
+  const particleStyle: ParticleStyle = {
+    ...DEFAULT_PARTICLE_STYLE,
+    jitterAmount: 0.5,
+    spawnJitterRadius: 8,
+    speed: 45,
+    turnRate: 0.1,
+    // Lower farm births and a lean toward the far end of the journey measured
+    // most even: every Scottish route squeezes through the border, so births
+    // spread evenly along each route still crowd that corridor.
+    farmBirthShare: 0.15,
+    midJourneyBias: 1.5,
+  };
+  const palette = { ...LIGHT_PALETTE, washAlpha: 0.03, baseStrokeWidth: 1.1 };
+  // The pool at full capacity: strictly proportional density (rate.ts) shows
+  // the on-grid share of it, so a typical ~30% period draws ~600.
+  const particleCount = 2000;
 
   // Rebuilt in rebuild() from the current extent's available islands — see
   // `isOffMainFit`'s docs — so the object identities (and hence which farms
@@ -338,6 +388,8 @@ function bootMap(): void {
   /** Farms currently rendered only in the inset, not on the main stage. */
   let offMainStageFarms = new Set<string>();
   let lastFarmsNow: FarmNow[] | null = null;
+  /** The first reading with any flow has landed (its arrival ramp has started) — see landFarms. */
+  let flowArrived = false;
 
   let world: World;
   let particles: ParticleSystem;
@@ -469,20 +521,18 @@ function bootMap(): void {
       insetIslandPaths.push(path);
     }
 
-    for (const circle of insetMarkers.values()) circle.remove();
+    for (const marker of insetMarkers.values()) marker.remove();
     insetMarkers.clear();
 
     const shetlandFarms = FARM_SITES.filter((s) => offMainStageFarms.has(s.farm));
+    const { readings, maxCapacityMW } = farmReadings();
     for (const site of shetlandFarms) {
-      const circle = document.createElementNS(SVG_NS, 'circle');
-      circle.setAttribute('class', 'map__farm-marker');
-      circle.dataset.farm = site.farm;
+      const marker = createFarmMarker(site.farm);
       const [x, y] = insetProjection.project(site.latLon);
-      circle.setAttribute('cx', x.toFixed(1));
-      circle.setAttribute('cy', y.toFixed(1));
-      styleFarmMarker(circle, markerStateFor(lastFarmsNow?.find((f) => f.farm === site.farm)));
-      insetSvg.append(circle);
-      insetMarkers.set(site.farm, circle);
+      positionFarmMarker(marker, x, y);
+      styleFarmMarker(marker, readings.get(site.farm) ?? null, maxCapacityMW);
+      insetSvg.append(marker);
+      insetMarkers.set(site.farm, marker);
     }
     setMarkerHighlight(insetSvg, insetMarkers, highlightedFarm);
   }
@@ -607,14 +657,24 @@ function bootMap(): void {
   }
 
   /**
-   * Pick one farm out on the map, or (null) put everything back. Purely paint:
-   * the particles draw its flow in --highlight and the rest dimmed, and its
+   * Pick one farm out on the map, or (null) put everything back. The
+   * particles draw its flow in --highlight and the rest dimmed (and, under
+   * 'blanket', its particles are born at the farm while it is picked), and its
    * marker (on the main stage or in the Shetland inset, wherever it is drawn)
    * lights while the others fade. No relayout, no rebuild.
    */
   function highlightFarm(farm: string | null) {
     highlightedFarm = farm;
-    particles.setHighlightSource(farm, { color: tokenColor('--highlight', '#0a7cff') });
+    // Dimmed well down (the flow default is 0.22): at the map's fine line
+    // weight, the picked farm's thread was lost among the rest at that level.
+    // Its share of the flow is its honest one — a farm making a few MW shows a
+    // particle or none (Owen).
+    particles.setHighlightSource(farm, {
+      color: tokenColor('--highlight', '#0a7cff'),
+      dimAlpha: 0.07,
+      // The flow dims and returns at the markers' own pace (--dur-quick).
+      fadeSeconds: prefersReducedMotion() ? 0 : 0.06,
+    });
     markerLayer.setHighlight(farm);
     setMarkerHighlight(insetSvg, insetMarkers, farm);
   }
@@ -652,12 +712,16 @@ function bootMap(): void {
       // Spec 4b §5.3: the padding is the `--map-pad` token, in css px, scaled
       // to the device px the world is built in — exact at every cell size and DPR.
       projectionOptions: { paddingPx: tokenNumber('--map-pad', 24) * currentDpr },
+      targets: CITIES,
+      regionCount: 32,
     });
 
     if (particles) {
       particles.setWorld(world);
     } else {
-      particles = new ParticleSystem(world, particleCount, { style: { ...DEFAULT_PARTICLE_STYLE } });
+      particles = new ParticleSystem(world, particleCount, { style: particleStyle, fieldParams, allocation: 'quota' });
+      // Nothing flows until farm data lands (landFarms sets the real density).
+      particles.setActiveFraction(flowDensity(lastFarmsNow));
     }
     if (!markerLayer) markerLayer = createFarmMarkerLayer(svg, FARM_SITES);
     fitBounds = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
@@ -738,10 +802,11 @@ function bootMap(): void {
   void document.fonts?.ready.then(() => positionOverlays());
 
   const controlPanel = devTools ? createMapControlPanel({
-    rateParams,
-    onRateParamsChanged() {
-      applyFarmRates(farmSources, lastFarmsNow, rateParams);
-      particles.refreshRates();
+    fieldParams,
+    particleStyle,
+    palette,
+    onFieldModeChanged() {
+      particles.respawnAll(fieldParams);
     },
   }) : null;
 
@@ -773,20 +838,50 @@ function bootMap(): void {
       // on that distinction).
       for (const source of farmSources) source.rate = 0;
     } else {
-      applyFarmRates(farmSources, lastFarmsNow, rateParams);
+      applyFarmRates(farmSources, lastFarmsNow);
     }
     particles.refreshRates();
-
-    const statesByFarm = new Map<string, FarmMarkerState>();
-    for (const site of FARM_SITES) {
-      const now = lastFarmsNow?.find((f) => f.farm === site.farm);
-      statesByFarm.set(site.farm, markerStateFor(now));
+    // The flow's density follows the reading, eased rather than jumped: the
+    // first reading ramps in over a few seconds with every particle born at
+    // its farm, so the wind is seen leaving the farms; later readings ease
+    // over a second. Instant under reduced motion.
+    const density = flowDensity(lastFarmsNow);
+    const reduce = prefersReducedMotion();
+    if (!flowArrived && density > 0) {
+      flowArrived = true;
+      particles.setActiveFraction(density, { rampSeconds: reduce ? 0 : 4, fromSources: !reduce });
+    } else {
+      particles.setActiveFraction(density, { rampSeconds: reduce ? 0 : 1 });
     }
-    markerLayer.setStates(statesByFarm);
 
-    for (const [farm, circle] of insetMarkers) {
-      styleFarmMarker(circle, statesByFarm.get(farm) ?? 'silent');
+    const { readings, maxCapacityMW } = farmReadings();
+    markerLayer.setReadings(readings, maxCapacityMW);
+    for (const [farm, marker] of insetMarkers) {
+      styleFarmMarker(marker, readings.get(farm) ?? null, maxCapacityMW);
     }
+  }
+
+  /**
+   * The latest reading per farm, and the largest capacity among them — the
+   * scale every marker's size is a share of, main stage and inset alike.
+   */
+  function farmReadings(): { readings: Map<string, FarmReading>; maxCapacityMW: number } {
+    const readings = new Map<string, FarmReading>();
+    let maxCapacityMW = 0;
+    if (lastFarmsNow) {
+      for (const f of lastFarmsNow) {
+        readings.set(f.farm, f);
+        maxCapacityMW = Math.max(maxCapacityMW, f.capacityMW);
+      }
+    } else {
+      // No reading: every farm still sized by its installed capacity, in the
+      // 'unknown' state (farmCapacity.ts).
+      for (const [farm, capacityMW] of FARM_CAPACITY_MW) {
+        readings.set(farm, { capacityMW, instructedMW: 0, curtailedMW: 0, read: false });
+        maxCapacityMW = Math.max(maxCapacityMW, capacityMW);
+      }
+    }
+    return { readings, maxCapacityMW };
   }
 
   async function refresh() {
@@ -796,16 +891,10 @@ function bootMap(): void {
       state.pending = scenario.pending ?? false;
       landFarms(state.curtailment?.now?.farms);
       render();
-      // The fixtures carry no weather, so they take the live windspeeds:
-      // otherwise every dev state reads as if the feed had failed.
-      const feed = await fetchWindspeed();
-      if (feed.windspeed) state.windspeed = feed.windspeed;
-      state.windspeedError = feed.windspeedError;
-      render();
       return;
     }
 
-    const core = fetchCoreFeeds().then((feeds) => {
+    await fetchCoreFeeds().then((feeds) => {
       if (feeds.grid) state.grid = feeds.grid;
       state.gridError = feeds.gridError;
       if (feeds.curtailment) state.curtailment = feeds.curtailment;
@@ -814,20 +903,6 @@ function bootMap(): void {
       landFarms(state.curtailment?.now?.farms);
       render();
     });
-
-    // Windspeed resolves independently (4c.5, DECISIONS 029), same reasoning
-    // as src/main.ts's own narration fetch: Open-Meteo has nothing to do with
-    // curtailment or the mix, so a slow or dead weather API can never hold up
-    // — or blank — the feeds this page actually turns on. `pending` is not
-    // gated on it; the source list simply lands windspeed into its rows
-    // whenever this resolves, on the same refresh cadence as everything else.
-    const windspeed = fetchWindspeed().then((feed) => {
-      if (feed.windspeed) state.windspeed = feed.windspeed;
-      state.windspeedError = feed.windspeedError;
-      render();
-    });
-
-    await Promise.all([core, windspeed]);
   }
 
   function selectScenario(name: string) {
@@ -877,6 +952,43 @@ function bootMap(): void {
     });
   }
 
+  const MIN_FADE_STEP = 0.14;
+  let fadeKeep = 1;
+
+  // Chunking the fade (above) lowers the stuck floor to an alpha of ~3/255
+  // but can't reach zero: a multiplicative fade never does in 8 bits. Every
+  // half second the canvas is redrawn through an SVG alpha transfer that
+  // subtracts a sliver (a' = 1.02a − 0.02), which clears that floor while
+  // leaving live trails all but untouched. Where ctx.filter is unsupported the
+  // pass is skipped and the faint floor stays.
+  const CLEAN_INTERVAL = 0.5;
+  let sinceClean = 0;
+  const cleanCanvas = document.createElement('canvas');
+  const cleanCtx = cleanCanvas.getContext('2d')!;
+  const canFilter = 'filter' in ctx;
+  if (canFilter) {
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const holder = document.createElementNS(svgNS, 'svg');
+    holder.setAttribute('width', '0');
+    holder.setAttribute('height', '0');
+    holder.setAttribute('aria-hidden', 'true');
+    holder.style.position = 'absolute';
+    holder.innerHTML =
+      '<filter id="map-trail-clean"><feComponentTransfer><feFuncA type="linear" slope="1.02" intercept="-0.02"/></feComponentTransfer></filter>';
+    document.body.append(holder);
+  }
+  function cleanTrails() {
+    if (cleanCanvas.width !== canvas.width || cleanCanvas.height !== canvas.height) {
+      cleanCanvas.width = canvas.width;
+      cleanCanvas.height = canvas.height;
+    }
+    cleanCtx.clearRect(0, 0, cleanCanvas.width, cleanCanvas.height);
+    cleanCtx.drawImage(canvas, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.filter = 'url(#map-trail-clean)';
+    ctx.drawImage(cleanCanvas, 0, 0);
+    ctx.filter = 'none';
+  }
   let lastTime = performance.now();
   function frame(now: number) {
     const dt = Math.min(0.05, (now - lastTime) / 1000);
@@ -886,10 +998,26 @@ function bootMap(): void {
     // so the crisp SVG island shows through underneath it; trails fade toward
     // *transparent* (destination-out) rather than toward a flat background
     // colour.
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.fillStyle = `rgba(0, 0, 0, ${palette.washAlpha})`;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.globalCompositeOperation = 'source-over';
+    //
+    // washAlpha is a per-frame fade at 60fps; `fadeKeep` carries it across
+    // frames dt-aware, so trails are the same length on a 120Hz screen. The
+    // fade is applied in steps of at least MIN_FADE_STEP rather than every
+    // frame: canvas alpha is 8-bit, and a small destination-out fade rounds
+    // back up once a pixel's alpha drops below ~0.5/fade — a light wash
+    // every frame leaves a permanent haze of stuck, faint pixels.
+    fadeKeep *= Math.pow(1 - palette.washAlpha, dt * 60);
+    if (1 - fadeKeep >= MIN_FADE_STEP) {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fillStyle = `rgba(0, 0, 0, ${1 - fadeKeep})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.globalCompositeOperation = 'source-over';
+      fadeKeep = 1;
+    }
+    sinceClean += dt;
+    if (canFilter && sinceClean >= CLEAN_INTERVAL) {
+      cleanTrails();
+      sinceClean = 0;
+    }
 
     particles.step(dt, fieldParams);
     particles.render(ctx, palette);
@@ -919,5 +1047,7 @@ function bootMap(): void {
     getLastFarmsNow: () => lastFarmsNow,
     getExtentMode: () => extentMode,
     getOffMainStageFarms: () => offMainStageFarms,
+    getParticles: () => particles,
+    fieldParams,
   };
 }

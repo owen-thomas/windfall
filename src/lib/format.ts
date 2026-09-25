@@ -31,11 +31,6 @@ export function formatIntensity(gco2: number | null): string {
   return gco2 === null ? 'unknown' : `${Math.round(gco2)} gCO₂/kWh`;
 }
 
-/** Whole km/h — a description, not a measurement the honesty rules above apply to (map step 4c.5). */
-export function formatWindspeed(kmh: number): string {
-  return `${Math.round(kmh)} km/h`;
-}
-
 /**
  * The spelled-out form used in the map's prose band sentences (Windfall_Map_
  * Spec.md Part A.4/DECISIONS 026): "0 grams of carbon dioxide per

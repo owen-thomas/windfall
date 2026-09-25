@@ -24,6 +24,16 @@
 
 html {
   background: var(--ink-void);
+  /* The step between items in an entrance cascade (enter.ts) — farm rows, the
+     mix legends. Short, because a list of eight at this step is already
+     ~300ms in; 0 under reduced motion, with every duration (tokens.css). */
+  --cascade-step: 45ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    --cascade-step: 0ms;
+  }
 }
 
 body {
@@ -282,12 +292,14 @@ body {
 /* --- The bar and its source list (4c §4c.3, re-cut by 4d) --------------------
  * The labels, then the bar, then the farms (views/sources.ts owns the DOM).
  *
- * The labels: "10,877 MW on the grid" left in the display ink, "Held back
- * 2,228 MW" right-aligned to the bar's end in the held-back blue — figures
- * 24px bold, words 16px regular, all Eczar. They wrap onto two lines rather
- * than collide on a narrow phone. The bar: 32px, the full width of the column,
- * the navy on-grid run over the pale held-back rest. No chevron: the list is
- * always shown (4d).
+ * The labels: a legend of the two that carry the story (Owen) — a swatch,
+ * the figure in bold, then the word ("2,913 MW on the grid", "2,196 MW held
+ * back"), Eczar in the display ink; the swatches carry the colour. The bar:
+ * 32px, the full width of the column, spanning installed capacity — navy on
+ * the grid, periwinkle held back, and the rest a pale idle track
+ * (--ink-raised), the same three colours as each farm's row and marker. Under
+ * its end, quietly, "13,105 MW installed". No chevron: the list is always
+ * shown (4d).
  */
 .map-sources {
   /* The sentence's descenders (g, p, y — about 0.23em below its baseline) eat
@@ -299,99 +311,119 @@ body {
 .map-sources__labels {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
   align-items: baseline;
-  column-gap: var(--gap-md);
-  /* When they wrap (a phone), "Held back …" drops to its own line, still
-     right-aligned to the bar's end, clear of the line above. */
+  column-gap: var(--gap-lg);
   row-gap: var(--gap-xs);
-  margin-bottom: var(--gap-xs);
+  /* 12px to the bar, as under it (Owen). */
+  margin-bottom: 0.75rem;
   font-family: var(--font-display);
   font-size: var(--type-subhead-label);
   line-height: 1.15;
+  color: var(--text-primary);
 }
 
 .map-sources__label {
+  display: inline-flex;
+  align-items: baseline;
   margin: 0;
   white-space: nowrap;
 }
 
-.map-sources__label--on {
-  color: var(--data-ink);
-}
-
-.map-sources__label--held {
-  margin-left: auto;
-  color: var(--held-text);
-}
-
-.map-sources__label--held[data-held='none'] {
-  color: var(--text-muted);
-}
-
+.map-sources__labels[hidden],
 .map-sources__label[hidden] {
   display: none;
 }
 
+.map-sources__swatch {
+  flex: none;
+  align-self: center;
+  width: 0.8em;
+  height: 0.8em;
+  margin-right: 0.5em;
+}
+
+.map-sources__label--on .map-sources__swatch {
+  background: var(--bar-on);
+}
+
+.map-sources__label--held .map-sources__swatch {
+  background: var(--bar-off);
+}
+
 .map-sources__figure {
-  font-size: var(--type-subhead);
+  margin-right: 0.3em;
   font-weight: var(--wt-semibold);
   letter-spacing: -0.01em;
 }
 
-.map-sources .share[hidden] {
-  display: none;
-}
-
 .map-sources .share {
-  position: relative;
-  display: block;
+  display: flex;
   height: 2rem;
   border-radius: 0;
-  background: var(--bar-off);
+  background: var(--ink-raised);
   box-shadow: none;
   overflow: hidden;
 }
 
-.map-sources .share__fill {
-  position: absolute;
-  inset: 0 auto 0 0;
-  height: auto;
-  background-color: var(--bar-on);
-  background-image: none;
-  box-shadow: none;
+/* The two runs grow in together from the left on arrival (enter.ts); their
+   widths slide to each new reading. */
+.map-sources .share__runs {
+  display: flex;
+  flex: none;
+  width: 100%;
+  height: 100%;
+  transform-origin: left center;
+  transition: transform var(--dur-slow) var(--ease-out);
 }
 
-/* No reading, nothing to show: the bar becomes an empty gauge rather than
-   assert a total, and there are no labels or list to offer. */
-.map-sources[data-state='pending'] .share,
-.map-sources[data-state='failed'] .share {
-  background: var(--ink-raised);
-  box-shadow: inset 0 0 0 1px var(--ink-line);
+.map-sources .share__on,
+.map-sources .share__held {
+  display: block;
+  flex: none;
+  height: 100%;
+  transition: width var(--dur-base) var(--ease-out);
 }
 
-.map-sources:not([data-state='ok']) .map-sources__labels {
-  visibility: hidden;
+.map-sources .share__on {
+  background: var(--bar-on);
 }
 
-.map-sources:not([data-state='ok']) .map-sources__body,
-.map-sources:not([data-state='ok']) .map-sources__open {
-  display: none;
+.map-sources .share__held {
+  background: var(--bar-off);
 }
 
-/* 4d: with no reading (waiting, offline) the whole bar block goes — labels,
-   empty gauge and list — rather than an empty gauge standing in (Owen). */
-.map-sources:not([data-state='ok']) {
-  display: none;
+/* No reading (waiting, offline): the block stays, as it is whenever there is a
+   reading — the bar an empty installed track with no legend, the list every
+   farm at its capacity with an unknown dot (views/sources.ts, Owen). */
+
+/* The line under the bar: "▶ Show wind farms" left, the installed figure
+   right. */
+.map-sources__foot {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-md);
+  /* 12px from the bar to the installed figure's text box, as the legend's is
+     above it (Owen). The two share a baseline, and the toggle's taller 24px
+     line (its hover tint) sets the row, which drops the installed figure's box
+     2.5px below the row's top; the margin is the rest. */
+  margin-top: calc(0.75rem - 2.5px);
 }
 
-/* "▶ Show wind farms": a phone's way into the list (views/sources.ts), the
-   page's text toggle as a button. Its cap height sits ≈20px under the bar, the
-   step the first mini-bar has on wider screens. */
+.map-sources__installed {
+  margin: 0 0 0 auto;
+  font-family: var(--font-display);
+  font-size: var(--type-subhead-label);
+  line-height: 1.15;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+/* "▶ Show wind farms" / "▼ Hide wind farms": the list's toggle at every tier
+   (views/sources.ts), the page's text toggle as a button. */
 .map-sources__open {
   appearance: none;
   display: flex;
-  margin: 0.75rem 0 0;
+  margin: 0;
   padding: 0;
   border: 0;
   background: none;
@@ -400,15 +432,9 @@ body {
   cursor: pointer;
 }
 
-.map-sources__open[hidden] {
-  display: none;
-}
-
-/* Opened on a phone, the list takes the toggle's place: the same 12px under the
-   bar and the same 24px line, so the first farm's text sits exactly where
-   "Show wind farms" was (Owen). */
-.map-sources[data-folds] .map-sources__body {
-  margin-top: 0.75rem;
+/* The triangle turns down while the list is open, as the page's other toggles do. */
+.map-sources__open[aria-expanded='true'] .map-toggle::before {
+  transform: none;
 }
 
 .map-sources__open .map-toggle {
@@ -436,9 +462,8 @@ body {
 /* The list, filled row-first (4d): a batch only ever adds rows at the foot, so
    nothing already showing moves between the columns. */
 .map-sources__body {
-  /* 18px from the bar's foot to the first row box (Owen), so the big bar to the
-     first mini-bar reads like the step between mini-bars. */
-  margin-top: 1.125rem;
+  /* The step from the toggle's line to the first row, as from the bar to it. */
+  margin-top: 0.75rem;
 }
 
 .map-sources {
@@ -478,12 +503,12 @@ body {
   appearance: none;
   box-sizing: border-box;
   display: grid;
-  /* The label column is the list's longest label (views/sources.ts measures it
-     into --source-label-w), so every mini-bar starts at one edge and takes an
-     equal share of what is left, between the on-grid figure (left) and the
-     held-back one (right) — the big bar's pattern in small (4d). The bars never
-     go under 48px: where a column can't fit that, the label gives way. */
-  grid-template-columns: 0.45rem minmax(0, var(--source-label-w, max-content)) 3.125rem minmax(48px, 1fr) 3.125rem;
+  /* The label column is the list's longest label and the figures' column its
+     widest figures (views/sources.ts measures both, into --source-label-w and
+     --source-figures-w), so every mini-bar starts at one edge and takes what is
+     left. The bars never go under 48px: where a column can't fit that, the
+     label gives way. */
+  grid-template-columns: 0.45rem minmax(0, var(--source-label-w, max-content)) var(--source-figures-w, max-content) minmax(48px, 1fr);
   column-gap: 4px;
   align-items: center;
   width: calc(100% + 12px);
@@ -522,12 +547,25 @@ body {
   box-sizing: border-box;
   border-radius: 50%;
   background: var(--bar-on);
+  transition:
+    background-color var(--dur-base) var(--ease-in-out),
+    border-color var(--dur-base) var(--ease-in-out);
 }
 
-/* Silent (no declaration): hollow and dashed, as its marker is on the map. */
+/* The farm's state, as its marker on the map shows it (markers.ts). */
+.source-row__dot[data-state='held'] {
+  background: var(--bar-off);
+  border: 1px solid var(--held-text);
+}
+
 .source-row__dot[data-state='silent'] {
   background: none;
-  border: 1.5px dashed var(--text-muted);
+  border: 1.5px solid var(--bar-on);
+}
+
+.source-row__dot[data-state='unknown'] {
+  background: none;
+  border: 1.5px solid var(--text-muted);
 }
 
 .source-row[aria-pressed='true'] .source-row__dot {
@@ -535,15 +573,11 @@ body {
   border-color: var(--highlight);
 }
 
-/* The name's grid cell: the name plus, when 4c.5's feed has answered for this
-   farm, its windspeed running straight on from it ("Seagreen ≋ 34 km/h").
-   `min-width: 0` lets it truncate rather than push the bar and figure out. */
+/* The name's grid cell. `min-width: 0` lets it truncate rather than push the
+   bar and figure out. */
 .source-row__label {
   display: flex;
   align-items: baseline;
-  /* 4px either side of the ≋ (Owen): this gap before it, the windspeed's own
-     gap after it. */
-  gap: 4px;
   min-width: 0;
   overflow: hidden;
 }
@@ -561,80 +595,65 @@ body {
   color: var(--text-secondary);
 }
 
-/* --text-muted rather than the frame's own #7a7769, which is 3.58:1 on this
-   cream (027's fix, applied here too). */
-.source-row__windspeed {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: baseline;
-  /* Tighter after the ≋ than before it (Owen): the glyph belongs to the speed. */
-  gap: 2px;
-  font-family: var(--font-body);
-  font-size: var(--type-row);
-  line-height: 1.5rem;
-  white-space: nowrap;
-  color: var(--text-muted);
-}
-
+/* The bar's column is the largest farm's capacity; each farm's track is its own
+   capacity against that, strictly proportional (Owen). Inside the track: MW on
+   the grid (--bar-on), MW held back (--bar-off), and the rest idle capacity —
+   the track itself, pale (--ink-raised). The farm's marker on the map is this bar
+   wrapped into a circle (markers.ts). */
 .source-row__bar {
   display: block;
   height: 4px;
-  background: var(--bar-off);
-  overflow: hidden;
 }
 
-/* No share to draw (nothing declared): a plain rail, never a full or empty bar. */
-.source-row__bar[data-share='none'] {
-  background: var(--ink-line);
-}
-
-.source-row__bar-fill {
-  display: block;
+.source-row__bar-track {
+  display: flex;
   height: 100%;
-  background: var(--bar-on);
+  background: var(--ink-raised);
+  overflow: hidden;
+  transform-origin: left center;
+  /* Width slides to each new reading; transform is the arrival (enter.ts),
+     delayed with its row's place in the cascade. */
+  transition:
+    width var(--dur-base) var(--ease-out),
+    transform var(--dur-slow) var(--ease-out) calc(var(--enter-i, 0) * var(--cascade-step));
+}
+
+.source-row__bar-on,
+.source-row__bar-held {
+  display: block;
+  flex: none;
+  height: 100%;
   transition: width var(--dur-base) var(--ease-out);
 }
 
-/* The on-grid figure is right-aligned against the bar's start; the held-back
-   one left-aligned against its end (Owen), so each figure sits on its own end
-   of the bar. */
+.source-row__bar-on {
+  background: var(--bar-on);
+}
+
+.source-row__bar-held {
+  background: var(--bar-off);
+}
+
+/* The figures, right-aligned against the bar's start (Owen): "166 / 584 MW",
+   in the navy data ink — the held-back number alone in the held-back blue. */
 .source-row__mw {
   font-family: var(--font-body);
   font-size: var(--type-row);
   line-height: 1.5rem;
   text-align: right;
   white-space: nowrap;
-}
-
-.source-row__mw--held {
-  text-align: left;
-}
-
-.source-row__mw--on {
   color: var(--data-ink);
 }
 
-/* A day with nothing held back (data-mode="on"): every mini-bar would be one
-   solid run, so the rows drop it and the held-back figure, and read name,
-   windspeed, on-grid MW — the figure at the row's end (Owen). */
-.map-sources[data-mode='on'] .source-row {
-  grid-template-columns: 0.45rem minmax(0, 1fr) max-content;
+.source-row__mw-on {
+  color: var(--data-ink);
 }
 
-.map-sources[data-mode='on'] .source-row__bar,
-.map-sources[data-mode='on'] .source-row__mw--held {
-  display: none;
-}
-
-.source-row__mw--held {
+.source-row__mw-held {
   color: var(--held-text);
 }
 
-.source-row__mw--held[data-held='none'] {
-  color: var(--text-secondary);
-}
-
-/* The controls' cell: "Show 8 more farms" left, "Collapse" right once the list
+/* The controls' cell: "Show more" left, "Collapse" right once the list
    has grown. Always the list's last cell. */
 .map-sources__item--more:not([hidden]) {
   display: flex;
@@ -646,7 +665,7 @@ body {
   display: none;
 }
 
-/* "Show 8 more farms": a row's shape without its bar, a hollow dot in place of
+/* "Show more": a row's shape without its bar, a hollow dot in place of
    a filled one, underlined because it is a control (4d). */
 .map-sources__more {
   appearance: none;
@@ -686,9 +705,11 @@ body {
   margin: 0 -6px 0 auto;
 }
 
+/* "Show more"'s dot: a muted outline, so it never reads as a silent farm's
+   navy keyline. */
 .source-row__dot--hollow {
   background: none;
-  border: 1px solid var(--bar-on);
+  border: 1px solid var(--text-muted);
 }
 
 /* --- The settlement disclosure (4c §4c.4, re-cut by 4d) ------------------------
@@ -730,7 +751,7 @@ body {
   display: inline-flex;
   align-items: baseline;
   gap: 0.4em;
-  /* The same 6px tint bleed and 3px corners as "Show 8 more farms", so the
+  /* The same 6px tint bleed and 3px corners as "Show more", so the
      two controls hover alike. */
   padding: 0 6px;
   border-radius: 3px;
@@ -845,59 +866,111 @@ body {
   pointer-events: none;
 }
 
+/* The land, main stage and Shetland inset alike, in the pale idle track of the
+   bars (--ink-raised), so the page has one "nothing happening here" tone. */
 .map__island {
-  fill: #fff;
+  fill: var(--ink-raised);
   stroke: none;
 }
 
-/* A plain divider (4c, DECISIONS 029): display ink at full opacity, and inert —
-   nothing about it is hoverable, focusable or clickable. */
+/* A plain divider (4c, DECISIONS 029), now a cut in the land in the page's own
+   background colour (Owen) rather than a drawn line — and inert: nothing about
+   it is hoverable, focusable or clickable. */
 .map__border-line {
   fill: none;
-  stroke: var(--text-primary);
-  stroke-width: 3;
+  stroke: var(--ink-ground);
+  stroke-width: 5;
   stroke-linecap: round;
   pointer-events: none;
 }
 
-/* --- Farm markers (unchanged treatment, step 4 tokens) --------------------- */
+/* --- Farm markers ----------------------------------------------------------
+   One dot per farm (markers.ts): area by capacity, look by state — navy with
+   anything on the grid, periwinkle (keylined darker, for contrast) with
+   everything held back, a navy keyline with nothing at all. The source list's
+   dots use the same three. */
 .map__farm-marker {
-  stroke-width: 1.25;
   pointer-events: none;
-}
-
-/* Markers are wind *on the map*, so they take the live wind blue, which
-   matches the (untouched) flow — not the indigo the mix bars use. */
-.map__farm-marker[data-state='declaring'] {
-  fill: var(--wind-live);
-  stroke: rgb(255 255 255 / 0.7);
-}
-
-.map__farm-marker[data-state='held-down'] {
-  fill: url(#map-farm-hatch);
-  stroke: var(--curtailed-edge);
-  stroke-width: 1.5;
-}
-
-.map__farm-marker[data-state='silent'] {
-  fill: none;
-  stroke: var(--text-muted);
-  stroke-width: 1.5;
-  stroke-dasharray: 1.5 1.5;
-}
-
-/* Picking a farm out in the source list (4c.3): its marker takes --highlight and
-   grows a little, every other marker fades, and the flow does the same on the
-   canvas (particles.ts) — so the blue reads against a dimmed field, not against
-   the wind's own blue. Attributes, not classes, set by markers.ts; the inset
-   (Shetland) is a separate svg and is styled alike. */
-.map__farm-marker {
   transition: opacity var(--dur-quick) var(--ease-in-out);
 }
 
+.map__farm-dot {
+  stroke-width: 1.5;
+  paint-order: stroke;
+  /* A change of state fades across rather than snapping (markers.ts). */
+  transition:
+    fill var(--dur-base) var(--ease-in-out),
+    stroke var(--dur-base) var(--ease-in-out);
+}
+
+/* One ring sent out when a farm changes state, in its new colour. */
+.map__farm-pulse {
+  fill: none;
+  stroke-width: 1.5;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.map__farm-marker[data-state='on'] .map__farm-pulse { stroke: var(--bar-on); }
+.map__farm-marker[data-state='held'] .map__farm-pulse { stroke: var(--held-text); }
+.map__farm-marker[data-state='silent'] .map__farm-pulse { stroke: var(--bar-on); }
+
+.map__farm-pulse.is-pulsing {
+  animation: map-farm-pulse var(--dur-slow) var(--ease-out) 1;
+}
+
+@keyframes map-farm-pulse {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map__farm-pulse.is-pulsing {
+    animation: none;
+  }
+}
+
+.map__farm-marker[data-state='on'] .map__farm-dot {
+  fill: var(--bar-on);
+  stroke: var(--bar-on);
+}
+
+.map__farm-marker[data-state='held'] .map__farm-dot {
+  fill: var(--bar-off);
+  stroke: var(--held-text);
+}
+
+.map__farm-marker[data-state='silent'] .map__farm-dot {
+  fill: none;
+  stroke: var(--bar-on);
+}
+
+/* No reading (waiting, offline): a grey keyline — not a claim of silence. */
+.map__farm-marker[data-state='unknown'] .map__farm-dot {
+  fill: none;
+  stroke: var(--text-muted);
+}
+
+.map__farm-ring {
+  fill: none;
+  stroke: none;
+}
+
+/* Picking a farm out in the source list (4c.3): every other marker fades and
+   the flow does the same on the canvas (particles.ts); the picked marker keeps
+   its state, grows a little, and takes a --highlight ring, so the selection
+   reads without hiding what the farm is doing. The inset (Shetland) is a
+   separate svg and is styled alike. */
 .map__svg[data-highlighting] .map__farm-marker,
 .map__inset[data-highlighting] .map__farm-marker {
-  opacity: 0.28;
+  opacity: 0.12;
 }
 
 .map__svg[data-highlighting] .map__farm-marker[data-highlight],
@@ -908,19 +981,10 @@ body {
   transform: scale(1.6);
 }
 
-.map__svg[data-highlighting] .map__farm-marker[data-highlight][data-state='declaring'],
-.map__inset[data-highlighting] .map__farm-marker[data-highlight][data-state='declaring'] {
-  fill: var(--highlight);
-  stroke: #fff;
-  stroke-width: 1.5;
-}
-
-.map__svg[data-highlighting] .map__farm-marker[data-highlight][data-state='held-down'],
-.map__svg[data-highlighting] .map__farm-marker[data-highlight][data-state='silent'],
-.map__inset[data-highlighting] .map__farm-marker[data-highlight][data-state='held-down'],
-.map__inset[data-highlighting] .map__farm-marker[data-highlight][data-state='silent'] {
+.map__svg[data-highlighting] .map__farm-marker[data-highlight] .map__farm-ring,
+.map__inset[data-highlighting] .map__farm-marker[data-highlight] .map__farm-ring {
   stroke: var(--highlight);
-  stroke-width: 2.5;
+  stroke-width: 1.5;
 }
 
 /* The overlays are laid out by main.ts's positionOverlays() and stay hidden
@@ -1108,11 +1172,17 @@ body[data-panel-style='card'] .panel {
 }
 
 /* Pending and failed: the intensity slot carries a sentence ("Waiting for
-   Carbon Intensity"), not a figure — far too long for the side-by-side head
-   and for a 99px mobile panel. It gets its own row and is allowed to wrap. */
-.map-band:not([data-state='ok']) {
-  grid-template-columns: minmax(0, 1fr);
-  grid-template-areas: 'place' 'intensity' 'bar' 'legend' 'caption';
+   carbon intensity"), not a figure — far too long for the side-by-side head
+   and for a 99px mobile panel. The tier's own layout stays (--band-areas: a
+   different set of areas per tier, so it is never re-declared here); where the
+   head is a row (desktop) it stacks, and the sentence may wrap. */
+.map-band:not([data-state='ok']) .map-band__head {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.panel--scotland .map-band:not([data-state='ok']) .map-band__head {
+  align-items: var(--scotland-align);
 }
 
 .map-band:not([data-state='ok']) .map-band__intensity {
@@ -1134,6 +1204,12 @@ body[data-panel-style='card'] .panel {
 
 .map-band .mix__seg {
   box-shadow: none;
+}
+
+/* No mix to draw (waiting, offline): the bar stays as an empty pale track, as
+   the main bar's does, rather than vanishing from the panel. */
+.map-band:not([data-state='ok']) .mix {
+  background: var(--ink-raised);
 }
 
 /* The bar is too thin for an inline label; the legend below says every share. */
@@ -1520,4 +1596,45 @@ body.plate-mode {
 
 .plate__contrast-row[data-verdict='disclosed'] .plate__contrast-verdict {
   color: var(--signal-ageing);
+}
+
+/* --- Entrances (enter.ts) ----------------------------------------------------
+   `data-enter` is the entering look, with transitions off; a frame later it
+   comes off and each element's own transition below carries it in, delayed by
+   its place in the cascade (--enter-i). Transform and opacity only, so an
+   entrance never fights a bar's width sliding to a new reading. */
+[data-enter],
+[data-enter] .source-row__bar-track,
+.map-band .mix[data-enter] .mix__seg {
+  transition: none !important;
+}
+
+/* Bars: grown in from the left. */
+.map-sources .share__runs[data-enter],
+.map-sources__item[data-enter] .source-row__bar-track,
+.map-band .mix[data-enter] {
+  transform: scaleX(0);
+}
+
+.map-band .mix {
+  transform-origin: left center;
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+
+/* Labels, rows and legend items: faded up a few pixels into place. */
+.map-sources__label[data-enter],
+.map-sources__installed[data-enter],
+.map-sources__item[data-enter],
+.map-band .legend__item[data-enter] {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.map-sources__label,
+.map-sources__installed,
+.map-sources__item,
+.map-band .legend__item {
+  transition:
+    opacity var(--dur-base) var(--ease-out) calc(var(--enter-i, 0) * var(--cascade-step)),
+    transform var(--dur-base) var(--ease-out) calc(var(--enter-i, 0) * var(--cascade-step));
 }

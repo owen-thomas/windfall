@@ -1,7 +1,0 @@
-{
-  "functions": {
-    "api/windspeed.ts": {
-      "includeFiles": "src/map/data/farms.json"
-    }
-  }
-}

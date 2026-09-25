@@ -4,6 +4,8 @@ import { buildDivergentField, type DivergentField } from './divergentField';
 import { buildGeodesicField, type GeodesicField } from './geodesicField';
 import { buildRasterMask, paintCapsule, scanlineFillMask, type RasterMask } from './mask';
 import { buildProjection, type Projection, type ProjectionOptions } from './projection';
+import { buildRegions, type Regions } from './regions';
+import { buildTargetFields, type TargetField } from './targetField';
 import { originOf } from './sources';
 import type { Source, Vec2 } from './types';
 
@@ -28,6 +30,22 @@ export interface ResolvedSource {
   position: Vec2;
   /** True if the source's origin projected outside the mask and was auto-snapped. */
   wasSnapped: boolean;
+}
+
+/** A destination particles can head for (field.ts's `baseFieldMode: 'targets'`) — /map's cities. */
+export interface Target {
+  id: string;
+  name: string;
+  latLon: [number, number];
+  /** Relative pull — /map passes population. Only ratios between targets matter. */
+  weight: number;
+}
+
+/** A target resolved to canvas space, with its own path-over-land field. */
+export interface ResolvedTarget {
+  target: Target;
+  position: Vec2;
+  field: TargetField;
 }
 
 export interface World {
@@ -64,6 +82,10 @@ export interface World {
    * other (browser: 'f' key; harness: --baseFieldMode).
    */
   divergentField: DivergentField;
+  /** Destinations for `baseFieldMode: 'targets'`, each with its own field. Empty unless WorldBuildOptions.targets is passed (/flow never does). */
+  targets: ResolvedTarget[];
+  /** The land cut into regions for `baseFieldMode: 'blanket'` (see regions.ts). Null unless WorldBuildOptions.regionCount is passed (/flow never does). */
+  regions: Regions | null;
 }
 
 export interface WorldBuildOptions {
@@ -95,6 +117,10 @@ export interface WorldBuildOptions {
    * fractional default.
    */
   projectionOptions?: ProjectionOptions;
+  /** Destinations for `baseFieldMode: 'targets'` — see `Target`. One field is built per target, after corridors are painted. */
+  targets?: Target[];
+  /** How many regions to cut the land into for `baseFieldMode: 'blanket'` — see regions.ts. Omit to skip building them. */
+  regionCount?: number;
 }
 
 /**
@@ -253,5 +279,26 @@ export function buildWorld(
     options.divergentNorthwardCostMultiplier,
   );
 
-  return { projection, mask, distanceField, sources, maxInteriorDist, geodesicField, divergentField };
+  const targetList = options.targets ?? [];
+  const targetPositions = targetList.map((target) => projection.project(target.latLon));
+  const targetFields = buildTargetFields(mask, targetPositions, distanceField);
+  const targets: ResolvedTarget[] = targetList.map((target, i) => ({
+    target,
+    position: targetPositions[i],
+    field: targetFields[i],
+  }));
+
+  const regions = options.regionCount ? buildRegions(mask, distanceField, options.regionCount) : null;
+
+  return {
+    projection,
+    mask,
+    distanceField,
+    sources,
+    maxInteriorDist,
+    geodesicField,
+    divergentField,
+    targets,
+    regions,
+  };
 }

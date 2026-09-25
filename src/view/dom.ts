@@ -59,19 +59,31 @@ export function setText(node: Element, text: string): void {
  * flicker rather than as a moment worth noticing.
  */
 export function setTextCrossfade(node: HTMLElement, text: string): void {
-  if (node.textContent === text) return;
+  // Compare against where the node is heading, not what it shows mid-fade: a
+  // second call during a swap must not be judged "unchanged" against the old
+  // text and then overwritten when the first swap lands — that left a figure
+  // from one state beside a sentence from another.
+  const pending = swapTargets.get(node);
+  if ((pending ?? node.textContent) === text) return;
   // Populating an empty node is not a claim being replaced — there was
   // nothing on screen to contradict — so the very first placeholder ("Reading")
   // still appears the instant it is asked for, exactly as before this pass.
   // The interesting crossfade is the one after: placeholder to real reading,
   // or one reading to the next.
-  if (prefersReducedMotion() || node.textContent === '') {
+  if (prefersReducedMotion() || (pending === undefined && node.textContent === '')) {
+    swapTargets.delete(node);
     node.textContent = text;
     return;
   }
+  swapTargets.set(node, text);
+  // A swap already under way picks up the new target when it lands.
+  if (pending !== undefined) return;
   node.classList.add('is-swapping');
   const swap = () => {
-    node.textContent = text;
+    const target = swapTargets.get(node);
+    if (target === undefined) return;
+    swapTargets.delete(node);
+    node.textContent = target;
     node.classList.remove('is-swapping');
   };
   node.addEventListener('transitionend', swap, { once: true });
@@ -80,6 +92,9 @@ export function setTextCrossfade(node: HTMLElement, text: string): void {
   // text must not hang mid-fade forever.
   setTimeout(swap, 260);
 }
+
+/** The text each mid-crossfade node will show when its swap lands. */
+const swapTargets = new WeakMap<HTMLElement, string>();
 
 /** Set or remove an attribute in one call. */
 export function setAttr(node: Element, name: string, value: string | null): void {

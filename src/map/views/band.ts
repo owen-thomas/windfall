@@ -19,20 +19,12 @@
  * 4d: the caption sits behind the method disclosure's own pattern — a native
  * `<details>`, "▶ Show summary" / "▼ Hide summary", closed on first load — at
  * every tier (Owen). Through 4c a phone took it off the screen entirely.
- *
- * Scotland's caption only, a third clause: "Average wind speed 14 km/h." —
- * the mean of whatever `state.windspeed` (map step 4c.5, Open-Meteo) answered
- * for, across every tracked farm's coordinate, not filtered to farms
- * currently declaring output. Windspeed is a reading of the weather at a
- * location, not of a farm's operating state, so a silent farm's own wind
- * still counts — the same reasoning `sources.ts`'s per-farm "≋ N km/h" already
- * applies row by row. Omitted entirely (never "0 km/h") while the feed hasn't
- * answered for anything yet, per the product's own no-guessing rule.
  */
 
 import { el, setAttr, setText, setTextCrossfade, type View } from '../../view/dom';
+import { enter } from '../enter';
 import { FUEL_ORDER, orderMix } from '../../lib/fuels';
-import { formatIntensity, formatIntensityWords, formatPct, formatWindspeed, fuelLabel } from '../../lib/format';
+import { formatIntensity, formatIntensityWords, formatPct, fuelLabel } from '../../lib/format';
 import type { CurtailmentNow, RegionState } from '../../lib/types';
 import { speaksOfNow, type AppState } from '../../lib/state';
 import type { BandSpec } from '../../view/band';
@@ -62,6 +54,8 @@ export function mapBandView(spec: BandSpec): View {
 
   const legend = el('dl', { class: 'legend' });
   let legendKey = '';
+  /** The first mix has landed and played its entrance. */
+  let arrived = false;
 
   const caption = el('p', { class: 'map-band__caption' });
   const toggleText = el('span', { class: 'map-toggle__text', text: 'Show summary' });
@@ -140,6 +134,15 @@ export function mapBandView(spec: BandSpec): View {
         legendKey = key;
       }
 
+      // Arrival: the bar grows in from the left and the legend cascades in
+      // after it. Later readings slide the segments instead (flex-basis
+      // transitions, app.css).
+      if (!arrived) {
+        arrived = true;
+        enter([bar]);
+        enter([...legend.children] as HTMLElement[]);
+      }
+
       setTextCrossfade(caption, twoClauseCaption(spec, region, now, state));
     },
   };
@@ -169,15 +172,7 @@ function unknownOrStateCaption(
   return spec.caption[now.curtailedMW > 0 ? 'constrained' : 'clear'][tense];
 }
 
-/** The mean of every farm coordinate the windspeed feed has answered for so far, or null while it has answered for none. */
-function averageWindspeed(speeds: Record<string, number> | undefined): number | null {
-  if (!speeds) return null;
-  const values = Object.values(speeds);
-  if (values.length === 0) return null;
-  return values.reduce((sum, v) => sum + v, 0) / values.length;
-}
-
-/** The complete statement: for Scotland, the existing constraint-voice sentence, a second clause stating the bar's own lead-fuel share and intensity in prose (026), and a third giving the tracked fleet's average windspeed (4c.5); for England, one sentence of the two facts side by side (4d). */
+/** The complete statement: for Scotland, the existing constraint-voice sentence, and a second clause stating the bar's own lead-fuel share and intensity in prose (026); for England, one sentence of the two facts side by side (4d). */
 function twoClauseCaption(
   spec: BandSpec,
   region: RegionState,
@@ -204,8 +199,5 @@ function twoClauseCaption(
 
   const first = unknownOrStateCaption(spec, now, state);
   const second = `${formatPct(leadPct)} ${spec.lead} at ${words}.`;
-
-  const avg = averageWindspeed(state.windspeed?.speeds);
-  if (avg === null) return `${first} ${second}`;
-  return `${first} ${second} Average wind speed ${formatWindspeed(avg)}.`;
+  return `${first} ${second}`;
 }

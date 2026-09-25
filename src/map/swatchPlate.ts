@@ -64,7 +64,7 @@ const CONTRAST_ROWS: ContrastRow[] = [
   { fg: '--wind-live', bg: '--ink-ground', kind: 'graphic', use: 'farm markers' },
   { fg: '--highlight', bg: '--ink-ground', kind: 'graphic', use: 'the selected farm\'s marker and flow' },
   { fg: '--highlight', bg: '--ink-raised', kind: 'graphic', use: 'the selected row\'s dot, on its tint' },
-  { fg: '--fuel-wind', bg: '--ink-ground', kind: 'text', use: 'source rows: on-grid MW (and, from 4c.5, windspeed)' },
+  { fg: '--fuel-wind', bg: '--ink-ground', kind: 'text', use: 'source rows: on-grid MW' },
   { fg: '--fuel-wind', bg: '--ink-raised', kind: 'text', use: 'source rows: figures on the selected tint' },
   { fg: '--text-primary', bg: '--ink-raised', kind: 'text', use: 'source rows: farm names on the selected tint' },
   { fg: '--wind-live', bg: '--curtailed', kind: 'graphic', use: 'held-down marker edge on its fill' },

@@ -1,38 +1,43 @@
 /**
- * Turns a farm's live output into an emission weight for the particle
- * system — Windfall_Map_Spec.md §5.1/Part E.2. One named function, per the
- * spec, so the mapping from MW to "how many particles a second" is a single
- * place to read and to retune, not folded into the source-building loop.
+ * Turns the farms' live output into the flow — Windfall_Map_Spec.md
+ * §5.1/Part E.2, made strictly proportional (Owen): the flow shows what is on
+ * the grid and nothing else.
  *
- * Emission rate is texture, not a figure (020): the floor and cap below
- * exist so 76 real farms read as a tapestry with real proportion between
- * them, not a data readout. Neither end is calibrated to a physical unit —
- * "twice the output" does not have to mean "twice the particles" for the
- * map to be honest, only "more output, more visible thread", which a linear
- * map from 0..capacity delivers.
+ * - How many particles: the tracked farms' combined MW on the grid as a share
+ *   of their combined capacity (`flowDensity`), with no floor — a calm or
+ *   fully held-down period shows correspondingly little, and nothing on the
+ *   grid shows nothing.
+ * - Whose particles: each farm's MW on the grid as a share of the total
+ *   (`rateForMW`). A farm putting nothing on the grid — silent, idle, or held
+ *   down entirely — emits none.
+ *
+ * Still texture, not a figure (020): the density follows the share but isn't
+ * a scale anyone is meant to read MW off.
  */
-export interface RateParams {
-  /** Particles/sec a farm emits at zero output — a silent or fully curtailed farm still shows a thread, per the spec. */
-  floor: number;
-  /** Particles/sec cap at full declared capacity — keeps Seagreen (2 GW) from drowning every farm around it. */
-  cap: number;
-}
-
-export const DEFAULT_RATE_PARAMS: RateParams = { floor: 1, cap: 20 };
 
 /**
- * `instructedMW` is what the farm is actually being allowed to put out
- * (declared minus curtailed) — the honest quantity to drive the flow with,
- * per §4.3: a farm held fully down reads at the floor, not at its declared
- * output. `capacityMW` of 0 (should not occur for a tracked farm, but
- * guards div-by-zero) reads as the floor.
+ * A farm's emission weight: its MW on the grid (`instructedMW`, declared
+ * minus curtailed — the same quantity as the "on the grid" figure). Only
+ * ratios between farms matter to the particle system, so the weight is the
+ * MW itself.
  */
-export function rateForMW(
-  instructedMW: number,
-  capacityMW: number,
-  params: RateParams = DEFAULT_RATE_PARAMS,
-): number {
-  if (!(capacityMW > 0)) return params.floor;
-  const fraction = Math.min(1, Math.max(0, instructedMW / capacityMW));
-  return params.floor + fraction * (params.cap - params.floor);
+export function rateForMW(instructedMW: number): number {
+  return Math.max(0, instructedMW);
+}
+
+/**
+ * How much of the particle pool to show, 0..1: combined MW on the grid over
+ * combined capacity. 0 with no farm data at all — degraded, offline and
+ * waiting states show no flow.
+ */
+export function flowDensity(farms: { instructedMW: number; capacityMW: number }[] | null): number {
+  if (!farms || farms.length === 0) return 0;
+  let instructed = 0;
+  let capacity = 0;
+  for (const farm of farms) {
+    instructed += Math.max(0, farm.instructedMW);
+    capacity += Math.max(0, farm.capacityMW);
+  }
+  if (!(capacity > 0)) return 0;
+  return Math.min(1, instructed / capacity);
 }

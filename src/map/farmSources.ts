@@ -5,7 +5,7 @@
  */
 import type { Source } from '../flow/types';
 import type { FarmNow } from '../lib/types';
-import { DEFAULT_RATE_PARAMS, rateForMW, type RateParams } from './rate';
+import { rateForMW } from './rate';
 import farmsData from './data/farms.json';
 
 export interface FarmSite {
@@ -35,14 +35,6 @@ export interface FarmSite {
 
 export const FARM_SITES = farmsData as FarmSite[];
 
-export type FarmMarkerState = 'declaring' | 'held-down' | 'silent';
-
-/** A farm with no PN at the sampled instant is silent (§4.3's "blind" units); otherwise held down if any of its curtailment is nonzero, else plainly declaring. Never colour alone — see markers.ts's shape/hatch carriers. */
-export function markerStateFor(now: FarmNow | undefined): FarmMarkerState {
-  if (!now || now.unitsDeclaring === 0) return 'silent';
-  if (now.curtailedMW > 0) return 'held-down';
-  return 'declaring';
-}
 
 /**
  * True when a farm's own island isn't part of the current projection's fit
@@ -94,7 +86,7 @@ export function buildFarmSources(
         name: site.farm,
         latLon: site.landing!,
         type: 'wind',
-        rate: DEFAULT_RATE_PARAMS.floor,
+        rate: 0,
         palette: site.farm,
       };
     }
@@ -103,7 +95,7 @@ export function buildFarmSources(
       name: site.farm,
       latLon: site.latLon,
       type: 'wind',
-      rate: DEFAULT_RATE_PARAMS.floor,
+      rate: 0,
       palette: site.farm,
       offshore: site.offshore,
       landing: site.landing,
@@ -118,17 +110,12 @@ export function buildFarmSources(
  * it up (same "mutate then refresh" convention /flow's own per-source
  * sliders use — see controls.ts). A farm absent from `farmsNow` (a
  * degraded/offline/waiting fixture, which carries no curtailment payload at
- * all) reads as 0 MW instructed, i.e. the floor — not a stale, previously
- * fetched, still-declaring rate.
+ * all) reads as 0 MW on the grid, so emits nothing — not a stale,
+ * previously fetched, still-declaring rate.
  */
-export function applyFarmRates(
-  sources: Source[],
-  farmsNow: FarmNow[] | null | undefined,
-  rateParams: RateParams = DEFAULT_RATE_PARAMS,
-): void {
+export function applyFarmRates(sources: Source[], farmsNow: FarmNow[] | null | undefined): void {
   const byFarm = new Map((farmsNow ?? []).map((f) => [f.farm, f]));
   for (const source of sources) {
-    const now = byFarm.get(source.id);
-    source.rate = rateForMW(now?.instructedMW ?? 0, now?.capacityMW ?? 0, rateParams);
+    source.rate = rateForMW(byFarm.get(source.id)?.instructedMW ?? 0);
   }
 }
