@@ -11,7 +11,6 @@
     "probe": "npx tsx scripts/probe-api.ts",
     "spike:carbon": "npx tsx spike/carbon-intensity.ts",
     "spike:elexon": "npx tsx spike/elexon-curtailment.ts",
-    "narrate:eval": "npx tsx scripts/narrate-eval.ts",
     "flow:harness": "npx tsx scripts/flow-harness.ts",
     "farms:build": "npx tsx scripts/build-farms.ts",
     "farms:check": "npx tsx scripts/check-farms.ts",

@@ -1,25 +1,15 @@
 /**
- * Fetching the three functions — as two independent requests, not one.
+ * Fetching the page's two feeds, grid and curtailment: cheap CDN reads,
+ * requested together.
  *
- * Grid and curtailment are cheap CDN reads; narration is, on a cache miss, a
- * live Anthropic call that can take several seconds (DECISIONS 018). The two
- * used to be awaited together in a single Promise.allSettled, which meant
- * the first visitor of every settlement period had their entire screen wait
- * on the model finishing a sentence. fetchCoreFeeds and fetchNarration are
- * now separate calls so the caller can render the moment each resolves —
- * the narration landing late is not a bug to hide, it is the
- * template-to-generated swap the narration view already designs for.
- *
- * Neither call can fail the other, and neither can blank the screen: a
- * rejection becomes a transport error on that feed alone and the previous
- * payload is kept by the caller. The functions themselves always answer 200
+ * Neither can fail the other, and neither can blank the screen: a rejection
+ * becomes a transport error on that feed alone and the previous payload is
+ * kept by the caller. The functions themselves always answer 200
  * (DECISIONS 004), so a rejection here means the network or the platform,
- * not an upstream.
+ * not an upstream. (The narration, a third and slower feed fetched on its
+ * own, is archived: archive/narration, DECISIONS 043.)
  */
-
-import type { CurtailmentResponse, GridResponse, NarrationResponse } from './types.js';
-import { settlementAt } from './settlement.js';
-import type { SouthernRegion } from './situation.js';
+import type { CurtailmentResponse, GridResponse } from './types.js';
 
 const TIMEOUT_MS = 10_000;
 
@@ -63,31 +53,4 @@ export async function fetchCoreFeeds(): Promise<CoreFeeds> {
   else feeds.curtailmentError = reason(curtailment.reason);
 
   return feeds;
-}
-
-export interface NarrationFeed {
-  narration: NarrationResponse | null;
-  narrationError: string | null;
-}
-
-/**
- * `region` picks which southern region the server describes — South
- * England for `/` (the default), England for `/map` (Windfall_Map_Spec.md
- * step 3b Part B). It is part of the cache key on the server (api/narration.ts)
- * as well as the facts handed to the model, since one generated sentence
- * cannot serve two pages showing different regions.
- */
-export async function fetchNarration(region: SouthernRegion = 'south-england'): Promise<NarrationFeed> {
-  // Ask for narration by the period our own clock says is current. The
-  // server treats date/period only as a cache key and a sanity bound (it
-  // always generates against its own clock) — see api/narration.ts.
-  const { date, period } = settlementAt();
-  try {
-    const narration = await getJson<NarrationResponse>(
-      `/api/narration?date=${date}&period=${period}&region=${region}`
-    );
-    return { narration, narrationError: null };
-  } catch (err) {
-    return { narration: null, narrationError: reason(err) };
-  }
 }

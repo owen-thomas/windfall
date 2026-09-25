@@ -7,7 +7,7 @@
  * built system (Part B). Concretely, against step 3b:
  *
  * - The narration view, the wind note, and every eyebrow heading are gone
- *   from this page (narrate.ts and narrationView stay in the repo for `/`).
+ *   from this page (the narration itself is archived: archive/narration).
  * - mastheadView, headlineView and bandView (../view/*) are no longer used
  *   here — their DOM carries chrome (eyebrows, a strapline, a hidden legend,
  *   a capacity-denominator percentage) this page doesn't want, so the map

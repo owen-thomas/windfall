@@ -13,7 +13,7 @@
  */
 
 import { msUntilRollover, type SettlementRef } from './settlement.js';
-import type { CurtailmentResponse, GridResponse, NarrationResponse } from './types.js';
+import type { CurtailmentResponse, GridResponse } from './types.js';
 
 export type Freshness = 'fresh' | 'ageing' | 'stale';
 
@@ -28,14 +28,6 @@ export interface Feeds {
   gridError: string | null;
   curtailment: CurtailmentResponse | null;
   curtailmentError: string | null;
-  /**
-   * Absent for every fixture scenario by construction — scenarios.ts builds
-   * these synchronously and never calls the network, so the narration view
-   * always falls back to its local template for a fixture, which is the
-   * correct behaviour rather than a special case (see scenarios.ts).
-   */
-  narration: NarrationResponse | null;
-  narrationError: string | null;
 }
 
 export interface AppState extends Feeds {
@@ -56,8 +48,6 @@ export function emptyFeeds(): Feeds {
     gridError: null,
     curtailment: null,
     curtailmentError: null,
-    narration: null,
-    narrationError: null,
   };
 }
 

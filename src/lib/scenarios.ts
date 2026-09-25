@@ -50,13 +50,7 @@ function rebase(now: Date, ageMs: number): { grid: GridResponse; curtailment: Cu
   return { grid, curtailment };
 }
 
-/**
- * Fixtures never populate narration — scenario.build() is synchronous and
- * never touches the network, so this is always null here and the narration
- * view always renders its local template for a fixture (see state.ts). That
- * is the correct, honest state for a screen showing invented figures: paying
- * a model to describe a grid that is not real would be worse, not better.
- */
+/** A fixture's feeds: its grid and curtailment, and nothing fetched. */
 function feeds(grid: GridResponse | null, curtailment: CurtailmentResponse | null): Feeds {
   return { ...emptyFeeds(), grid, curtailment };
 }
