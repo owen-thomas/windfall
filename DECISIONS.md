@@ -1483,5 +1483,4 @@ This closes 4c.5, and with it the whole of Windfall_Map_Spec_4c.md.
 
 **Pending, by Owen's call:** the AI narration (`api/narration.ts` and its client fetch), which nothing on the site now calls, is archived once the new site is live, per 026's plan.
 
-
-**Social image replaced** (`public/og.png`, `scripts/build-og.ts`): rendered from the page itself at 1200×630, 2×, so type, palette, markers and flow are what a visitor sees. Evergreen by design: the site's title and a line on what it shows ("How much of Scotland's wind is held back from the grid, every half hour"), a two-dot key, and the map from the `curtailing` fixture with the flow developed. No figures, because the live headline would be stale within the half hour of a share.
+**Social image replaced** (`public/og.png`, 2000×1050, Owen's design): "Windfall≋" large, "Scottish energy tracker" beneath, and the map cropped to Scotland with its farms and the flow leaving them. Brand-led rather than a sentence, because the wordmark reads instantly in a feed and the farms are where the story starts; "energy" rather than "wind" because the brand already says wind and the page tracks the grid mix too. No figures, which would be stale within the half hour of a share. A first version rendered from the page by script (title, sentence, key, all of Great Britain) was set aside for it.
