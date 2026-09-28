@@ -8,6 +8,7 @@ import { buildRegions, type Regions } from './regions';
 import { buildTargetFields, type TargetField } from './targetField';
 import { originOf } from './sources';
 import type { Source, Vec2 } from './types';
+import type { SharedField } from './sharedField';
 
 export const GB_RING = (gbMainland as unknown as { ring: [number, number][] }).ring;
 
@@ -86,6 +87,12 @@ export interface World {
   targets: ResolvedTarget[];
   /** The land cut into regions for `baseFieldMode: 'blanket'` (see regions.ts). Null unless WorldBuildOptions.regionCount is passed (/flow never does). */
   regions: Regions | null;
+  /**
+   * The one direction per point for `baseFieldMode: 'shared'` (sharedField.ts).
+   * Not built here: it's shaped by the sources' live output, so the caller
+   * builds it, and rebuilds it as that changes. Unset until then.
+   */
+  shared?: SharedField;
 }
 
 export interface WorldBuildOptions {

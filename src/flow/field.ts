@@ -95,8 +95,14 @@ export interface FieldParams {
    *   converging on a few cities. Many particles are also born partway along
    *   their route (particles.ts), so the whole route fills, not just its
    *   Scottish end.
+   * - 'shared': one direction per point, world.shared (sharedField.ts): the
+   *   potential flow from the sources, weighted by output, to a sink spread
+   *   over the land. Particles at the same point move the same way, as wind
+   *   does. No destinations, no per-particle lateral drift, no east-west fan;
+   *   a particle ends where its flow is used (particles.ts). Falls back to
+   *   'south' until world.shared is built.
    */
-  baseFieldMode: 'divergent' | 'south' | 'targets' | 'blanket';
+  baseFieldMode: 'divergent' | 'south' | 'targets' | 'blanket' | 'shared';
   /**
    * Master toggle for 2g's density-aware spacing mechanism (the steering
    * term below, plus particles.ts's coverage-recycling death cause). Off
@@ -533,7 +539,14 @@ export function sampleField(
   // noise, steering) still layers on top of this base direction exactly as
   // before — only what it follows has changed.
   const targetField = routeFieldFor(world, params.baseFieldMode, traits.targetIndex);
-  if (params.pathWeight > 0) {
+  const shared = params.baseFieldMode === 'shared' ? world.shared : undefined;
+  if (params.pathWeight > 0 && shared) {
+    const { dx, dy } = shared.sample(x, y);
+    if (dx !== 0 || dy !== 0) {
+      vx = vx * (1 - params.pathWeight) + dx * params.driftStrength * driftScale * params.pathWeight;
+      vy = vy * (1 - params.pathWeight) + dy * params.driftStrength * driftScale * params.pathWeight;
+    }
+  } else if (params.pathWeight > 0) {
     const path = targetField
       ? targetField.sample(x, y)
       : params.baseFieldMode === 'divergent'
@@ -578,7 +591,7 @@ export function sampleField(
   const halfWidth = (bounds.right - bounds.left) / 2 || 1;
   const centerX = (bounds.left + bounds.right) / 2;
   const lateralPos = Math.min(1, Math.max(-1, (x - centerX) / halfWidth));
-  if (!targetField) vx += params.driftSpread * s * lateralPos * params.driftStrength;
+  if (!targetField && !shared) vx += params.driftSpread * s * lateralPos * params.driftStrength;
 
   const { dist, gx, gy } = world.distanceField.sample(x, y);
 
@@ -652,7 +665,8 @@ export function sampleField(
 
   // --- Per-particle lateral bias (2c): fixed-at-spawn personality, so even
   // a fully deterministic field fans out under per-particle constants.
-  vx += traits.lateralBias;
+  // Not under 'shared': particles at one point move as one.
+  if (!shared) vx += traits.lateralBias;
 
   // --- Density-aware spacing (2g): a capped push down the local occupancy
   // gradient, but only where it's actually crowded (local density over a

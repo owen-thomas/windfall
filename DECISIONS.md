@@ -1538,7 +1538,7 @@ This closes 4c.5, and with it the whole of Windfall_Map_Spec_4c.md.
 
 **Date:** 2026-09-28
 **Phase:** Post-launch, the map's flow
-**Decision:** The flow's speed and stroke width are scaled by `lookScale`: the screen's pixel ratio over 2, times the drawn land's linear size over its size at 1440×900 (156,000 css px², measured), the latter never below 1. Speed sets trail length (speed × the fade's time), so a bigger map gets longer, heavier trails in proportion; the particle count is unchanged.
+**Decision:** The flow's speed and stroke width are scaled by `lookScale`: the screen's pixel ratio over 2, times the drawn land's linear size over its size on a 375×812 phone (47,700 css px², measured), the latter never below 1. Speed sets trail length (speed × the fade's time), so a bigger map gets longer, heavier trails in proportion; the particle count is unchanged.
 
 **Why:** Owen compared staging with live on two screens and live looked far sparser than its reading. The counts were right (271 live at 13.6%, 506 on the curtailing fixture at 25.3%), but speed (45) and stroke width (1.1) were constants in device px. So a map drawn ~1.9× taller spread the same trails over ~3.5× the area. And a 1× screen drew lines twice as heavy and fast, in css px, as the 2× screen the flow was tuned on.
 
@@ -1546,4 +1546,47 @@ This closes 4c.5, and with it the whole of Windfall_Map_Spec_4c.md.
 
 **Tried first: scaling the particle pool with the land's area.** It evened the density (32.4–32.5 particles per 10,000 css px² at all three sizes) but starved phones: at live's 13.6%, 84 particles, 64 of them the one-each floor for producing farms (038), leaving 20 to share by MW, so a 2 MW farm read almost like Seagreen. Scaling the trails leaves the count, and so the share by farm, the same on every screen.
 
+**The reference is the phone's map.** First built against the land at 1440×900 (156,000 css px²), on the assumption that was where the flow was tuned. Seen live side by side, Owen found desktop too subtle next to the phone, whose small map carries the same trails at ~3.3× the ink per unit of land, and whose long, curving streams from the farms were the look he wanted. So bigger maps scale up from the phone's: at 1440×900, scale 1.81, speed 40.7 css px/s (so trails 1.8× longer), width 1.0 css px, the same 212 particles on the live reading. The ink figures above were measured against the 1440×900 reference and now scale up by 3.3× on desktop; phones are unchanged.
+
 **Known:** a rebuild (a resize) resets the dev panel's speed slider to the tuned speed at the new scale. Lifetimes already scale with the map's height over speed, so crossing time is unchanged.
+
+## 048 — The held-back flow is dashed
+
+**Date:** 2026-09-28
+**Phase:** Post-launch, the map's flow
+**Decision:** The held-back flow draws broken trails, 5 css px on and 4 off at the phone's scale (scaled with the trails, 047), measured along each particle's own path from a random phase. The flow on the grid stays solid. Both keep their colours.
+
+**Why:** Owen found the two hard to tell apart once 047 made them heavier. Colour alone can't do it: the on-grid flow (hue 216°, 42% lightness) and the held-back periwinkle (228°, 73%) sit a few jittered degrees apart, and an on-grid trail fading out over the cream land passes through almost exactly the held-back colour, so every on-grid tail reads like a held-back head. A difference of form holds where the colours meet, and doesn't depend on seeing colour. Considered: slow, short held-back flecks on their own canvas (subtler, and puts meaning in motion), and the on-grid flow in the bar's navy (its fading tails still pass through periwinkle).
+
+## 049 — The flow is one shared field
+
+**Date:** 2026-09-28
+**Phase:** Post-launch, the map's flow
+**Decision:** The map's flow follows one direction per point (`baseFieldMode: 'shared'`, `src/flow/sharedField.ts`), replacing 037's per-particle destinations. The field is the potential flow from the farms, each weighted by its declared output (on the grid and held back alike), to a sink spread evenly over the land: Poisson's equation on the 12px land grid, no flow across the coast, solved by over-relaxation (1,200 sweeps; against 4,000 at desktop size the direction differs by 0.07° on average, 3.6° at most; ~86ms per build). A particle ends, per cell it travels, with the chance local sink ÷ local flux, which is exactly the share of a stream tube's flux the land it crosses soaks up, so particles end where their flow is used and none pile up where it runs out. Most are born partway along their farm's own traced flow, scattered up to 40px sideways as 037's births were. The border's limit (046) scales England's share of the sink, so the flux crossing it is the limit's share of the open one. Off under 'shared': per-particle lateral drift, the east-west fan, and the density spacing push. The field is rebuilt with the world, on each reading and when the limit changes.
+
+**Why:** Owen: north of the border the flow swirled around the farm clusters, "individual sperm swimming in competition" rather than the unified, sweeping motion of a wind map. Under 'blanket' each particle headed for its own point across the land, so particles at the same place went different ways, most visibly where dozens start at a cluster of farms.
+
+**Why not the obvious shared field.** Averaging where 'blanket' sends particles from each point would aim every point at the middle of the land south of it, pulling west and east toward one spine: 037's river down the Pennines. A sink spread over the land makes every cell soak up flow, so the lines fan out to cover it instead.
+
+**Measured, live reading (184 on-grid particles), 25s settle then 8s of samples, 24px land cells:**
+
+| | blanket (037) | shared |
+|---|---|---|
+| Neighbours within 30px moving the same way (mean cosine of headings) | 0.854 (~31° apart) | 0.973 (~13°) |
+| Land reached | 80.2% | 81.1% |
+| England reached | 89.5% | 86.8% |
+| Share in the busiest 5% of land | 0.243 | 0.246 |
+
+Measured before the sideways scatter was added. Without it the flow drew in lanes: one farm's particles shared a handful of lines.
+
+'blanket' and 'targets' stay on the dev panel's field button.
+
+## 050 — The farms read as points: births clear of the markers, a softer flow
+
+**Date:** 2026-09-28
+**Phase:** Post-launch, the map's flow
+**Decision:** A particle born at a farm starts in a ring just outside the farm's marker and selection ring (the marker's radius for its capacity plus the ring offset, `markerClearance` in `markers.ts`), not on its centre, so no trail head sits on a marker. And both flows are drawn softer: stroke opacity 0.9 → 0.55, on the grid and held back alike, keeping the difference between them.
+
+**Why:** Owen: the farms were getting lost in the flow and read as "ink blots rather than meaningful data points". Two causes: every producing farm's guaranteed particle (038), and 15% of all births (037), start exactly at the marker, so trail heads stacked on it; and markers and flow are the same ink, so at 047's heavier trails the flow competed with them. The markers' radii are in the map svg's units, which are the flow canvas's device px (measured: Seagreen's `r="8"` draws 8 css px across on a 2× screen), so the clearance needs no conversion. A halo round each marker and a darker marker ink were the other options; the first two were enough, seen magnified over the central-belt cluster.
+
+**Noticed, not changed:** markers.ts documents the largest marker as "16px across", but its radius is in device px, so it's 8 css px across on a 2× screen and 16 on a 1× one: markers are drawn at different css sizes on different screens.

@@ -443,6 +443,13 @@ export interface ParticleSystemOptions {
    * anywhere short of 1. /map's held-back wind fades out before the border.
    */
   fade?: (x: number, y: number) => number;
+  /**
+   * How far from its source's point a particle born there starts, device px,
+   * by source index: /map passes each farm's marker radius, so no trail head
+   * sits on a marker and the farms read as points rather than ink blots.
+   * Births are spread round a ring this far out, `spawnJitterRadius` deep.
+   */
+  birthClearance?: (sourceIndex: number) => number;
 }
 
 /**
@@ -500,6 +507,17 @@ export class ParticleSystem {
   // Step 3 (art pass) persistent per-particle traits: fixed-at-spawn
   // texture, not resampled per frame — see palette.ts's docs on why these
   // are quantized to a few buckets (-1, 0, 1) rather than continuous.
+  /** Device px travelled since birth — what a dashed trail (`dash`) is measured along. */
+  travelled: Float32Array;
+
+  /**
+   * Draw trails dashed: `on` device px drawn, then `off` skipped, measured
+   * along each particle's own path from a random phase, so neighbours' dashes
+   * don't line up. Null draws them solid. /map dashes the held-back flow, so
+   * it reads apart from the flow on the grid by its form, not only its colour.
+   */
+  dash: { on: number; off: number } | null = null;
+
   /** Hue-jitter bucket, -1/0/1 — see palette.ts's HUE_JITTER_STEP_DEG. */
   hueBucket: Int8Array;
   /** Stroke-width-jitter bucket, -1/0/1 — see palette.ts's WEIGHT_JITTER_STEP. */
@@ -592,6 +610,7 @@ export class ParticleSystem {
     this.destY = new Float32Array(count);
     this.hueBucket = new Int8Array(count);
     this.weightBucket = new Int8Array(count);
+    this.travelled = new Float32Array(count);
     this.densityField = buildDensityField(world.mask);
     this.style = this.options.style ?? { ...DEFAULT_PARTICLE_STYLE };
     this.fieldParams = this.options.fieldParams ?? DEFAULT_FIELD_PARAMS;
@@ -648,7 +667,8 @@ export class ParticleSystem {
     // A picked farm's particles are born at the farm (see respawn), so its
     // flow reads from the farm outward. The ones already out mid-journey are
     // re-born there now rather than lingering, scattered, until they age out.
-    if (this.highlightIndex >= 0 && this.fieldParams.baseFieldMode === 'blanket') {
+    const mode = this.fieldParams.baseFieldMode;
+    if (this.highlightIndex >= 0 && (mode === 'blanket' || mode === 'shared')) {
       for (let i = 0; i < this.activeCount; i++) {
         if (this.sourceIndex[i] === this.highlightIndex) this.respawn(i, true);
       }
@@ -855,10 +875,22 @@ export class ParticleSystem {
     // step 4's `style.spawnJitterRadius` (the spec's "source outflow
     // radius" — see ParticleStyle's own docs for why this, and not a
     // separate small-radius field term, is what survived to be that knob).
-    const jitterR = this.style.spawnJitterRadius * Math.sqrt(Math.random());
-    const jitterA = Math.random() * Math.PI * 2;
-    let sx = resolved.position[0] + Math.cos(jitterA) * jitterR;
-    let sy = resolved.position[1] + Math.sin(jitterA) * jitterR;
+    const clearance = this.options.birthClearance?.(srcIdx) ?? 0;
+    let sx = resolved.position[0];
+    let sy = resolved.position[1];
+    // A few tries at a point off the source that's on land; clear of a
+    // marker, the ring round it can dip into the sea at a coastal farm.
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const jitterR = clearance + this.style.spawnJitterRadius * Math.sqrt(Math.random());
+      const jitterA = Math.random() * Math.PI * 2;
+      const jx = resolved.position[0] + Math.cos(jitterA) * jitterR;
+      const jy = resolved.position[1] + Math.sin(jitterA) * jitterR;
+      if (this.world.mask.isInside(jx, jy)) {
+        sx = jx;
+        sy = jy;
+        break;
+      }
+    }
     // resolved.position is guaranteed inside the mask (buildWorld either
     // found it naturally inside or walked it there with a snap buffer),
     // but an un-snapped source sitting close to a simplified coastline has
@@ -903,6 +935,28 @@ export class ParticleSystem {
         }
         route = field.sample(sx, sy).dist;
       }
+    } else if (mode === 'shared' && this.world.shared) {
+      // No destination: the particle follows the shared field and ends where
+      // its flow is used (step). Most are born partway along their farm's own
+      // flow, as under 'blanket', so the whole of it fills, not just its start.
+      this.targetIndex[i] = -1;
+      this.destX[i] = sx;
+      this.destY[i] = sy;
+      const fromSource = this.time < this.fromSourcesUntil;
+      if (
+        srcIdx !== this.highlightIndex &&
+        !onlyThread &&
+        !fromSource &&
+        Math.random() >= this.style.farmBirthShare
+      ) {
+        const born = this.alongFlowBirth(sx, sy);
+        if (born) {
+          sx = born.x;
+          sy = born.y;
+        }
+      }
+      const { dx, dy } = this.world.shared.sample(sx, sy);
+      if (dx !== 0 || dy !== 0) heading = [dx, dy];
     } else if (mode === 'targets') {
       this.targetIndex[i] = this.pickTargetIndex(sx, sy);
       const target = this.world.targets[this.targetIndex[i]];
@@ -928,6 +982,7 @@ export class ParticleSystem {
     this.hx[i] = Math.cos(angle);
     this.hy[i] = Math.sin(angle);
     this.age[i] = 0;
+    this.travelled[i] = 0;
     const { min, extra } = this.ageBudgetRange();
     this.maxAge[i] = min + Math.random() * extra;
     this.speed[i] = 1 + (Math.random() - 0.5) * 0.4 * j;
@@ -1018,6 +1073,54 @@ export class ParticleSystem {
       if (!this.world.mask.isInside(x, y)) continue;
       if (this.options.fade && this.options.fade(x, y) < 1) continue;
       return { x, y, heading: [ux, uy] };
+    }
+    return null;
+  }
+
+  /** Scratch path for alongFlowBirth, reused so respawn stays allocation-free. */
+  private flowPathX = new Float32Array(1024);
+  private flowPathY = new Float32Array(1024);
+
+  /**
+   * Under 'shared': where a particle leaving (fx, fy) would be partway through
+   * its life. Its path is traced along the shared field, ending by the same
+   * chance a live particle does (step), and the birth lands somewhere along
+   * it, leaning toward the far end by `midJourneyBias` as midJourneyBirth
+   * does, and scattered sideways off it as midJourneyBirth does: the field is
+   * one direction per point, so particles traced from one farm otherwise
+   * share a handful of lines and the flow draws in lanes. Null if the traced
+   * path is empty, or the point lands off the land or where a fade says the
+   * flow isn't fully drawn; the particle is then born at its farm.
+   */
+  private alongFlowBirth(fx: number, fy: number): { x: number; y: number } | null {
+    const shared = this.world.shared;
+    if (!shared) return null;
+    const STEP_PX = 4;
+    let x = fx;
+    let y = fy;
+    let n = 0;
+    while (n < this.flowPathX.length) {
+      const { dx, dy } = shared.sample(x, y);
+      if (dx === 0 && dy === 0) break;
+      x += dx * STEP_PX;
+      y += dy * STEP_PX;
+      if (!this.world.mask.isInside(x, y)) break;
+      this.flowPathX[n] = x;
+      this.flowPathY[n] = y;
+      n++;
+      if (Math.random() < shared.endChance(x, y, STEP_PX)) break;
+    }
+    if (n === 0) return null;
+    const t = Math.pow(Math.random(), 1 / (1 + this.style.midJourneyBias));
+    const k = Math.min(n - 1, Math.floor(t * n));
+    const { dx, dy } = shared.sample(this.flowPathX[k], this.flowPathY[k]);
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const side = (Math.random() - 0.5) * 2 * MID_JOURNEY_SCATTER_PX;
+      const bx = this.flowPathX[k] - dy * side;
+      const by = this.flowPathY[k] + dx * side;
+      if (!this.world.mask.isInside(bx, by)) continue;
+      if (this.options.fade && this.options.fade(bx, by) < 1) continue;
+      return { x: bx, y: by };
     }
     return null;
   }
@@ -1213,6 +1316,8 @@ export class ParticleSystem {
         this.strikes[i] = 0;
       }
 
+      this.travelled[i] += Math.hypot(this.x[i] - this.px[i], this.y[i] - this.py[i]);
+
       // Faded out (ParticleSystemOptions.fade): nothing left to draw.
       if (this.options.fade && this.options.fade(this.x[i], this.y[i]) <= 0) {
         this.options.onDeath?.(i, 'vanish', this.age[i]);
@@ -1285,6 +1390,10 @@ export class ParticleSystem {
         arrived = target !== undefined && target.field.sample(this.x[i], this.y[i]).dist < TARGET_ARRIVE_PX;
       } else if (fieldParams.baseFieldMode === 'blanket' && this.targetIndex[i] >= 0) {
         arrived = Math.hypot(this.destX[i] - this.x[i], this.destY[i] - this.y[i]) < TARGET_ARRIVE_PX;
+      } else if (fieldParams.baseFieldMode === 'shared' && world.shared) {
+        // Its flow used by the land it crossed this frame (sharedField.ts).
+        const moved = Math.hypot(this.x[i] - this.px[i], this.y[i] - this.py[i]);
+        arrived = Math.random() < world.shared.endChance(this.x[i], this.y[i], moved);
       }
 
       let cause: DeathCause | null = null;
@@ -1330,7 +1439,12 @@ export class ParticleSystem {
       for (const bucket of this.renderBuckets) bucket.length = 0;
     }
 
+    const { dash } = this;
+    const dashPeriod = dash ? dash.on + dash.off : 0;
     for (let i = 0; i < this.activeCount; i++) {
+      // In a dash's gap: this frame's segment isn't drawn. noisePhase is a
+      // fixed random per particle, reused as the dash's phase.
+      if (dash && (this.travelled[i] + this.noisePhase[i]) % dashPeriod >= dash.on) continue;
       const level = fade ? Math.min(levels, Math.ceil(fade(this.x[i], this.y[i]) * levels)) - 1 : 0;
       if (level < 0) continue;
       const bucketIndex =
