@@ -74,6 +74,9 @@ function unwrap<T>(body: unknown): T[] {
   return Array.isArray(data) ? (data as T[]) : [];
 }
 
+/** Elexon answered, but hasn't published this period yet (DECISIONS 044). */
+export class NotPublishedError extends Error {}
+
 export async function fetchPN(settlementDate: string, period: number): Promise<PNItem[]> {
   const url = `${BASE}/datasets/PN?settlementDate=${settlementDate}&settlementPeriod=${period}`;
   const items = unwrap<PNItem>(await fetchJson(url));
@@ -82,7 +85,7 @@ export async function fetchPN(settlementDate: string, period: number): Promise<P
   // Elexon hasn't published the period, not that the wind has stopped. Read as
   // a reading, it would put every farm at 0 MW and the page at "100% on the grid".
   if (scottish.length === 0) {
-    throw new Error(`no PN published for ${settlementDate} period ${period}`);
+    throw new NotPublishedError(`no PN published for ${settlementDate} period ${period}`);
   }
   return scottish;
 }
@@ -97,6 +100,19 @@ export async function fetchPN(settlementDate: string, period: number): Promise<P
 const BOALF_LOOKBACK_PERIODS = 4;
 
 export async function fetchBOALF(settlementDate: string, period: number): Promise<BOALFItem[]> {
+  return (await fetchBOALFWindow(settlementDate, period)).items;
+}
+
+/**
+ * `fetchBOALF`, plus how far Elexon has published: the latest acceptance time
+ * across every GB unit in the window, not only the tracked ones, which are too
+ * sparse to show where the feed stops. Acceptances arrive in time order, so any
+ * instant up to `publishedTo` has every acceptance in force at it (DECISIONS 045).
+ */
+export async function fetchBOALFWindow(
+  settlementDate: string,
+  period: number
+): Promise<{ items: BOALFItem[]; publishedTo: number | null }> {
   // Two filters are unreliable upstream, so both are applied here instead:
   // bmUnit returns nothing, and the period filter matches only the start
   // period of an acceptance. Hence a lookback window, unfiltered by unit.
@@ -113,8 +129,11 @@ export async function fetchBOALF(settlementDate: string, period: number): Promis
 
   const seen = new Set<string>();
   const items: BOALFItem[] = [];
+  let publishedTo: number | null = null;
   for (const body of responses) {
     for (const item of unwrap<BOALFItem>(body)) {
+      const accepted = Date.parse(item.acceptanceTime);
+      if (Number.isFinite(accepted) && (publishedTo === null || accepted > publishedTo)) publishedTo = accepted;
       if (!SCOTTISH_WIND_SET.has(item.nationalGridBmUnit)) continue;
       // Windows can overlap at a date boundary; segments are identified by
       // acceptance plus their own time span.
@@ -124,7 +143,7 @@ export async function fetchBOALF(settlementDate: string, period: number): Promis
       items.push(item);
     }
   }
-  return items;
+  return { items, publishedTo };
 }
 
 /**

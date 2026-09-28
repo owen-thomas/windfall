@@ -1497,4 +1497,18 @@ This closes 4c.5, and with it the whole of Windfall_Map_Spec_4c.md.
 
 **Why:** on the morning of 28 September Elexon stopped publishing PN and BOALF after period 12 (05:30–06:00 BST). Each later period answered HTTP 200 with `{"data":[]}`. The endpoint read that as a reading: every farm declaring 0 MW, health "ok", and the live page saying "100% of Scotland’s tracked wind is currently on the grid" over "0 MW on the grid", while NESO had Scotland's mix at 91% wind. Every unit submits a PN each period, even at 0 MW, so an empty answer only ever means the period isn't published.
 
-**Not done:** falling back to the last published period. That would keep figures on screen through an outage, but in the past tense, and it's a design call for Owen.
+**Superseded the same morning by 045:** the empty period is no longer the end of it; the endpoint falls back to the last half hour Elexon published.
+
+## 045 — Through an Elexon outage, the page shows the last half hour it published
+
+**Date:** 2026-09-28
+**Phase:** Post-launch fix
+**Decision:** When the current period's PN isn't published, `/api/curtailment` reads the newest period that is, up to 12 hours back (asked six periods at a time). Health is `partial` ("Elexon partly answering"), and the page words the reading in the past tense, naming its own half hour ("At least 38% … was held back from the grid between 05:00 and 05:30."). `settled` moves back with it. More than 12 hours behind, or no BOALF at all, and the page shows its degraded state (044).
+
+**Why:** Owen: "old data is better than no data". The page already had the past-tense wording for an old reading (010), so only the endpoint changed.
+
+**The reading waits for BOALF too.** On 28 September Elexon published PN to 06:30 BST but BOALF only to 05:18, and the half hours near BOALF's edge were thin (10 and 50 acceptances against a usual ~400). Read at the end of PN's last period, every farm declared and almost none held back: "0 MW held back". Read at BOALF's cut-off, the same morning showed 1,183 MW held back of 3,041. So the reading is sampled at the latest instant both feeds cover. BOALF's cut-off is its newest acceptance time across all GB units, not only the tracked ones; acceptances arrive in time order and are issued before they take effect, so everything in force up to that instant is known. BOALF counts as lagging once its newest acceptance is more than 20 minutes old (GB sees a few hundred a half hour). The normal path is unchanged: checked at 19:12 BST on 27 September and 10:40 on 26 September, it reads the current period, health `ok`.
+
+**Unmeasured:** BOALF's normal real-time publication lag. If it regularly runs past 20 minutes, ordinary readings would go into the past tense; watch for "partly answering" on a normal day.
+
+**Known mismatch:** the settlement heading ("10:30 to 11:00 Settlement period 22") follows the grid mix's clock, so during a fallback it names a different half hour from the headline.
