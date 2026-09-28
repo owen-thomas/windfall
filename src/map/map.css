@@ -1260,6 +1260,14 @@ body[data-panel-style='card'] .panel {
   height: 0.5rem;
 }
 
+/* The rest of the mix, one run (DECISIONS 051), in the imports grey (4d's,
+   re-tinted to the ground) rather than --fuel-other: the quieter of the two,
+   so wind and gas carry the panel (Owen). /map only; / keeps its colours. */
+.map-band .mix__seg[data-fuel='other'],
+.map-band .legend dt[data-fuel='other'] .legend__swatch {
+  background: var(--fuel-imports);
+}
+
 /* 4d: the caption sits behind "▶ Show summary" (views/band.ts), at every tier. */
 .map-band__more {
   grid-area: caption;
