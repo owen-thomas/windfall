@@ -1590,3 +1590,11 @@ Measured before the sideways scatter was added. Without it the flow drew in lane
 **Why:** Owen: the farms were getting lost in the flow and read as "ink blots rather than meaningful data points". Two causes: every producing farm's guaranteed particle (038), and 15% of all births (037), start exactly at the marker, so trail heads stacked on it; and markers and flow are the same ink, so at 047's heavier trails the flow competed with them. The markers' radii are in the map svg's units, which are the flow canvas's device px (measured: Seagreen's `r="8"` draws 8 css px across on a 2× screen), so the clearance needs no conversion. A halo round each marker and a darker marker ink were the other options; the first two were enough, seen magnified over the central-belt cluster.
 
 **Noticed, not changed:** markers.ts documents the largest marker as "16px across", but its radius is in device px, so it's 8 css px across on a 2× screen and 16 on a 1× one: markers are drawn at different css sizes on different screens.
+
+## 051 — The mix panels show wind, gas and the rest
+
+**Date:** 2026-09-28
+**Phase:** Post-launch
+**Decision:** The map's two mix panels show three runs instead of every fuel: wind (`--fuel-wind`), gas (`--fuel-gas`) and everything else as one grey run (`--fuel-other`). Bar and legend share one order, wind, gas, other, and all three always show, 0% gas included. Wind and gas are rounded as shown and "other" is what's left of 100, so each panel adds up (62.5% wind and 37.5% the rest would otherwise both round up, to 101%). `/` keeps the full breakdown (`src/view/band.ts`, unchanged).
+
+**Why:** Owen: the mixes were very colourful, but the important information is the contrasting mix of wind and gas between Scotland and England (at the time, Scotland 63% wind and 0% gas, England 7% wind and 40% gas). Seven fuel colours competed with those two numbers. The bar first ran wind, other, gas, keeping fuels.ts's zero-carbon-first order with gas as the tail; Owen asked for it to match the legend's order instead.
