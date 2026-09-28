@@ -739,7 +739,12 @@ body {
 .map-settlement__summary {
   display: flex;
   align-items: baseline;
-  gap: var(--gap-md);
+  /* Only ever seen when the row is tight: the clock grows and pushes the toggle
+     to the far edge. At 64rem, the text column's narrowest, --gap-md left the
+     widest heading ("22:00 to 22:30 Settlement period 45") 4px short, and
+     "Settlement period" wrapped; --gap-sm clears it with the toggle's 6px hover
+     bleed still apart from the text. */
+  gap: var(--gap-sm);
   list-style: none;
   cursor: pointer;
 }
