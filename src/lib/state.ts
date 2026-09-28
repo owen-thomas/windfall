@@ -75,9 +75,15 @@ export function overallAge(state: AppState): Age | null {
   return ages.reduce((worst, a) => (a.ms > worst.ms ? a : worst));
 }
 
-/** The settlement period the figures on screen describe, if any is known. */
+/**
+ * The settlement period the figures on screen describe, if any is known. The
+ * curtailment reading's own period leads: through an Elexon outage it is an
+ * earlier half hour than the grid mix's (DECISIONS 045), and the heading sits
+ * under the headline and bar that describe it. The mix's clock stands in when
+ * there is no reading.
+ */
 export function settlementOf(state: AppState): SettlementRef | null {
-  return state.grid?.settlement ?? state.curtailment?.now?.settlement ?? null;
+  return state.curtailment?.now?.settlement ?? state.grid?.settlement ?? null;
 }
 
 /**

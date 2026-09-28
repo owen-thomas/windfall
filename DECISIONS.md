@@ -1511,4 +1511,6 @@ This closes 4c.5, and with it the whole of Windfall_Map_Spec_4c.md.
 
 **Unmeasured:** BOALF's normal real-time publication lag. If it regularly runs past 20 minutes, ordinary readings would go into the past tense; watch for "partly answering" on a normal day.
 
-**Known mismatch:** the settlement heading ("10:30 to 11:00 Settlement period 22") follows the grid mix's clock, so during a fallback it names a different half hour from the headline.
+**The settlement heading follows the reading.** It used to take the grid mix's clock first, so during a fallback it read "10:30 to 11:00 Settlement period 22" under a headline about 05:30 to 06:00. `settlementOf` now leads with the curtailment reading's period and falls back to the mix's only when there is no reading. Normally the two are the same half hour. The mix panels are unaffected: they stay current through an Elexon outage, as the degraded copy says.
+
+**Seen on the way, not changed:** at a ~800px viewport the heading's cell is 251px, and a time pair without narrow 1s ("05:30 to 06:00") wraps "Settlement period" onto a second line. That happens with or without a fallback, so it's a layout question for the narrow tiers.
