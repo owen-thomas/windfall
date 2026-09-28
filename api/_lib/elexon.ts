@@ -77,7 +77,14 @@ function unwrap<T>(body: unknown): T[] {
 export async function fetchPN(settlementDate: string, period: number): Promise<PNItem[]> {
   const url = `${BASE}/datasets/PN?settlementDate=${settlementDate}&settlementPeriod=${period}`;
   const items = unwrap<PNItem>(await fetchJson(url));
-  return items.filter((i) => SCOTTISH_WIND_SET.has(i.nationalGridBmUnit));
+  const scottish = items.filter((i) => SCOTTISH_WIND_SET.has(i.nationalGridBmUnit));
+  // Every unit submits a PN each period, even at 0 MW, so an empty answer means
+  // Elexon hasn't published the period, not that the wind has stopped. Read as
+  // a reading, it would put every farm at 0 MW and the page at "100% on the grid".
+  if (scottish.length === 0) {
+    throw new Error(`no PN published for ${settlementDate} period ${period}`);
+  }
+  return scottish;
 }
 
 /**

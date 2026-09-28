@@ -1488,3 +1488,13 @@ This closes 4c.5, and with it the whole of Windfall_Map_Spec_4c.md.
 **Renamed from `og.png` so link previews refresh:** LinkedIn caches a preview image by its URL as well as the page's, so re-inspecting the page kept serving the old dashboard card under the unchanged `og.png` address. A new filename is a URL no scraper has cached. The page also carries `<meta name="author" content="Owen Thomas">`; it deliberately has no publish date, being a live page, not a dated article.
 
 **Full-resolution export:** the first copy came through chat at 2000×1050; Owen's own export is 2400×1260, flattened to RGB (its alpha was fully opaque), as `og-windfall.png` — a new filename again, so LinkedIn fetches it rather than its cached copy. LinkedIn's Post Inspector labels the page "Article" by default; `og:type` stays `website`, which is accurate and changes nothing visible on the card.
+
+## 044 — An empty PN is a failed read, not a still day
+
+**Date:** 2026-09-28
+**Phase:** Post-launch fix
+**Decision:** `fetchPN` throws when none of the tracked units appear in Elexon's answer, so the endpoint reports `failed` and the page shows its degraded state (042).
+
+**Why:** on the morning of 28 September Elexon stopped publishing PN and BOALF after period 12 (05:30–06:00 BST). Each later period answered HTTP 200 with `{"data":[]}`. The endpoint read that as a reading: every farm declaring 0 MW, health "ok", and the live page saying "100% of Scotland’s tracked wind is currently on the grid" over "0 MW on the grid", while NESO had Scotland's mix at 91% wind. Every unit submits a PN each period, even at 0 MW, so an empty answer only ever means the period isn't published.
+
+**Not done:** falling back to the last published period. That would keep figures on screen through an outage, but in the past tense, and it's a design call for Owen.
