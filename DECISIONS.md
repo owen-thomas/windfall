@@ -1533,3 +1533,17 @@ This closes 4c.5, and with it the whole of Windfall_Map_Spec_4c.md.
 **The 6,800 MW maximum.** NESO's OTF "Transparency | Network Congestion" slide, Max. Capacity for B6 (SCOTEX): 6,800 in the decks of 19 June 2024, 17 December 2025 and 22 July 2026 (p. 26), while other boundaries' figures in the same table changed (B7 8,325 → 9,850). The ETYS gives a boundary capability of 6.7 GW; the operational figure is the scale the limits are set against.
 
 **The three NESO sources disagree about this week.** For week 40 (from 28 September): planned 4,347 MW; the congestion data's forecast 5,000 (dated 26 September) or 6,800 (3 October), its rows dated by Saturday with the convention undefined; last week's day-ahead limits mostly 2,900–4,300. The planned figure is used because it is explicitly a limit for a week. Its week numbers read as ISO weeks but a year runs 52 → 1, so in an ISO week 53 it falls back to day-ahead.
+
+## 047 — The flow's trails scale with the map, not its particle count
+
+**Date:** 2026-09-28
+**Phase:** Post-launch, the map's flow
+**Decision:** The flow's speed and stroke width are scaled by `lookScale`: the screen's pixel ratio over 2, times the drawn land's linear size over its size at 1440×900 (156,000 css px², measured), the latter never below 1. Speed sets trail length (speed × the fade's time), so a bigger map gets longer, heavier trails in proportion; the particle count is unchanged.
+
+**Why:** Owen compared staging with live on two screens and live looked far sparser than its reading. The counts were right (271 live at 13.6%, 506 on the curtailing fixture at 25.3%), but speed (45) and stroke width (1.1) were constants in device px. So a map drawn ~1.9× taller spread the same trails over ~3.5× the area. And a 1× screen drew lines twice as heavy and fast, in css px, as the 2× screen the flow was tuned on.
+
+**Measured, curtailing fixture, 2× screen, ink (active particles × speed × width, css px) per 10,000 css px² of land:** 1440×900 401 (scale 1.00); 2560×1440 401 (1.19, the map height-limited to 1.42× the land); 375×812 phone 1,311 (1.00, the floor: the tuned look, denser than desktop as before). 506 particles at every size. The 1× case is by the formula, not measured in a browser.
+
+**Tried first: scaling the particle pool with the land's area.** It evened the density (32.4–32.5 particles per 10,000 css px² at all three sizes) but starved phones: at live's 13.6%, 84 particles, 64 of them the one-each floor for producing farms (038), leaving 20 to share by MW, so a 2 MW farm read almost like Seagreen. Scaling the trails leaves the count, and so the share by farm, the same on every screen.
+
+**Known:** a rebuild (a resize) resets the dev panel's speed slider to the tuned speed at the new scale. Lifetimes already scale with the map's height over speed, so crossing time is unchanged.
