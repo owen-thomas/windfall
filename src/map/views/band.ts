@@ -16,6 +16,12 @@
  * "every figure in a sentence comes from the same payload as the bar above
  * it").
  *
+ * The bar and legend show three runs, not every fuel: wind, gas, and the
+ * rest as one grey run (DECISIONS 051). The story is the contrast of wind and
+ * gas north and south of the border; seven fuel colours competed with it.
+ * Bar and legend share one order, the two figures that matter first, and
+ * always show them, 0% gas included (Owen).
+ *
  * 4d: the caption sits behind the method disclosure's own pattern — a native
  * `<details>`, "▶ Show summary" / "▼ Hide summary", closed on first load — at
  * every tier (Owen). Through 4c a phone took it off the screen entirely.
@@ -23,7 +29,7 @@
 
 import { el, setAttr, setText, setTextCrossfade, type View } from '../../view/dom';
 import { enter } from '../enter';
-import { FUEL_ORDER, orderMix } from '../../lib/fuels';
+import type { Fuel as FuelShare } from '../../lib/types';
 import { formatIntensity, formatIntensityWords, formatPct, fuelLabel } from '../../lib/format';
 import type { CurtailmentNow, RegionState } from '../../lib/types';
 import { speaksOfNow, type AppState } from '../../lib/state';
@@ -38,6 +44,28 @@ import type { BandSpec } from '../../view/band';
  */
 const LABEL_THRESHOLD_PCT = 20;
 
+/** The three runs, in the order both the bar and the legend show them. */
+const RUNS = ['wind', 'gas', 'other'] as const;
+type Run = (typeof RUNS)[number];
+
+/**
+ * A region's mix as wind, gas, and everything else, in whole percent. Wind
+ * and gas are rounded as they'd be shown, and the rest is what's left of 100
+ * after them, so the three always add up (62.5% wind and 37.5% the rest
+ * would otherwise both round up, to 101%).
+ */
+function runsOf(mix: FuelShare[]): Record<Run, number> {
+  let wind = 0;
+  let gas = 0;
+  for (const { fuel, perc } of mix) {
+    if (fuel === 'wind') wind += perc;
+    else if (fuel === 'gas') gas += perc;
+  }
+  wind = Math.round(wind);
+  gas = Math.round(gas);
+  return { wind, gas, other: Math.max(0, 100 - wind - gas) };
+}
+
 export function mapBandView(spec: BandSpec): View {
   const place = el('h2', { class: 'map-band__place' });
   const intensity = el('span', { class: 'map-band__intensity' });
@@ -45,7 +73,7 @@ export function mapBandView(spec: BandSpec): View {
 
   const segments = new Map<string, { seg: HTMLElement; label: HTMLElement }>();
   const bar = el('div', { class: 'mix', 'aria-hidden': 'true' });
-  for (const fuel of FUEL_ORDER) {
+  for (const fuel of RUNS) {
     const label = el('span', { class: 'mix__label' });
     const seg = el('div', { class: 'mix__seg', 'data-fuel': fuel, style: 'flex-basis:0%' }, label);
     segments.set(fuel, { seg, label });
@@ -109,25 +137,24 @@ export function mapBandView(spec: BandSpec): View {
       setText(place, region.name);
       setTextCrossfade(intensity, formatIntensity(region.intensity.forecast ?? region.intensity.actual));
 
-      const mix = orderMix(region.generationMix);
-      for (const { fuel, perc } of mix) {
-        const entry = segments.get(fuel);
-        if (!entry) continue;
-        entry.seg.style.flexBasis = `${perc}%`;
-        setAttr(entry.seg, 'data-empty', perc === 0 ? 'true' : null);
-        setText(entry.label, perc >= LABEL_THRESHOLD_PCT ? `${fuelLabel(fuel)} ${formatPct(perc)}` : '');
+      const runs = runsOf(region.generationMix);
+      for (const fuel of RUNS) {
+        const { seg, label } = segments.get(fuel)!;
+        const perc = runs[fuel];
+        seg.style.flexBasis = `${perc}%`;
+        setAttr(seg, 'data-empty', perc === 0 ? 'true' : null);
+        setText(label, perc >= LABEL_THRESHOLD_PCT ? `${fuelLabel(fuel)} ${formatPct(perc)}` : '');
       }
 
-      const shown = mix.filter((f) => f.perc > 0);
-      const key = shown.map((f) => `${f.fuel}:${f.perc}`).join('|');
+      const key = RUNS.map((fuel) => `${fuel}:${runs[fuel]}`).join('|');
       if (key !== legendKey) {
         legend.replaceChildren(
-          ...shown.map((f) =>
+          ...RUNS.map((fuel) =>
             el(
               'div',
               { class: 'legend__item' },
-              el('dt', { 'data-fuel': f.fuel }, el('span', { class: 'legend__swatch' }), fuelLabel(f.fuel)),
-              el('dd', { text: formatPct(f.perc) })
+              el('dt', { 'data-fuel': fuel }, el('span', { class: 'legend__swatch' }), fuelLabel(fuel)),
+              el('dd', { text: formatPct(runs[fuel]) })
             )
           )
         );
