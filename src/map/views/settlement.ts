@@ -61,32 +61,57 @@
 
 import { el, setText, type View } from '../../view/dom';
 import type { AppState } from '../../lib/state';
+import type { BorderLimit } from '../../lib/types';
 
 // Static: the same in every state, so set once rather than on every render.
 const PERIODS =
   'Britain’s grid runs in half-hour blocks called settlement periods. Every figure on this page ' +
   'is for the half hour shown above.';
 
-const MECHANISM =
-  'Scotland’s wind farms tell the grid how much power they could make. The cables south to ' +
-  'England can only carry so much, so when there’s more wind than they can take, farms are paid ' +
-  'to switch off. Whatever isn’t switched off goes onto the grid.';
+/**
+ * How the network holds wind back, with the border's limit in it once it has
+ * landed (DECISIONS 046) — Owen's wording. The limit is NESO's weekly planned
+ * one; on a week that isn't published yet it is the latest day-ahead limit,
+ * and the parenthesis names that day instead of "this week".
+ */
+function mechanism(border: BorderLimit | null): string {
+  let limit = '';
+  if (border) {
+    const mw = (n: number) => Math.round(n).toLocaleString('en-GB');
+    const when =
+      border.basis === 'planned-week'
+        ? 'this week'
+        : `on ${new Date(`${border.from}T12:00:00Z`).toLocaleDateString('en-GB', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            timeZone: 'Europe/London',
+          })}`;
+    limit = ` (${mw(border.limitMW)}/${mw(border.maxMW)} MW ${when})`;
+  }
+  return (
+    'Scotland’s wind farms tell the grid how much power they could make. The cables south to ' +
+    `England can only carry so much${limit}, so when there’s more wind than they can take, farms ` +
+    'are paid to switch off.'
+  );
+}
 
 const FLOOR =
   'We only count the switch-offs ordered by the grid operator. Farms also get held back in ways ' +
   'our data can’t see, so the real share is probably higher.';
 
-export function mapSettlementView(clockEl: Element): View {
+export function mapSettlementView(clockEl: Element): View & { setBorder(border: BorderLimit): void } {
   const toggleText = el('span', { class: 'map-toggle__text', text: 'Show method' });
   const toggle = el('span', { class: 'map-toggle map-settlement__toggle' }, toggleText);
   const summary = el('summary', { class: 'map-settlement__summary' }, clockEl, toggle);
 
   const coverage = el('p', { class: 'map-settlement__p' });
+  const mechanismP = el('p', { class: 'map-settlement__p', text: mechanism(null) });
   const body = el(
     'div',
     { class: 'map-settlement__body' },
     el('p', { class: 'map-settlement__p', text: PERIODS }),
-    el('p', { class: 'map-settlement__p', text: MECHANISM }),
+    mechanismP,
     el('p', { class: 'map-settlement__p', text: FLOOR }),
     coverage
   );
@@ -118,6 +143,9 @@ export function mapSettlementView(clockEl: Element): View {
 
   return {
     el: root,
+    setBorder(border: BorderLimit) {
+      setText(mechanismP, mechanism(border));
+    },
     update(state: AppState) {
       const data = state.curtailment;
       const method = data?.method;

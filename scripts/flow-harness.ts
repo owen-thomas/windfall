@@ -193,6 +193,7 @@ function run(args: Args) {
     density: 0,
     exit: 0,
     arrive: 0,
+    vanish: 0,
   };
   const lifespans: number[] = [];
   // How far south (0..1 southness) each particle-life ever got — one

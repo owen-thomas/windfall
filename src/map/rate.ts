@@ -41,3 +41,19 @@ export function flowDensity(farms: { instructedMW: number; capacityMW: number }[
   if (!(capacity > 0)) return 0;
   return Math.min(1, instructed / capacity);
 }
+
+/**
+ * The same for the wind held back from the grid: combined MW held back over
+ * combined capacity, of the same pool, so the two flows are to one scale.
+ */
+export function heldDensity(farms: { curtailedMW: number; capacityMW: number }[] | null): number {
+  if (!farms || farms.length === 0) return 0;
+  let held = 0;
+  let capacity = 0;
+  for (const farm of farms) {
+    held += Math.max(0, farm.curtailedMW);
+    capacity += Math.max(0, farm.capacityMW);
+  }
+  if (!(capacity > 0)) return 0;
+  return Math.min(1, held / capacity);
+}

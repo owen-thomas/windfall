@@ -162,3 +162,25 @@ export interface CurtailmentResponse {
     capacityMW: number;
   };
 }
+
+/**
+ * How much the Scotland–England border (boundary B6) can carry, from NESO's
+ * published limits — not how much is crossing, which isn't published (api/_lib/neso.ts).
+ */
+export interface BorderLimit {
+  limitMW: number;
+  /** The border's maximum capacity, the scale the limit is drawn against. */
+  maxMW: number;
+  /** 'planned-week': NESO's planned limit for this week. 'day-ahead': the latest day NESO has published, days old. */
+  basis: 'planned-week' | 'day-ahead';
+  /** The dates the limit applies to, YYYY-MM-DD, inclusive. */
+  from: string;
+  to: string;
+}
+
+export interface BorderResponse {
+  fetchedAt: string;
+  health: SourceHealth;
+  errors: string[];
+  border: BorderLimit | null;
+}

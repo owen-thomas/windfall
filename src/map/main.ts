@@ -88,7 +88,8 @@ import {
   type FarmMarkerLayer,
   type FarmReading,
 } from './markers';
-import { flowDensity } from './rate';
+import { flowDensity, heldDensity } from './rate';
+import { buildHeldFade, type HeldFade } from './heldFade';
 import { prefersReducedMotion } from '../lib/motion';
 import { createMapControlPanel } from './controls';
 import { CITIES } from './cities';
@@ -98,7 +99,7 @@ import { fetchCoreFeeds } from '../lib/client';
 import { msUntilRolloverCheck } from '../lib/settlement';
 import { scenarioByName, SCENARIOS } from '../lib/scenarios';
 import { emptyFeeds, type AppState } from '../lib/state';
-import type { FarmNow } from '../lib/types';
+import type { BorderLimit, BorderResponse, FarmNow } from '../lib/types';
 
 import { el, type View } from '../view/dom';
 import { SCOTLAND, ENGLAND } from '../view/band';
@@ -377,6 +378,39 @@ function bootMap(): void {
     midJourneyBias: 1.5,
   };
   const palette = { ...LIGHT_PALETTE, washAlpha: 0.03, baseStrokeWidth: 1.1 };
+  // The wind held back from the grid: a second flow over the same farms and
+  // field, weighted by each farm's MW held back, drawn in the held-back
+  // periwinkle (--bar-off, the bar's held run and a held farm's marker), and
+  // fading out before it reaches the border (heldFade.ts).
+  const heldPalette = { ...palette, ...hslOfHex(tokenColor('--bar-off', '#94a3e1')) };
+  /** Each farm's MW held back in the latest reading — the held flow's emission weights. */
+  const heldMW = new Map<string, number>();
+  /** The held flow's fade, rebuilt with the world; until then, nothing is held back from drawing. */
+  let borderSides: HeldFade = { fade: () => 1, inEngland: () => false };
+  const heldFade = (x: number, y: number) => borderSides.fade(x, y);
+  /** Gone this share of the drawn map's height north of the border, and fully drawn from this share. */
+  const HELD_GONE_SHARE = 0.012;
+  const HELD_FULL_SHARE = 0.045;
+  /**
+   * The held-back flow is only ever drawn in Scotland, while the flow on the
+   * grid spreads over the whole island, so the two pools can't be sized by
+   * their MW alone: 38% held back drew three held-back particles to every one
+   * on the grid in Scotland. The held-back pool is scaled by the share of the
+   * on-grid flow that is in Scotland (where the fade is above 0) right now,
+   * so that where the two are seen together, they are in their MW's
+   * proportion. The share is measured from the flow as it runs, eased, and
+   * starts from this (measured at ~0.21 on the curtailing fixture).
+   */
+  let scotlandShare = 0.2;
+  /** Time constant of the share's easing, seconds, and how often it is sampled and the pool resized. */
+  const SHARE_TAU_SECONDS = 10;
+  const SHARE_SAMPLE_SECONDS = 0.25;
+  const SHARE_APPLY_SECONDS = 2;
+  /** Seconds after the flow arrives before the share is measured: until then the flow is still leaving the farms, all of it in Scotland. */
+  const SHARE_SETTLE_SECONDS = 20;
+  function heldFraction(): number {
+    return heldDensity(lastFarmsNow) * scotlandShare;
+  }
   // The pool at full capacity: strictly proportional density (rate.ts) shows
   // the on-grid share of it, so a typical ~30% period draws ~600.
   const particleCount = 2000;
@@ -390,9 +424,19 @@ function bootMap(): void {
   let lastFarmsNow: FarmNow[] | null = null;
   /** The first reading with any flow has landed (its arrival ramp has started) — see landFarms. */
   let flowArrived = false;
+  /** performance.now() when it did. */
+  let flowArrivedAt = 0;
 
   let world: World;
+  /**
+   * How much the border can carry this week, from NESO (/api/border). Its
+   * share of the border's maximum is the share of the on-grid flow that would
+   * head for England at the maximum which still does (applyBorderLimit). Null
+   * until it lands, or if NESO has nothing: the flow then spreads as before.
+   */
+  let borderLimit: BorderLimit | null = null;
   let particles: ParticleSystem;
+  let heldParticles: ParticleSystem;
   let currentDpr = 1;
   /** The stage's height when last built, css px: the floor panels are kept above. */
   let stageCssHeight = 0;
@@ -651,6 +695,24 @@ function bootMap(): void {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
 
+  /** A #rrggbb colour as the palette's HSL fields, so the flow's hue jitter still has a hue to turn. */
+  function hslOfHex(hex: string): { baseHue: number; saturation: number; lightness: number } {
+    const n = parseInt(hex.replace('#', ''), 16);
+    const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => v / 255);
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    const d = max - min;
+    const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+    let h = 0;
+    if (d > 0) {
+      if (max === r) h = ((g - b) / d) % 6;
+      else if (max === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+    }
+    return { baseHue: (h * 60 + 360) % 360, saturation: s * 100, lightness: l * 100 };
+  }
+
   /** A colour token, resolved — the canvas takes a colour string, not a var(). */
   function tokenColor(name: string, fallback: string): string {
     return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
@@ -669,12 +731,14 @@ function bootMap(): void {
     // weight, the picked farm's thread was lost among the rest at that level.
     // Its share of the flow is its honest one — a farm making a few MW shows a
     // particle or none (Owen).
-    particles.setHighlightSource(farm, {
-      color: tokenColor('--highlight', '#0a7cff'),
+    const highlight = {
       dimAlpha: 0.07,
       // The flow dims and returns at the markers' own pace (--dur-quick).
       fadeSeconds: prefersReducedMotion() ? 0 : 0.06,
-    });
+    };
+    particles.setHighlightSource(farm, { ...highlight, color: tokenColor('--highlight', '#0a7cff') });
+    // The picked farm's held-back wind stays its own periwinkle; the rest dims.
+    heldParticles.setHighlightSource(farm, { ...highlight, color: tokenColor('--bar-off', '#94a3e1') });
     markerLayer.setHighlight(farm);
     setMarkerHighlight(insetSvg, insetMarkers, farm);
   }
@@ -716,12 +780,27 @@ function bootMap(): void {
       regionCount: 32,
     });
 
+    const mapHeight = world.projection.bounds.bottom - world.projection.bounds.top;
+    borderSides = buildHeldFade(world, BORDER_LINE, {
+      gonePx: mapHeight * HELD_GONE_SHARE,
+      fullPx: mapHeight * HELD_FULL_SHARE,
+    });
+
     if (particles) {
       particles.setWorld(world);
+      heldParticles.setWorld(world);
     } else {
       particles = new ParticleSystem(world, particleCount, { style: particleStyle, fieldParams, allocation: 'quota' });
+      heldParticles = new ParticleSystem(world, particleCount, {
+        style: particleStyle,
+        fieldParams,
+        allocation: 'quota',
+        rateOf: (source) => heldMW.get(source.id) ?? 0,
+        fade: (x, y) => heldFade(x, y),
+      });
       // Nothing flows until farm data lands (landFarms sets the real density).
       particles.setActiveFraction(flowDensity(lastFarmsNow));
+      heldParticles.setActiveFraction(heldFraction());
     }
     if (!markerLayer) markerLayer = createFarmMarkerLayer(svg, FARM_SITES);
     fitBounds = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
@@ -807,6 +886,7 @@ function bootMap(): void {
     palette,
     onFieldModeChanged() {
       particles.respawnAll(fieldParams);
+      heldParticles.respawnAll(fieldParams);
     },
   }) : null;
 
@@ -840,18 +920,25 @@ function bootMap(): void {
     } else {
       applyFarmRates(farmSources, lastFarmsNow);
     }
+    heldMW.clear();
+    for (const farm of lastFarmsNow ?? []) heldMW.set(farm.farm, Math.max(0, farm.curtailedMW));
     particles.refreshRates();
+    heldParticles.refreshRates();
     // The flow's density follows the reading, eased rather than jumped: the
     // first reading ramps in over a few seconds with every particle born at
     // its farm, so the wind is seen leaving the farms; later readings ease
     // over a second. Instant under reduced motion.
     const density = flowDensity(lastFarmsNow);
+    const held = heldFraction();
     const reduce = prefersReducedMotion();
-    if (!flowArrived && density > 0) {
+    if (!flowArrived && density + held > 0) {
       flowArrived = true;
+      flowArrivedAt = performance.now();
       particles.setActiveFraction(density, { rampSeconds: reduce ? 0 : 4, fromSources: !reduce });
+      heldParticles.setActiveFraction(held, { rampSeconds: reduce ? 0 : 4, fromSources: !reduce });
     } else {
       particles.setActiveFraction(density, { rampSeconds: reduce ? 0 : 1 });
+      heldParticles.setActiveFraction(held, { rampSeconds: reduce ? 0 : 1 });
     }
 
     const { readings, maxCapacityMW } = farmReadings();
@@ -924,6 +1011,39 @@ function bootMap(): void {
   render();
   void refresh();
 
+  // The border's limit changes weekly at most (monthly, from NESO's planned
+  // limits), so it is fetched on its own, hourly. A failed fetch keeps the
+  // last limit.
+  async function refreshBorder() {
+    try {
+      const res = await fetch('/api/border');
+      const body = (await res.json()) as BorderResponse;
+      const next = body.border;
+      if (!next || (borderLimit && next.limitMW === borderLimit.limitMW && next.from === borderLimit.from)) return;
+      borderLimit = next;
+      settlement.setBorder(next);
+      applyBorderLimit();
+    } catch {
+      // Keep what's drawn.
+    }
+  }
+  /**
+   * The on-grid flow into England follows the border's limit (DECISIONS 046):
+   * at the border's maximum it spreads as it always has, and at a lower limit
+   * only that share as many particles head for England as would otherwise —
+   * the rest stay in Scotland. The limit is NESO's, not a measured flow.
+   * The held-back flow is unaffected: it fades out before the border anyway.
+   */
+  function applyBorderLimit() {
+    if (!borderLimit) return;
+    particles.setCrossing({
+      isAcross: (x, y) => borderSides.inEngland(x, y),
+      share: Math.min(1, Math.max(0, borderLimit.limitMW / borderLimit.maxMW)),
+    });
+  }
+  void refreshBorder();
+  setInterval(() => void refreshBorder(), 60 * 60_000);
+
   const TICK_MS = 15_000;
   setInterval(render, TICK_MS);
   setInterval(() => void refresh(), REFETCH_MS);
@@ -989,6 +1109,33 @@ function bootMap(): void {
     ctx.drawImage(cleanCanvas, 0, 0);
     ctx.filter = 'none';
   }
+  let sinceShareSample = 0;
+  let sinceShareApply = 0;
+  /** Eases scotlandShare toward the on-grid flow's current share in Scotland, and resizes the held-back pool to follow it. */
+  function measureScotlandShare(now: number, dt: number) {
+    if (!flowArrived || now - flowArrivedAt < SHARE_SETTLE_SECONDS * 1000) return;
+    sinceShareSample += dt;
+    if (sinceShareSample < SHARE_SAMPLE_SECONDS) return;
+    // Too few particles on the grid to measure by: keep the last share.
+    if (particles.activeCount >= 20) {
+      let inScotland = 0;
+      for (let i = 0; i < particles.activeCount; i++) {
+        if (heldFade(particles.x[i], particles.y[i]) > 0) inScotland++;
+      }
+      const ease = 1 - Math.exp(-sinceShareSample / SHARE_TAU_SECONDS);
+      scotlandShare += (inScotland / particles.activeCount - scotlandShare) * ease;
+    }
+    sinceShareApply += sinceShareSample;
+    sinceShareSample = 0;
+    if (sinceShareApply < SHARE_APPLY_SECONDS) return;
+    sinceShareApply = 0;
+    // Only when it moves the pool by a few particles, so it isn't forever re-easing.
+    const target = heldFraction();
+    if (Math.abs(target - heldParticles.activeCount / heldParticles.count) * heldParticles.count >= 3) {
+      heldParticles.setActiveFraction(target, { rampSeconds: prefersReducedMotion() ? 0 : SHARE_APPLY_SECONDS });
+    }
+  }
+
   let lastTime = performance.now();
   function frame(now: number) {
     const dt = Math.min(0.05, (now - lastTime) / 1000);
@@ -1019,8 +1166,12 @@ function bootMap(): void {
       sinceClean = 0;
     }
 
+    // Held back first, so the wind on the grid draws over it.
+    heldParticles.step(dt, fieldParams);
+    heldParticles.render(ctx, heldPalette);
     particles.step(dt, fieldParams);
     particles.render(ctx, palette);
+    measureScotlandShare(now, dt);
 
     if (debugVisible) {
       if (!debugCanvas) {
@@ -1048,6 +1199,11 @@ function bootMap(): void {
     getExtentMode: () => extentMode,
     getOffMainStageFarms: () => offMainStageFarms,
     getParticles: () => particles,
+    getHeldParticles: () => heldParticles,
+    heldFade: (x: number, y: number) => heldFade(x, y),
+    getScotlandShare: () => scotlandShare,
+    getBorderLimit: () => borderLimit,
+    inEngland: (x: number, y: number) => borderSides.inEngland(x, y),
     fieldParams,
   };
 }

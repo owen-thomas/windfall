@@ -7,6 +7,7 @@ import {
 } from './field';
 import type { RasterMask } from './mask';
 import type { World } from './world';
+import type { Source } from './types';
 import { resolveStrokeColor, resolveStrokeWidth, type Palette } from './palette';
 
 export interface MaskClampResult {
@@ -368,7 +369,22 @@ function jitteredBucket(jitterAmount: number): number {
   return Math.random() < 0.5 ? -1 : 1;
 }
 
-export type DeathCause = 'age' | 'strike' | 'stall' | 'trapped' | 'density' | 'exit' | 'arrive';
+/**
+ * A line across the land that only a share of the flow crosses (/map: the
+ * Scotland–England border, at its limit's share of its maximum). Under
+ * 'blanket', a destination beyond it is kept with probability `share` and
+ * otherwise drawn again from this side, so the share of particles heading
+ * across is exactly `share` of what it would be with the line wide open.
+ */
+export interface Crossing {
+  isAcross(x: number, y: number): boolean;
+  share: number;
+}
+
+export type DeathCause = 'age' | 'strike' | 'stall' | 'trapped' | 'density' | 'exit' | 'arrive' | 'vanish';
+
+/** How many opacity steps a faded particle is drawn in — see ParticleSystemOptions.fade and render(). */
+const FADE_LEVELS = 5;
 
 export interface ParticleSystemOptions {
   /**
@@ -414,6 +430,19 @@ export interface ParticleSystemOptions {
    * See pickSourceIndex.
    */
   allocation?: 'random' | 'quota';
+  /**
+   * A source's emission weight, if not its `rate`. /map runs a second system
+   * over the same farms for the wind held back from the grid, weighted by
+   * each farm's held-back MW rather than its MW on the grid.
+   */
+  rateOf?: (source: Source) => number;
+  /**
+   * Where the flow thins out and ends, 0..1 at a device-px point: 1 draws a
+   * particle at full strength, less draws it fainter (in FADE_LEVELS steps),
+   * and 0 is where it vanishes and is re-born. No particle is born mid-journey
+   * anywhere short of 1. /map's held-back wind fades out before the border.
+   */
+  fade?: (x: number, y: number) => number;
 }
 
 /**
@@ -484,6 +513,9 @@ export class ParticleSystem {
    * of this class.
    */
   private renderBuckets: number[][] = [];
+
+  /** A line across the land fewer destinations are drawn beyond — see setCrossing. */
+  private crossing: Crossing | null = null;
 
   /** The id of the one source drawn highlighted, or null. Its index moves with the world, so it is re-resolved on setWorld. */
   private highlightId: string | null = null;
@@ -623,6 +655,15 @@ export class ParticleSystem {
     }
   }
 
+  /**
+   * Set (or, with null, clear) the line only a share of the flow crosses. Only
+   * newborn particles draw by it: those already out keep their destinations,
+   * so a change eases in over a lifetime rather than rerouting the flow at once.
+   */
+  setCrossing(crossing: Crossing | null) {
+    this.crossing = crossing;
+  }
+
   private resolveHighlight() {
     this.highlightIndex =
       this.highlightId === null
@@ -630,11 +671,15 @@ export class ParticleSystem {
         : this.world.sources.findIndex((resolved) => resolved.source.id === this.highlightId);
   }
 
+  private rateOf(source: Source): number {
+    return this.options.rateOf ? this.options.rateOf(source) : source.rate;
+  }
+
   private buildRateTable() {
     this.cumulativeRates = [];
     let sum = 0;
     for (const resolved of this.world.sources) {
-      sum += resolved.source.rate;
+      sum += this.rateOf(resolved.source);
       this.cumulativeRates.push(sum);
     }
     this.totalRate = sum;
@@ -655,7 +700,8 @@ export class ParticleSystem {
     // off stops showing flow at once, not only as its particles age out.
     if (this.totalRate > 0) {
       for (let i = 0; i < this.activeCount; i++) {
-        if (this.world.sources[this.sourceIndex[i]]?.source.rate === 0) this.respawn(i);
+        const resolved = this.world.sources[this.sourceIndex[i]];
+        if (resolved && this.rateOf(resolved.source) === 0) this.respawn(i);
       }
     }
   }
@@ -769,14 +815,14 @@ export class ParticleSystem {
   private pickSourceByQuota(): number {
     const sources = this.world.sources;
     let emitting = 0;
-    for (const resolved of sources) if (resolved.source.rate > 0) emitting++;
+    for (const resolved of sources) if (this.rateOf(resolved.source) > 0) emitting++;
     if (emitting === 0 || this.totalRate <= 0) return 0;
     const shared = Math.max(0, this.activeCount - emitting);
     const floor = this.activeCount >= emitting ? 1 : 0;
     let best = 0;
     let bestDeficit = -Infinity;
     for (let j = 0; j < sources.length; j++) {
-      const rate = sources[j].source.rate;
+      const rate = this.rateOf(sources[j].source);
       if (rate <= 0) continue;
       const owed = floor + (shared * rate) / this.totalRate;
       const deficit = owed - this.sourceCounts[j] + Math.random() * 1e-6;
@@ -919,6 +965,10 @@ export class ParticleSystem {
     const regions = this.world.regions;
     if (!regions || regions.insideCells.length === 0) return null;
     const { cellSize, gridWidth, insideCells, cellRegion, fields } = regions;
+    const crossing = this.crossing;
+    // Whether this draw may land beyond the crossing: decided once, after the
+    // first valid draw, so the share across is `share` times the open one.
+    let mayCross = true;
     for (let attempt = 0; attempt < 24; attempt++) {
       const cell = insideCells[(Math.random() * insideCells.length) | 0];
       const cx = ((cell % gridWidth) + Math.random() - 0.5) * cellSize;
@@ -927,6 +977,13 @@ export class ParticleSystem {
       const region = cellRegion[cell];
       if (region < 0 || !Number.isFinite(fields[region].sample(x, y).dist)) continue;
       if (!this.world.mask.isInside(cx, cy)) continue;
+      if (crossing && crossing.isAcross(cx, cy) && !crossing.isAcross(x, y)) {
+        if (!mayCross) continue;
+        if (Math.random() >= crossing.share) {
+          mayCross = false;
+          continue;
+        }
+      }
       return { region, x: cx, y: cy };
     }
     return null;
@@ -958,7 +1015,9 @@ export class ParticleSystem {
       const side = (Math.random() - 0.5) * 2 * MID_JOURNEY_SCATTER_PX;
       const x = fx + lx * t - uy * side;
       const y = fy + ly * t + ux * side;
-      if (this.world.mask.isInside(x, y)) return { x, y, heading: [ux, uy] };
+      if (!this.world.mask.isInside(x, y)) continue;
+      if (this.options.fade && this.options.fade(x, y) < 1) continue;
+      return { x, y, heading: [ux, uy] };
     }
     return null;
   }
@@ -1154,6 +1213,13 @@ export class ParticleSystem {
         this.strikes[i] = 0;
       }
 
+      // Faded out (ParticleSystemOptions.fade): nothing left to draw.
+      if (this.options.fade && this.options.fade(this.x[i], this.y[i]) <= 0) {
+        this.options.onDeath?.(i, 'vanish', this.age[i]);
+        this.respawn(i);
+        continue;
+      }
+
       // Trapped check: a particle oscillating in a tight coastal pocket
       // can graze on and off forever without ever stringing together
       // STRIKE_LIMIT *consecutive* strikes. Checked on its own interval
@@ -1252,8 +1318,12 @@ export class ParticleSystem {
    * arrays reallocated) so this stays allocation-free like `step()`.
    */
   render(ctx: CanvasRenderingContext2D, palette: Palette, strokeWeightMultiplier = 1) {
+    // With a fade, each style bucket is split again by opacity step
+    // (FADE_LEVELS), so a fading particle still costs no draw call of its own.
+    const { fade } = this.options;
+    const levels = fade ? FADE_LEVELS : 1;
     const numSources = this.world.sources.length;
-    const numBuckets = numSources * 9; // 3 hueBuckets x 3 weightBuckets, offset -1..1 each
+    const numBuckets = numSources * 9 * levels; // 3 hueBuckets x 3 weightBuckets, offset -1..1 each, x opacity steps
     if (this.renderBuckets.length !== numBuckets) {
       this.renderBuckets = Array.from({ length: numBuckets }, () => []);
     } else {
@@ -1261,8 +1331,10 @@ export class ParticleSystem {
     }
 
     for (let i = 0; i < this.activeCount; i++) {
+      const level = fade ? Math.min(levels, Math.ceil(fade(this.x[i], this.y[i]) * levels)) - 1 : 0;
+      if (level < 0) continue;
       const bucketIndex =
-        this.sourceIndex[i] * 9 + (this.hueBucket[i] + 1) * 3 + (this.weightBucket[i] + 1);
+        (this.sourceIndex[i] * 9 + (this.hueBucket[i] + 1) * 3 + (this.weightBucket[i] + 1)) * levels + level;
       this.renderBuckets[bucketIndex].push(i);
     }
 
@@ -1272,15 +1344,17 @@ export class ParticleSystem {
     // While a source is picked out, every other source draws at reduced opacity
     // (the selection reads by contrast, not by hue alone) and the picked one is
     // drawn last, on top, in the highlight colour.
-    ctx.globalAlpha = 1 - (1 - dimAlpha) * this.dimLevel;
+    const restAlpha = 1 - (1 - dimAlpha) * this.dimLevel;
     for (let b = 0; b < numBuckets; b++) {
       const indices = this.renderBuckets[b];
       if (indices.length === 0) continue;
-      const sourceIdx = Math.floor(b / 9);
+      const style = Math.floor(b / levels);
+      const sourceIdx = Math.floor(style / 9);
       if (sourceIdx === highlighted) continue;
-      const hueBucket = Math.floor((b % 9) / 3) - 1;
-      const weightBucket = (b % 3) - 1;
+      const hueBucket = Math.floor((style % 9) / 3) - 1;
+      const weightBucket = (style % 3) - 1;
       const channel = this.world.sources[sourceIdx]?.source.palette;
+      ctx.globalAlpha = (restAlpha * ((b % levels) + 1)) / levels;
       ctx.strokeStyle = resolveStrokeColor(palette, channel, hueBucket);
       // Step 4's stroke-weight slider: a multiplier on top of the
       // palette's own tuned base width, not a replacement for it — so the
@@ -1299,12 +1373,12 @@ export class ParticleSystem {
     }
 
     if (highlighted >= 0) {
-      ctx.globalAlpha = 1;
       ctx.strokeStyle = this.highlightStyle.color;
-      for (let b = highlighted * 9; b < highlighted * 9 + 9; b++) {
+      for (let b = highlighted * 9 * levels; b < (highlighted + 1) * 9 * levels; b++) {
         const indices = this.renderBuckets[b];
         if (indices.length === 0) continue;
-        const weightBucket = (b % 3) - 1;
+        const weightBucket = (Math.floor(b / levels) % 3) - 1;
+        ctx.globalAlpha = ((b % levels) + 1) / levels;
         ctx.lineWidth =
           resolveStrokeWidth(palette, weightBucket) * strokeWeightMultiplier * this.highlightStyle.widthScale;
         ctx.beginPath();
