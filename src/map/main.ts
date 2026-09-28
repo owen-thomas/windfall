@@ -378,6 +378,26 @@ function bootMap(): void {
     midJourneyBias: 1.5,
   };
   const palette = { ...LIGHT_PALETTE, washAlpha: 0.03, baseStrokeWidth: 1.1 };
+  /**
+   * The flow's speed and stroke width above are in device px as tuned: on a
+   * 2x screen, with the land drawn at 1440x900 (TUNED_LAND_CSS_PX2, measured).
+   * They are scaled by `lookScale` (set in rebuild) so the flow looks the same
+   * on any screen (DECISIONS 047):
+   * - by the screen's pixel ratio over the tuned one, so a 1x screen draws
+   *   the same css-px line at the same css-px speed rather than one twice as
+   *   heavy and fast;
+   * - by the drawn land's linear size over the tuned one, so a bigger map has
+   *   longer, heavier trails in proportion (trail length is speed x the fade's
+   *   time) rather than the same ones spread thin. Up only: a smaller map
+   *   keeps the tuned look, since thinner, slower lines on a phone read worse.
+   * The particle count is untouched, so the share by farm (038) is the same on
+   * every screen. Lifetimes already scale with the map's height over the
+   * speed, so a particle takes the same time to cross the country at any size.
+   */
+  const TUNED_SPEED = particleStyle.speed;
+  const TUNED_DPR = 2;
+  const TUNED_LAND_CSS_PX2 = 156_000;
+  let lookScale = 1;
   // The wind held back from the grid: a second flow over the same farms and
   // field, weighted by each farm's MW held back, drawn in the held-back
   // periwinkle (--bar-off, the bar's held run and a held farm's marker), and
@@ -780,6 +800,13 @@ function bootMap(): void {
       regionCount: 32,
     });
 
+    let land = 0;
+    for (let i = 0; i < world.mask.data.length; i++) land += world.mask.data[i];
+    const sizeScale = Math.max(1, Math.sqrt(land / (currentDpr * currentDpr) / TUNED_LAND_CSS_PX2));
+    lookScale = (currentDpr / TUNED_DPR) * sizeScale;
+    // Also the dev panel's speed slider: a rebuild resets it to the tuned speed at this scale.
+    particleStyle.speed = TUNED_SPEED * lookScale;
+
     const mapHeight = world.projection.bounds.bottom - world.projection.bounds.top;
     borderSides = buildHeldFade(world, BORDER_LINE, {
       gonePx: mapHeight * HELD_GONE_SHARE,
@@ -1168,9 +1195,9 @@ function bootMap(): void {
 
     // Held back first, so the wind on the grid draws over it.
     heldParticles.step(dt, fieldParams);
-    heldParticles.render(ctx, heldPalette);
+    heldParticles.render(ctx, heldPalette, lookScale);
     particles.step(dt, fieldParams);
-    particles.render(ctx, palette);
+    particles.render(ctx, palette, lookScale);
     measureScotlandShare(now, dt);
 
     if (debugVisible) {
@@ -1203,6 +1230,7 @@ function bootMap(): void {
     heldFade: (x: number, y: number) => heldFade(x, y),
     getScotlandShare: () => scotlandShare,
     getBorderLimit: () => borderLimit,
+    getLookScale: () => lookScale,
     inEngland: (x: number, y: number) => borderSides.inEngland(x, y),
     fieldParams,
   };
