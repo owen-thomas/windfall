@@ -1,7 +1,8 @@
 # Case study capture pack
 
 Assembled 2026-07-28, against `v1.0` ([f47746a](https://github.com/owen-thomas/windfall/commit/f47746a)), the commit live at
-[windfall.scot](https://windfall.scot) when this pack was built.
+[windfall.scot](https://windfall.scot) when this pack was built. Extended 2026-09-28 with the map, which replaced the
+dashboard as the site in `v2.0`: see [map/v2.0/](#mapv20--the-map-as-shipped-in-every-state) below.
 
 **[DECISIONS.md](../../DECISIONS.md) is the primary source.** It carries the reasoning —
 what was tried, what was rejected, and why — for everything summarised here. This pack is
@@ -18,7 +19,10 @@ everything below must be read:
 
 ---
 
-## states/ — all seven reachable states, plus true live
+## states/ — all seven reachable states, plus true live (v1.0, the dashboard)
+
+*The original dashboard at `/`, retired in `v2.0` (DECISIONS 043). The map's states are in
+[map/v2.0/](#mapv20--the-map-as-shipped-in-every-state).*
 
 Captured at 1440×900 from `https://windfall.scot` on 2026-07-28. Six of the seven are
 reached via `?state=<name>` — production-shipped fixtures per DECISIONS 012 and 269,
@@ -106,6 +110,45 @@ deployed. Script: `scripts/capture-retired.ts`.
 | `index-curtailing-desktop.png` | `/`, 1440×900, full page | Fixture (`?state=curtailing`) |
 | `flow-desktop.png` | `/flow`, the flow experiment, 1440×900, after 20s | Its fictional seven sources, as shipped |
 | `flow-mobile.png` | `/flow`, 375×812, after 20s | Its fictional seven sources, as shipped |
+
+---
+
+## map/v2.0/ — the map, as shipped, in every state
+
+Captured from `https://www.windfall.scot` on 2026-09-28 at 11:17–11:22 BST (settlement period 23), retina 2×,
+against [`3048deb`](https://github.com/owen-thomas/windfall/commit/3048deb). Desktop plates are 1440×900 (the page fits
+the viewport); phone plates are 375 wide, full page. Each plate waits 20 seconds after load so the entrance has finished
+and the flow has spread across the island. Script: `scripts/capture-map.ts` (`npx tsx scripts/capture-map.ts [filter]`
+to re-take plates whose filename contains the filter).
+
+A `?state=` load shows the state toggle in the footer, as it does for any visitor who uses one, so the fixture plates
+keep it: it is the on-screen sign that the reading is a fixture (DECISIONS 486).
+
+| File | State | Provenance |
+|---|---|---|
+| `live-desktop.png` | 44% held back, 1,265 MW of 2,873 MW declared | **Genuine live reading**, no `?state=` |
+| `live-mobile.png` | The same half hour on a phone | **Genuine live reading** |
+| `curtailing-desktop.png` | A windy evening, 2.0 GW held down | Fixture (`?state=curtailing`) |
+| `curtailing-mobile.png` | The same, on a phone | Fixture (`?state=curtailing`) |
+| `curtailing-method-open-desktop.png` | "Show method" open: the page's one explanation | Fixture (`?state=curtailing`), toggle clicked |
+| `curtailing-farm-selected-desktop.png` | Beatrice selected: its marker ringed, its thread picked out, the rest of the wind dimmed | Fixture (`?state=curtailing`), row clicked |
+| `calm-desktop.png` | Nothing held back: "100% … is currently on the grid" | Fixture (`?state=calm`) |
+| `calm-mobile.png` | The same, on a phone | Fixture (`?state=calm`) |
+| `degraded-desktop.png` | Elexon down: bar and list kept, every farm unknown, the mix unaffected (042) | Fixture (`?state=degraded`) |
+| `stale-desktop.png` | A reading 47 minutes old, in the past tense | Fixture (`?state=stale`) |
+| `waiting-desktop.png` | Before the first answer: the page claims nothing | Fixture (`?state=waiting`) |
+| `offline-desktop.png` | The page can't reach its own functions | Fixture (`?state=offline`) |
+
+The selected farm is Beatrice rather than the list's first farm: in the fixture Seagreen is fully held back, and a farm
+with nothing on the grid has no particles to pick out (038).
+
+**Not captured: the Elexon fallback (DECISIONS 045).** On the morning of 28 September Elexon stopped publishing for
+several hours, and the site read "100% … on the grid" over 0 MW until 044 and 045 were deployed. No plate was taken of
+the fallback while it was live ("At least 36% … was held back from the grid between 05:30 and 06:00"), and there is no
+fixture for it. A local screenshot of it exists only in that session's transcript, not in this pack.
+
+The earlier map plates (`map/step-3/`, `map/step-4/`, `map/step-4b/`) are the build's gate captures, taken as each
+step was reviewed, and are kept as process evidence.
 
 ---
 
