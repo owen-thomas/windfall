@@ -71,6 +71,7 @@ import { DEFAULT_PARTICLE_STYLE, ParticleSystem, type ParticleStyle } from '../f
 import { renderDebugOverlay, type DebugLayer } from '../flow/debug';
 import { LIGHT_PALETTE } from '../flow/palette';
 import { buildWorld, type World } from '../flow/world';
+import { buildSharedField } from '../flow/sharedField';
 import type { Source } from '../flow/types';
 import gbCountries from './data/gb-countries.json';
 import {
@@ -80,6 +81,7 @@ import {
   isOffMainFit,
 } from './farmSources';
 import {
+  markerClearance,
   createFarmMarker,
   createFarmMarkerLayer,
   positionFarmMarker,
@@ -350,20 +352,24 @@ function bootMap(): void {
     fineNoiseWeight: 0,
     densityMaxPush: 30,
     coastMode: 'exit',
-    // Prototype: 'blanket' — each particle heads for a point drawn evenly
-    // across the land south of its farm, and most are born partway along
-    // that route, so flow covers the island instead of running as a river
-    // from Scotland. 'targets' (the cities, cities.ts) is the previous
-    // prototype, still on the panel's field button. Without the coast
+    // 'shared' (DECISIONS 049): one direction per point, the potential flow
+    // from the farms to a sink spread over the land, so neighbours move
+    // together as wind does. Replaces 'blanket' (037), where each particle
+    // headed for its own point across the land: that covered the island but
+    // swirled and crossed around the farm clusters. 'blanket' and 'targets'
+    // (the cities) stay on the panel's field button. Without the coast
     // rescue, the divergent field (away from the farms) has a sink at the
     // border and never reaches England.
-    baseFieldMode: 'blanket',
+    baseFieldMode: 'shared',
     pathWeight: 0.9,
     targetDirectness: 0.8,
     // Recycling respawns a particle that lingers somewhere crowded. The farms
     // cluster in the central belt, which is crowded by construction, so it
     // was killing half the flow there before any reached England.
     densityRecycleThreshold: Infinity,
+    // The spacing push shoves neighbours apart in different directions: off
+    // under 'shared', where moving together is the point.
+    densityEnabled: false,
   };
   const particleStyle: ParticleStyle = {
     ...DEFAULT_PARTICLE_STYLE,
@@ -377,16 +383,21 @@ function bootMap(): void {
     farmBirthShare: 0.15,
     midJourneyBias: 1.5,
   };
-  const palette = { ...LIGHT_PALETTE, washAlpha: 0.03, baseStrokeWidth: 1.1 };
+  // Softened (0.9 -> 0.55 opacity) so the flow reads as texture behind the farm
+  // markers rather than competing with them in the same ink (Owen). The
+  // held-back palette below takes it too.
+  const palette = { ...LIGHT_PALETTE, washAlpha: 0.03, baseStrokeWidth: 1.1, baseStrokeAlpha: 0.55 };
   /**
-   * The flow's speed and stroke width above are in device px as tuned: on a
-   * 2x screen, with the land drawn at 1440x900 (TUNED_LAND_CSS_PX2, measured).
+   * The flow's speed and stroke width above are in device px as tuned on a 2x
+   * screen. The look they give is right at a phone's map (the land drawn at
+   * 375x812, REFERENCE_LAND_CSS_PX2, measured); at 1440x900 it was too subtle
+   * (Owen), so every bigger map scales up from the phone's.
    * They are scaled by `lookScale` (set in rebuild) so the flow looks the same
    * on any screen (DECISIONS 047):
    * - by the screen's pixel ratio over the tuned one, so a 1x screen draws
    *   the same css-px line at the same css-px speed rather than one twice as
    *   heavy and fast;
-   * - by the drawn land's linear size over the tuned one, so a bigger map has
+   * - by the drawn land's linear size over the phone's, so a bigger map has
    *   longer, heavier trails in proportion (trail length is speed x the fade's
    *   time) rather than the same ones spread thin. Up only: a smaller map
    *   keeps the tuned look, since thinner, slower lines on a phone read worse.
@@ -395,8 +406,16 @@ function bootMap(): void {
    * speed, so a particle takes the same time to cross the country at any size.
    */
   const TUNED_SPEED = particleStyle.speed;
+  /**
+   * The held-back flow's dashes, css px at the reference scale: its trails are
+   * broken, the flow on the grid's solid, so the two read apart by form where
+   * their colours meet — an on-grid trail fading out over the land passes
+   * through almost exactly the held-back periwinkle (Owen: hard to tell apart).
+   */
+  const HELD_DASH_ON_CSS_PX = 5;
+  const HELD_DASH_OFF_CSS_PX = 4;
   const TUNED_DPR = 2;
-  const TUNED_LAND_CSS_PX2 = 156_000;
+  const REFERENCE_LAND_CSS_PX2 = 47_700;
   let lookScale = 1;
   // The wind held back from the grid: a second flow over the same farms and
   // field, weighted by each farm's MW held back, drawn in the held-back
@@ -763,6 +782,18 @@ function bootMap(): void {
     setMarkerHighlight(insetSvg, insetMarkers, farm);
   }
 
+  /**
+   * A particle born at a farm starts just outside its marker and selection
+   * ring, not on it, so trail heads don't pile onto the marker and the farms
+   * read as points (Owen: "ink blots"). Sized from installed capacity, as the
+   * markers are; device px, the markers' own units.
+   */
+  const MAX_FARM_CAPACITY_MW = Math.max(...FARM_CAPACITY_MW.values());
+  function birthClearance(sourceIndex: number): number {
+    const farm = world.sources[sourceIndex]?.source.id;
+    return markerClearance(farm ? FARM_CAPACITY_MW.get(farm) ?? 0 : 0, MAX_FARM_CAPACITY_MW);
+  }
+
   /** The stage's css size and the DPR it is drawn at — what a rebuild is a function of. */
   function stageSizeKey(): string {
     const rect = stage.getBoundingClientRect();
@@ -802,7 +833,7 @@ function bootMap(): void {
 
     let land = 0;
     for (let i = 0; i < world.mask.data.length; i++) land += world.mask.data[i];
-    const sizeScale = Math.max(1, Math.sqrt(land / (currentDpr * currentDpr) / TUNED_LAND_CSS_PX2));
+    const sizeScale = Math.max(1, Math.sqrt(land / (currentDpr * currentDpr) / REFERENCE_LAND_CSS_PX2));
     lookScale = (currentDpr / TUNED_DPR) * sizeScale;
     // Also the dev panel's speed slider: a rebuild resets it to the tuned speed at this scale.
     particleStyle.speed = TUNED_SPEED * lookScale;
@@ -813,18 +844,30 @@ function bootMap(): void {
       fullPx: mapHeight * HELD_FULL_SHARE,
     });
 
+    // css px to device px at this scale: lookScale already carries the pixel ratio over TUNED_DPR.
+    const dashScale = TUNED_DPR * lookScale;
+    const heldDash = { on: HELD_DASH_ON_CSS_PX * dashScale, off: HELD_DASH_OFF_CSS_PX * dashScale };
+
     if (particles) {
       particles.setWorld(world);
       heldParticles.setWorld(world);
+      heldParticles.dash = heldDash;
     } else {
-      particles = new ParticleSystem(world, particleCount, { style: particleStyle, fieldParams, allocation: 'quota' });
+      particles = new ParticleSystem(world, particleCount, {
+        style: particleStyle,
+        fieldParams,
+        allocation: 'quota',
+        birthClearance,
+      });
       heldParticles = new ParticleSystem(world, particleCount, {
         style: particleStyle,
         fieldParams,
         allocation: 'quota',
+        birthClearance,
         rateOf: (source) => heldMW.get(source.id) ?? 0,
         fade: (x, y) => heldFade(x, y),
       });
+      heldParticles.dash = heldDash;
       // Nothing flows until farm data lands (landFarms sets the real density).
       particles.setActiveFraction(flowDensity(lastFarmsNow));
       heldParticles.setActiveFraction(heldFraction());
@@ -951,6 +994,7 @@ function bootMap(): void {
     for (const farm of lastFarmsNow ?? []) heldMW.set(farm.farm, Math.max(0, farm.curtailedMW));
     particles.refreshRates();
     heldParticles.refreshRates();
+    buildShared();
     // The flow's density follows the reading, eased rather than jumped: the
     // first reading ramps in over a few seconds with every particle born at
     // its farm, so the wind is seen leaving the farms; later readings ease
@@ -1063,10 +1107,32 @@ function bootMap(): void {
    */
   function applyBorderLimit() {
     if (!borderLimit) return;
-    particles.setCrossing({
-      isAcross: (x, y) => borderSides.inEngland(x, y),
+    // 'blanket' draws destinations by it; 'shared' builds it into the field.
+    particles.setCrossing(borderCrossing());
+    buildShared();
+  }
+
+  function borderCrossing() {
+    if (!borderLimit) return null;
+    return {
+      isAcross: (x: number, y: number) => borderSides.inEngland(x, y),
       share: Math.min(1, Math.max(0, borderLimit.limitMW / borderLimit.maxMW)),
-    });
+    };
+  }
+
+  /**
+   * The shared field (DECISIONS 049), shaped by each farm's declared output —
+   * on the grid and held back alike: the wind's shape, whatever becomes of it
+   * — and the border's limit. Rebuilt with the world, each reading, and the
+   * limit. Every farm counts equally until there is a reading.
+   */
+  function buildShared() {
+    const declared = new Map((lastFarmsNow ?? []).map((f) => [f.farm, Math.max(0, f.declaredMW)]));
+    world.shared = buildSharedField(
+      world.mask,
+      world.sources.map((r) => ({ position: r.position, weight: declared.get(r.source.id) ?? 0 })),
+      borderCrossing(),
+    );
   }
   void refreshBorder();
   setInterval(() => void refreshBorder(), 60 * 60_000);

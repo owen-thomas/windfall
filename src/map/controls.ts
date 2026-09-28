@@ -152,6 +152,7 @@ export function createMapControlPanel(ctx: MapControlContext): MapControlPanel {
   const fieldButton = document.createElement('button');
   fieldButton.type = 'button';
   const FIELD_MODES = [
+    { mode: 'shared', label: 'Field: one flow' },
     { mode: 'blanket', label: 'Field: cover the land' },
     { mode: 'targets', label: 'Field: head for cities' },
     { mode: 'south', label: 'Field: head south' },

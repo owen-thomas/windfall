@@ -105,12 +105,24 @@ export function styleFarmMarker(g: SVGGElement, reading: FarmReading | null, max
 }
 
 function radiusFor(model: MarkerModel): number {
-  const cap = model.reading?.capacityMW ?? 0;
-  if (!(cap > 0) || !(model.maxCapacityMW > 0)) return RADIUS_UNKNOWN;
+  return markerRadius(model.reading?.capacityMW ?? 0, model.maxCapacityMW);
+}
+
+/**
+ * A marker's radius for a farm's capacity, in the map svg's units — the
+ * flow canvas's device px, since the svg's viewBox is the canvas's size.
+ */
+export function markerRadius(capacityMW: number, maxCapacityMW: number): number {
+  if (!(capacityMW > 0) || !(maxCapacityMW > 0)) return RADIUS_UNKNOWN;
   // Area in proportion to capacity above the floor: r² runs linearly from
   // RADIUS_MIN² (a farm of no capacity) to RADIUS_MAX² (the largest).
-  const share = Math.min(1, cap / model.maxCapacityMW);
+  const share = Math.min(1, capacityMW / maxCapacityMW);
   return Math.sqrt(RADIUS_MIN ** 2 + share * (RADIUS_MAX ** 2 - RADIUS_MIN ** 2));
+}
+
+/** How far out from a marker's centre it and its selection ring reach, same units: where a flow leaving it should start. */
+export function markerClearance(capacityMW: number, maxCapacityMW: number): number {
+  return markerRadius(capacityMW, maxCapacityMW) + RING_OFFSET;
 }
 
 function draw(g: SVGGElement): void {
