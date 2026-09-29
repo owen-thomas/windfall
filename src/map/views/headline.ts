@@ -25,16 +25,18 @@
  * said in the method disclosure (./settlement.ts).
  *
  * When there's an estimate for today (London) above zero, a second sentence
- * says what holding the wind back is costing (DECISIONS 052), the figure a
- * counter that ticks up through the day (see costAt). When some of it is the
- * gas that replaced the wind and the reading is current, the gas joins the
- * first sentence and the cost refers back to both (DECISIONS 054, Owen): "At
- * least 68% of Scotland's tracked wind is being held back and gas is being
- * burned in its place. Today alone, that will add about £9.62m to Great
- * Britain's electricity bills." Otherwise: "Holding it back today will add
- * about …", and with nothing held back now, "Holding it back earlier today and
- * burning gas in its place will add about …". "Will add": the costs reach bills later. "Today alone": one day of
- * something that keeps happening, without claiming how often. Electricity, and Great Britain: the balancing
+ * says what holding the wind back is costing (DECISIONS 052), the settled
+ * estimate so far (see costAt). When some of it is the gas that replaced the
+ * wind and the reading is current, the gas gets its own sentence and the cost
+ * refers back to both (DECISIONS 054, 055, Owen): "At least 68% of Scotland's
+ * tracked wind is being held back. Gas is being burned in its place." then
+ * "So far today, that's about £10.51m added to Great Britain's electricity
+ * bills." With nothing held back now: "Earlier today, holding it back and
+ * burning gas in its place meant about £X added to …". The cost is its own
+ * headline over the cost timeline (costBlock, views/cost.ts). "So far today"
+ * (was "Today alone … will add"): the figure is the day to date, not a
+ * forecast of where it ends up at midnight (Owen); "added to" says where the
+ * cost goes without saying bills have already gone up. Electricity, and Great Britain: the balancing
  * charge is levied on electricity, and Northern Ireland is a separate market.
  * "Adding to bills" says where the cost ends up, not when; the method says the
  * charge is set in advance, so today's costs show up in later bills. The
@@ -51,12 +53,16 @@ import { settlementAt } from '../../lib/settlement';
 import { speaksOfNow, type AppState } from '../../lib/state';
 import { readOnGrid } from '../onGrid';
 
-/** How far past the last settled half hour the cost counter may count on at the current rate. */
-const PROJECT_HOURS = 2;
-/** How often the counter is redrawn; it only changes on screen when it passes another £10,000. */
-const COUNTER_TICK_MS = 5_000;
+export interface MapHeadlineView extends View {
+  /**
+   * The cost, its own headline over its own bar (DECISIONS 055): a section
+   * holding the cost sentence, hidden while there's no estimate for today.
+   * main.ts appends the cost bar and its method (views/cost.ts) to it.
+   */
+  costBlock: HTMLElement;
+}
 
-export function mapHeadlineView(): View {
+export function mapHeadlineView(): MapHeadlineView {
   const lead = el('span', { class: 'map-headline__lead' });
   const figure = el('strong', { class: 'map-headline__figure' });
   const tail = el('span', { class: 'map-headline__tail' });
@@ -76,38 +82,31 @@ export function mapHeadlineView(): View {
     { class: 'map-headline__sentence', id: 'map-headline-sentence' },
     lead,
     figure,
-    tail,
+    tail
+  );
+  // The second headline, the same size as the first (Owen): an <h2>, since it
+  // follows from the first. Its text keeps the leading space the one-sentence
+  // form needed; the trim is harmless.
+  const costSentence = el(
+    'h2',
+    { class: 'map-headline__sentence map-headline__sentence--cost', id: 'map-cost-sentence' },
     costLead,
     costFigure,
     costTail
   );
+  const costBlock = el('section', { class: 'map-headline__block', 'aria-labelledby': 'map-cost-sentence' }, costSentence);
+  costBlock.hidden = true;
 
   /**
-   * The running cost, as a counter (Owen): the settled estimate up to the last
-   * half hour Elexon has settled, counted on from there at the current rate —
-   * the megawatts held back right now (the live reading) × today's average
-   * cost per MWh held back — for at most PROJECT_HOURS, so an Elexon outage
-   * can't run it away. Nothing held back now: it holds still. It never counts
-   * down: when a settled total lands below what's shown, it waits for the
-   * count to catch up. Null: no estimate for today (London), or not above zero.
+   * Today's settled estimate, up to the last half hour Elexon has settled — the
+   * same figure the cost timeline's legend adds up to (DECISIONS 055: the
+   * counter that counted on at the current rate is gone, Owen). Null: no
+   * estimate for today (London), or not above zero.
    */
-  let counterDate = '';
-  let counterPounds = 0;
-  function costAt(state: AppState, at: Date): number | null {
+  function costAt(state: AppState): number | null {
     const today = state.cost?.cost;
-    const date = settlementAt(at).date;
-    if (!today || today.date !== date || !(today.estimatePounds > 0)) return null;
-    const reading = state.curtailment?.now;
-    const live =
-      reading && speaksOfNow(state.curtailment?.fetchedAt, reading.settlement, at) ? reading.curtailedMW : 0;
-    const perMWh = today.heldBackMWh > 0 ? today.estimatePounds / today.heldBackMWh : 0;
-    const hours = Math.min(PROJECT_HOURS, Math.max(0, (at.getTime() - Date.parse(today.throughTime)) / 3_600_000));
-    if (counterDate !== date) {
-      counterDate = date;
-      counterPounds = 0;
-    }
-    counterPounds = Math.max(counterPounds, today.estimatePounds + live * hours * perMWh);
-    return counterPounds;
+    if (!today || today.date !== settlementAt(state.now).date || !(today.estimatePounds > 0)) return null;
+    return today.estimatePounds;
   }
 
   /**
@@ -121,24 +120,24 @@ export function mapHeadlineView(): View {
     return today.replacementPounds > 0;
   }
 
-  /** Which cost sentence the headline carries, set by update(); the tick redraws it. */
+  /** Which cost sentence the headline carries, set by update(). */
   let costMode: 'off' | 'today' | 'earlier' = 'off';
   /** Whether the share sentence carries the gas clause, set by update(). */
   let gasInLead = false;
   let lastState: AppState | null = null;
   function drawCost() {
-    const pounds = lastState && costMode !== 'off' ? costAt(lastState, new Date()) : null;
+    const pounds = lastState && costMode !== 'off' ? costAt(lastState) : null;
+    costBlock.hidden = pounds === null;
     if (pounds === null) return setCost('');
     const figureText = formatPoundsCounter(pounds);
-    // The share sentence already said gas is burned in the wind's place: "that" is both.
-    if (costMode === 'today' && gasInLead) {
-      return setCost(' Today alone, that will add about ', figureText, ' to Great Britain’s electricity bills.');
-    }
+    // "That" is the first headline's held-back wind (and, when it says so, the
+    // gas burned in its place). With nothing held back now, the first headline
+    // is about the wind on the grid, so this one names what it refers to.
+    const tail = ' added to Great Britain’s electricity bills.';
+    if (costMode === 'today') return setCost('So far today, that’s about ', figureText, tail);
     const gas = gasPaid(lastState) ? ' and burning gas in its place' : '';
-    const when = costMode === 'today' ? 'today' : 'earlier today';
-    setCost(` Holding it back ${when}${gas} will add about `, figureText, ' to Great Britain’s electricity bills.');
+    setCost(`Earlier today, holding it back${gas} meant about `, figureText, tail);
   }
-  setInterval(drawCost, COUNTER_TICK_MS);
 
   const root = el(
     'section',
@@ -148,6 +147,7 @@ export function mapHeadlineView(): View {
 
   return {
     el: root,
+    costBlock,
     update(state: AppState) {
       lastState = state;
       const data = state.curtailment;
@@ -212,7 +212,7 @@ export function mapHeadlineView(): View {
         tail,
         present
           ? gasInLead
-            ? ' of Scotland’s tracked wind is being held back and gas is being burned in its place.'
+            ? ' of Scotland’s tracked wind is being held back. Gas is being burned in its place.'
             : ' of Scotland’s tracked wind is currently being held back from the grid.'
           : ` of Scotland’s tracked wind was held back from the grid ${when}.`
       );

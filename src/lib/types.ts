@@ -206,6 +206,18 @@ export interface CostToday {
   /** The held-back energy flagged as a network action, priced at that half hour's flagged offers from generators outside Scotland, £. */
   replacementPounds: number;
   heldBackMWh: number;
+  /** 48, or 46 / 50 on a clock-change day: the cost timeline's width (DECISIONS 055). */
+  periodsInDay: number;
+  /** Each settled half hour's split, in period order — the cost timeline's columns. */
+  periods: CostPeriod[];
+}
+
+/** One settled half hour of the cost estimate (DECISIONS 055). */
+export interface CostPeriod {
+  period: number;
+  /** Net paid to the tracked farms this half hour, £; can be negative. */
+  netPaymentsPounds: number;
+  replacementPounds: number;
 }
 
 export interface CostResponse {

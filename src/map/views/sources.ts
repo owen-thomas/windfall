@@ -68,10 +68,11 @@ function initialCount(list: HTMLElement): number {
   return cols === '2' ? 7 : 5;
 }
 
-/** On a phone the list starts closed (4d, Owen): the headline and bar already
- *  make the claim, and the map comes up sooner. */
+/** The list starts closed at every tier (DECISIONS 055, Owen): the two
+ *  headlines and their bars make the claims, and the cost block sits right
+ *  under the share block. On a phone since 4d. */
 function closedByDefault(): boolean {
-  return getComputedStyle(document.documentElement).getPropertyValue('--tier').trim() === 'mobile';
+  return true;
 }
 
 export interface SourcesOptions {

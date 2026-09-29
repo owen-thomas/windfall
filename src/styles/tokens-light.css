@@ -112,7 +112,7 @@
    */
   --fuel-wind: #2e469a;
   --wind-live: #2141bf;
-  --fuel-gas: #9a4c2e;
+  --fuel-gas: #9a2e7c;
   --fuel-nuclear: #2e7c9a;
   --fuel-solar: #9a822e;
   --fuel-hydro: #5f86a3;
@@ -163,7 +163,7 @@
      (the Figma MCP was rate-limited; confirm against node 49:746). Its
      labels sit above the bar now, so it carries no text: 1.95:1 on cream,
      3.49:1 against --bar-on beside it. */
-  --bar-off: #94a3e1;
+  --bar-off: #8597dc; /* --held-text's hue, lightened to 3.03:1 against --bar-on (DECISIONS 055) */
   --bar-label: #ffffff;
   /* 4d: every held-back figure and word in text — the headline's percentage,
      "Held back 2,228 MW". The frame draws them #4865CB (4.18:1); this is

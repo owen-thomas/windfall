@@ -33,8 +33,8 @@
  */
 import { SCOTTISH_WIND_SET } from './bmus.js';
 import { fetchJson } from './http.js';
-import { periodBounds } from '../../src/lib/settlement.js';
-import type { CostToday } from '../../src/lib/types.js';
+import { periodBounds, periodsInDay } from '../../src/lib/settlement.js';
+import type { CostPeriod, CostToday } from '../../src/lib/types.js';
 
 const BASE = 'https://data.elexon.co.uk/bmrs/api/v1/balancing/settlement/indicative';
 const REGISTRY = 'https://data.elexon.co.uk/bmrs/api/v1/reference/bmunits/all';
@@ -148,12 +148,16 @@ export async function fetchCostToday(date: string): Promise<CostToday | null> {
   let netPayments = 0;
   let replacement = 0;
   let heldBack = 0;
-  for (const p of periods) {
+  const byPeriod: CostPeriod[] = [];
+  for (const p of periods.sort((a, b) => a - b)) {
     const offered = priceMWh.get(p) ?? 0;
     const price = offered > 0 ? (pricePounds.get(p) ?? 0) / offered : dayPrice;
-    netPayments += net.get(p) ?? 0;
-    replacement += Math.max(0, replaced.get(p) ?? 0) * Math.max(0, price);
+    const periodNet = net.get(p) ?? 0;
+    const periodReplacement = Math.max(0, replaced.get(p) ?? 0) * Math.max(0, price);
+    netPayments += periodNet;
+    replacement += periodReplacement;
     heldBack += Math.max(0, held.get(p) ?? 0);
+    byPeriod.push({ period: p, netPaymentsPounds: Math.round(periodNet), replacementPounds: Math.round(periodReplacement) });
   }
 
   const through = Math.max(...periods);
@@ -165,5 +169,7 @@ export async function fetchCostToday(date: string): Promise<CostToday | null> {
     netPaymentsPounds: Math.round(netPayments),
     replacementPounds: Math.round(replacement),
     heldBackMWh: Math.round(heldBack),
+    periodsInDay: periodsInDay(date),
+    periods: byPeriod,
   };
 }
