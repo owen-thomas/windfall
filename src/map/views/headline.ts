@@ -25,10 +25,15 @@
  * said in the method disclosure (./settlement.ts).
  *
  * When there's an estimate for today (London) above zero, a second sentence
- * says what holding the wind back is costing (DECISIONS 052): "Holding it back
- * today alone will add about £4.51m to electricity bills in Great Britain."
- * (Owen's wording), the figure a counter that ticks up through the day (see
- * costAt). "Will add": the costs reach bills later. "Today alone": one day of
+ * says what holding the wind back is costing (DECISIONS 052), the figure a
+ * counter that ticks up through the day (see costAt). When some of it is the
+ * gas that replaced the wind and the reading is current, the gas joins the
+ * first sentence and the cost refers back to both (DECISIONS 054, Owen): "At
+ * least 68% of Scotland's tracked wind is being held back and gas is being
+ * burned in its place. Today alone, that will add about £9.62m to Great
+ * Britain's electricity bills." Otherwise: "Holding it back today will add
+ * about …", and with nothing held back now, "Holding it back earlier today and
+ * burning gas in its place will add about …". "Will add": the costs reach bills later. "Today alone": one day of
  * something that keeps happening, without claiming how often. Electricity, and Great Britain: the balancing
  * charge is levied on electricity, and Northern Ireland is a separate market.
  * "Adding to bills" says where the cost ends up, not when; the method says the
@@ -105,18 +110,33 @@ export function mapHeadlineView(): View {
     return counterPounds;
   }
 
+  /**
+   * Some of today's settled estimate is the replacement: held-back energy
+   * priced at flagged offers from outside Scotland, almost all gas (DECISIONS
+   * 052). Read from each day's split, never assumed.
+   */
+  function gasPaid(state: AppState | null): boolean {
+    const today = state?.cost?.cost;
+    if (!today || today.date !== settlementAt(new Date()).date) return false;
+    return today.replacementPounds > 0;
+  }
+
   /** Which cost sentence the headline carries, set by update(); the tick redraws it. */
   let costMode: 'off' | 'today' | 'earlier' = 'off';
+  /** Whether the share sentence carries the gas clause, set by update(). */
+  let gasInLead = false;
   let lastState: AppState | null = null;
   function drawCost() {
     const pounds = lastState && costMode !== 'off' ? costAt(lastState, new Date()) : null;
     if (pounds === null) return setCost('');
     const figureText = formatPoundsCounter(pounds);
-    if (costMode === 'today') {
-      setCost(' Holding it back today alone will add about ', figureText, ' to electricity bills in Great Britain.');
-    } else {
-      setCost(' Holding it back earlier today will add about ', figureText, ' to electricity bills in Great Britain.');
+    // The share sentence already said gas is burned in the wind's place: "that" is both.
+    if (costMode === 'today' && gasInLead) {
+      return setCost(' Today alone, that will add about ', figureText, ' to Great Britain’s electricity bills.');
     }
+    const gas = gasPaid(lastState) ? ' and burning gas in its place' : '';
+    const when = costMode === 'today' ? 'today' : 'earlier today';
+    setCost(` Holding it back ${when}${gas} will add about `, figureText, ' to Great Britain’s electricity bills.');
   }
   setInterval(drawCost, COUNTER_TICK_MS);
 
@@ -181,6 +201,7 @@ export function mapHeadlineView(): View {
       }
 
       setAttr(root, 'data-state', 'curtailing');
+      gasInLead = present && gasPaid(state);
       let figureText: string;
       if (reading.heldPct >= 1) figureText = formatPctFloor(reading.heldPct);
       else if (reading.heldMW >= 1) figureText = formatMWFloor(reading.heldMW);
@@ -190,7 +211,9 @@ export function mapHeadlineView(): View {
       setTextCrossfade(
         tail,
         present
-          ? ' of Scotland’s tracked wind is currently being held back from the grid.'
+          ? gasInLead
+            ? ' of Scotland’s tracked wind is being held back and gas is being burned in its place.'
+            : ' of Scotland’s tracked wind is currently being held back from the grid.'
           : ` of Scotland’s tracked wind was held back from the grid ${when}.`
       );
       // Its own sentence, the act as its subject: as one sentence ("…from the

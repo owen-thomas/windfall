@@ -147,13 +147,18 @@ function share(state: AppState): string {
 
 /**
  * The headline's second claim, the cost (DECISIONS 052). How the replacement
- * is priced, and today's split, are in DECISIONS 052 rather than on the page;
- * that it reaches bills is the headline's own "will add".
+ * is priced is in DECISIONS 052 rather than on the page; that it reaches bills
+ * is the headline's own "will add". The headline names the gas but not its
+ * share (DECISIONS 054), so the method says how much of the settled estimate
+ * is the gas, floored, when that's a share between 1% and 99% — a net payment
+ * to the farms below zero would put it over 100%, which reads as an error.
  */
 function costNote(cost: CostToday): string {
+  const gasPct = Math.floor((cost.replacementPounds / cost.estimatePounds) * 100);
+  const gas = gasPct >= 1 && gasPct <= 99 ? ` Of that, ${gasPct}% is the cost of the gas.` : '';
   return (
     `The cost is our estimate for the day so far: settled figures up to ${formatTime(cost.throughTime)} ` +
-    '(the latest half hour with data), then counted on at the rate wind is being held back now.'
+    `(the latest half hour with data), then counted on at the rate wind is being held back now.${gas}`
   );
 }
 
