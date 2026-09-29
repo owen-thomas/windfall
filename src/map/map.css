@@ -83,6 +83,8 @@ body {
 .map-headline__lead,
 .map-headline__figure,
 .map-headline__tail,
+.map-headline__cost,
+.map-headline__cost-figure,
 .map-sources__figure,
 .map-band__caption,
 .map-band__intensity {
@@ -173,7 +175,8 @@ body {
   color: var(--text-primary);
 }
 
-.map-headline__figure {
+.map-headline__figure,
+.map-headline__cost-figure {
   font-weight: var(--wt-semibold);
 }
 

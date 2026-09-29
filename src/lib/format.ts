@@ -106,3 +106,16 @@ export function fuelLabel(fuel: string): string {
   if (fuel === 'imports') return 'Imports';
   return fuel.charAt(0).toUpperCase() + fuel.slice(1);
 }
+
+/**
+ * Pounds to two significant figures, millions as "m": £3,067,709 -> "£3.1m",
+ * £319,845 -> "£320,000", £9,604 -> "£9,600". For an estimate, where more
+ * digits would claim precision it doesn't have.
+ */
+export function formatPoundsEstimate(pounds: number): string {
+  if (!(pounds > 0)) return '£0';
+  const magnitude = Math.pow(10, Math.floor(Math.log10(pounds)) - 1);
+  const rounded = Math.round(pounds / magnitude) * magnitude;
+  if (rounded >= 1_000_000) return `£${(rounded / 1_000_000).toFixed(1).replace(/\.0$/, '')}m`;
+  return `£${rounded.toLocaleString('en-GB')}`;
+}
