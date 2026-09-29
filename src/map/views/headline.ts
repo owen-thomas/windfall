@@ -29,7 +29,8 @@
  * estimate so far (see costAt). When some of it is the gas that replaced the
  * wind and the reading is current, the gas opens the cost headline, over the
  * timeline that shows it (DECISIONS 054, 055, Owen): "At least 68% of
- * Scotland's tracked wind is being held back from the grid." then "Gas is
+ * Scotland's tracked wind is being held back from the grid right now." then
+ * (the half hour, against the cost's "so far today", Owen) "Gas is
  * being burned instead. So far today, that's about £10.51m added
  * to Great Britain's electricity bills." With nothing held back now: "Earlier today, holding it back and
  * burning gas in its place meant about £X added to …". The cost is its own
@@ -215,7 +216,7 @@ export function mapHeadlineView(): MapHeadlineView {
       setTextCrossfade(
         tail,
         present
-          ? ' of Scotland’s tracked wind is being held back from the grid.'
+          ? ' of Scotland’s tracked wind is being held back from the grid right now.'
           : ` of Scotland’s tracked wind was held back from the grid ${when}.`
       );
       // Its own sentence, the act as its subject: as one sentence ("…from the
