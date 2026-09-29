@@ -217,7 +217,9 @@ function bootMap(): void {
   // in the --highlight blue with the rest dimmed, and its marker likewise. Held
   // here, so a rebuild that redraws the inset's markers can re-apply it.
   let highlightedFarm: string | null = null;
-  const sources = mapSourcesView({ onSelect: highlightFarm });
+  // The list and the method share the line under the bar and close each other
+  // (DECISIONS 053); `settlement` is declared below, and only read on a click.
+  const sources = mapSourcesView({ onSelect: highlightFarm, onOpen: () => settlement.setOpen(false) });
 
   // The two mix panels are grid items of the map cell (map.css): their columns
   // come from the grid tokens, their vertical position from positionOverlays()
@@ -255,18 +257,16 @@ function bootMap(): void {
   // building and updating it exactly as before, so its freshness, notice and
   // state rules travel with it.
   //
-  // 1. The bar and its list, then the settlement-period row — the frame's own
-  //    order (§1): sentence, bar, list, settlement row, explanation. Since 4d
-  //    the list is always shown (views/sources.ts grows it in batches) rather
-  //    than a disclosure open on desktop and shut on mobile.
+  // 1. The bar, then "▶ Show wind farms  ▶ Show method" on the line under it,
+  //    each opening its own panel below and closing the other (DECISIONS 053).
+  //    The settlement heading row that used to sit between them is gone: the
+  //    half hour is said in the method's share paragraph. The masthead view
+  //    still builds and updates its clock; it's taken out of the masthead and
+  //    not seated anywhere on this page.
   headline.el.append(sources.el);
-
-  // The settlement heading: the masthead view still owns and keeps fresh the
-  // clock element itself, it just isn't rendered in the masthead any more. It
-  // is the summary of the method disclosure (views/settlement.ts). Its
-  // freshness dot and age are a separate element since 4d, seated in the
-  // footer below.
-  const settlement = mapSettlementView(masthead.clock);
+  masthead.clock.remove();
+  const settlement = mapSettlementView({ onOpen: () => sources.close() });
+  sources.addToggle(settlement.toggle);
   headline.el.append(settlement.el);
 
   // 2. The old "How this number is worked out" toggle — colophonView's own
@@ -299,23 +299,26 @@ function bootMap(): void {
   // 5. 4d: the footer reads "Carbon Intensity • Elexon Insights ● Updated 6
   //    minutes ago" — the freshness moves here from the settlement row, after
   //    the two sources and before the byline. Each source's health word stays
-  //    in the DOM but only shows when that source isn't answering (map.css).
+  //    in the DOM but is never shown (map.css): a source not answering is
+  //    said once, in the freshness line.
   //    The two sources are grouped so that, when the line wraps on a phone,
   //    the freshness drops to its own line flush left rather than indented.
   //    Each source says what it gives the page, not just its product name —
   //    "Carbon Intensity" and "Elexon Insights" meant nothing on their own
-  //    (Owen) — with the organisation linked.
+  //    (Owen) — with the organisation linked. Each credits everything the page
+  //    takes from it: NESO the grid mix and the border limit (/api/border),
+  //    Elexon the switch-offs and the cost estimate (/api/cost, DECISIONS 052).
   const [carbonRow, elexonRow] = colophon.el.querySelectorAll('.source');
   carbonRow
     .querySelector('.source__name')!
     .replaceChildren(
-      'Grid mix from ',
+      'Grid mix and border limit from ',
       el('a', { class: 'map-foot__link', href: 'https://carbonintensity.org.uk', text: 'NESO' })
     );
   elexonRow
     .querySelector('.source__name')!
     .replaceChildren(
-      'Switch-offs from ',
+      'Switch-offs and costs from ',
       el('a', { class: 'map-foot__link', href: 'https://bmrs.elexon.co.uk', text: 'Elexon' })
     );
   const feeds = el('span', { class: 'map-foot__feeds' }, carbonRow, elexonRow);

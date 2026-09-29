@@ -97,10 +97,6 @@
   --legend-bar-gap: 0.5rem;
   --legend-item-gap: 1rem;
   --bar-foot-gap: 0.3px;
-  /* With the list shut, the settlement line follows the foot's text rather than
-     a farm row: 4.1px more pull takes the foot's baseline to the settlement
-     line's cap height to 32px. */
-  --settlement-after-foot: calc(-0.5rem - 4.1px);
 
   /* Type that steps by tier. */
   --type-display: 1.5rem; /* 24px (4d, Owen: was 20px, too slight for the page's claim) */
@@ -186,7 +182,6 @@
     --legend-bar-gap: 0.75rem;
     --legend-item-gap: var(--gap-lg);
     --bar-foot-gap: calc(0.75rem - 2.5px);
-    --settlement-after-foot: -0.5rem;
     --mix-span: 3;
     --type-display: 2rem; /* 32px */
     --lh-display: 1.125;
