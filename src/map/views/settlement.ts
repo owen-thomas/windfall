@@ -1,4 +1,11 @@
 /**
+ * Now (DECISIONS 053): a "Show method" text toggle beside "Show wind farms",
+ * under the bar (the two close each other), opening three paragraphs in the
+ * headline's order: how wind is held back and paid for, the share and what
+ * it covers (the settlement period folded in: "…the share held back now is
+ * for 14:30 – 15:00."), and the cost. The settlement heading row is gone from
+ * the page; the history below is how it got here.
+ *
  * The settlement row and, hanging off it, the page's one explanation
  * (Windfall_Map_Spec_4c.md §4c.4, DECISIONS 029; re-cut by
  * Windfall_Map_Spec_4d.md): a native `<details>`, the settlement heading as the
@@ -59,29 +66,11 @@
  * history of what changed and why.
  */
 
-import { el, setText, type View } from '../../view/dom';
-import type { AppState } from '../../lib/state';
+import { el, setAttr, setText, type View } from '../../view/dom';
+import { speaksOfNow, type AppState } from '../../lib/state';
 import type { BorderLimit, CostToday } from '../../lib/types';
 import { formatTime } from '../../lib/format';
 import { settlementAt } from '../../lib/settlement';
-
-// Static: the same in every state, so set once rather than on every render.
-const PERIODS =
-  'Britain’s grid runs in half-hour blocks called settlement periods. Every figure on this page ' +
-  'is for the half hour shown above.';
-
-/**
- * The headline's cost, in two sentences (DECISIONS 052), Owen's wording. What
- * it's an estimate of is the mechanism paragraph's two payments; how the
- * replacement is priced, and today's split, are in DECISIONS 052 rather than
- * on the page.
- */
-function costNote(cost: CostToday): string {
-  return (
-    `The cost in the headline is our estimate up to ${formatTime(cost.throughTime)} (the latest ` +
-    'half hour with data). It’s passed on in future electricity bills across Great Britain.'
-  );
-}
 
 /**
  * How the network holds wind back, with the border's limit in it once it has
@@ -112,49 +101,116 @@ function mechanism(border: BorderLimit | null): string {
   );
 }
 
-const FLOOR =
-  'We only count the switch-offs ordered by the grid operator. Farms also get held back in ways ' +
-  'our data can’t see, so the real share is probably higher.';
+/**
+ * The headline's first claim, the share: which half hour it's for, what it
+ * covers, and why it's a floor. "Farms", not "units": unitsTracked (BMU-level)
+ * and farms.length (farm-level) are different counts, so naming the wrong
+ * noun would say something false, not just something vague.
+ */
+function share(state: AppState): string {
+  const data = state.curtailment;
+  const now = data?.now;
+  const method = data?.method;
 
-export function mapSettlementView(clockEl: Element): View & { setBorder(border: BorderLimit): void } {
+  let period = 'Britain’s grid runs in half-hour blocks called settlement periods.';
+  if (now) {
+    const span = `${formatTime(now.settlement.periodStart)} – ${formatTime(now.settlement.periodEnd)}`;
+    const present = speaksOfNow(data?.fetchedAt, now.settlement, state.now);
+    period =
+      'Britain’s grid runs in half-hour blocks called settlement periods: the share held back ' +
+      `${present ? 'now ' : ''}is for ${span}.`;
+  }
+
+  let coverage: string;
+  if (method && now) {
+    const total = now.farms.length;
+    const declaring = now.farms.filter((f) => f.unitsDeclaring > 0).length;
+    const reported = declaring === total ? `all ${total}` : `${declaring} of ${total}`;
+    coverage =
+      `We track ${total} Scottish wind farms (${method.unitsTracked} units, ` +
+      `${Math.round(method.capacityMW).toLocaleString('en-GB')} MW), and ${reported} had reported ` +
+      'when this data was taken.';
+  } else if (method) {
+    coverage =
+      `We track ${method.unitsTracked} Scottish wind units ` +
+      `(${Math.round(method.capacityMW).toLocaleString('en-GB')} MW); which farms have reported is ` +
+      'unknown while the balancing feed is unavailable.';
+  } else {
+    coverage = 'How many farms are covered is unknown while the balancing feed is unavailable.';
+  }
+
+  return (
+    `${period} ${coverage} We only count the switch-offs the grid operator orders; farms also get ` +
+    'held back in ways our data can’t see, so the real share is probably higher.'
+  );
+}
+
+/**
+ * The headline's second claim, the cost (DECISIONS 052). How the replacement
+ * is priced, and today's split, are in DECISIONS 052 rather than on the page;
+ * that it reaches bills is the headline's own "will add".
+ */
+function costNote(cost: CostToday): string {
+  return (
+    `The cost is our estimate for the day so far: settled figures up to ${formatTime(cost.throughTime)} ` +
+    '(the latest half hour with data), then counted on at the rate wind is being held back now.'
+  );
+}
+
+export interface MethodView extends View {
+  /** "Show method" / "Hide method": main.ts seats it beside "Show wind farms". */
+  toggle: HTMLButtonElement;
+  setBorder(border: BorderLimit): void;
+  /** Open or close it without the reader's click — the farm list opening closes it. */
+  setOpen(open: boolean): void;
+}
+
+export function mapSettlementView(options: { onOpen?(): void } = {}): MethodView {
   const toggleText = el('span', { class: 'map-toggle__text', text: 'Show method' });
-  const toggle = el('span', { class: 'map-toggle map-settlement__toggle' }, toggleText);
-  const summary = el('summary', { class: 'map-settlement__summary' }, clockEl, toggle);
+  const toggle = el(
+    'button',
+    { class: 'map-sources__open map-settlement__open', type: 'button', 'aria-expanded': 'false', 'aria-controls': 'map-method' },
+    el('span', { class: 'map-toggle' }, toggleText)
+  ) as HTMLButtonElement;
 
-  const coverage = el('p', { class: 'map-settlement__p' });
+  const mechanismP = el('p', { class: 'map-settlement__p', text: mechanism(null) });
+  const shareP = el('p', { class: 'map-settlement__p' });
   const costP = el('p', { class: 'map-settlement__p' });
   costP.hidden = true;
-  const mechanismP = el('p', { class: 'map-settlement__p', text: mechanism(null) });
-  const body = el(
-    'div',
-    { class: 'map-settlement__body' },
-    el('p', { class: 'map-settlement__p', text: PERIODS }),
-    mechanismP,
-    costP,
-    el('p', { class: 'map-settlement__p', text: FLOOR }),
-    coverage
-  );
 
   // Closed on first load, every tier (4d decision 11).
-  const root = el('details', { class: 'map-settlement' }, summary, body);
-  root.addEventListener('toggle', () => {
-    setText(toggleText, root.open ? 'Hide method' : 'Show method');
-    if (root.open) requestAnimationFrame(revealBody);
+  const root = el('div', { class: 'map-settlement__body', id: 'map-method' }, mechanismP, shareP, costP);
+  root.hidden = true;
+
+  function setOpen(open: boolean) {
+    root.hidden = !open;
+    setAttr(toggle, 'aria-expanded', String(open));
+    setText(toggleText, open ? 'Hide method' : 'Show method');
+  }
+
+  toggle.addEventListener('click', () => {
+    const open = root.hidden;
+    setOpen(open);
+    if (open) {
+      options.onOpen?.();
+      requestAnimationFrame(revealBody);
+    }
   });
 
   /**
    * Opening the method grows the text column below the fold — on desktop the
    * block is centred on the screen, so most of what opens lands off it (Owen).
    * Scroll just far enough to show all of it, 24px clear of the bottom, but
-   * never so far that the heading row goes off the top; if it's taller than
-   * the screen, the heading sits 24px from the top instead.
+   * never so far that the toggle goes off the top; if it's taller than the
+   * screen, the toggle sits 24px from the top instead.
    */
   function revealBody() {
     const margin = 24;
     const rect = root.getBoundingClientRect();
+    const top = toggle.getBoundingClientRect().top;
     const overflow = rect.bottom + margin - window.innerHeight;
     if (overflow <= 0) return;
-    const by = Math.min(overflow, rect.top - margin);
+    const by = Math.min(overflow, top - margin);
     if (by <= 0) return;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     window.scrollBy({ top: by, behavior: reduce ? 'auto' : 'smooth' });
@@ -162,42 +218,17 @@ export function mapSettlementView(clockEl: Element): View & { setBorder(border: 
 
   return {
     el: root,
+    toggle,
+    setOpen,
     setBorder(border: BorderLimit) {
       setText(mechanismP, mechanism(border));
     },
     update(state: AppState) {
+      setText(shareP, share(state));
       const cost = state.cost?.cost;
       const showCost = !!cost && cost.date === settlementAt(state.now).date && cost.estimatePounds > 0;
       if (showCost) setText(costP, costNote(cost));
       costP.hidden = !showCost;
-
-      const data = state.curtailment;
-      const method = data?.method;
-      const now = data?.now;
-
-      // "Farms", not "units" or "them": unitsTracked (BMU-level) and
-      // farms.length (farm-level) are different counts, so naming the wrong
-      // noun would say something false, not just something vague.
-      if (method && now) {
-        const total = now.farms.length;
-        const declaring = now.farms.filter((f) => f.unitsDeclaring > 0).length;
-        const reported = declaring === total ? `All ${total}` : `${declaring} of ${total}`;
-        setText(
-          coverage,
-          `We track ${total} Scottish wind farms: ${method.unitsTracked} units and ` +
-            `${Math.round(method.capacityMW).toLocaleString('en-GB')} MW of registered capacity. ` +
-            `${reported} had reported their figures when this data was taken.`
-        );
-      } else if (method) {
-        setText(
-          coverage,
-          `We track ${method.unitsTracked} Scottish wind units: ` +
-            `${Math.round(method.capacityMW).toLocaleString('en-GB')} MW of registered capacity. ` +
-            'Which farms have reported is unknown while the balancing feed is unavailable.'
-        );
-      } else {
-        setText(coverage, 'How many farms are covered is unknown while the balancing feed is unavailable.');
-      }
     },
   };
 }

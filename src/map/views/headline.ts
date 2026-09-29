@@ -25,9 +25,11 @@
  * said in the method disclosure (./settlement.ts).
  *
  * When there's an estimate for today (London) above zero, a second sentence
- * says what holding the wind back has cost so far (DECISIONS 052): "Holding
- * wind back today has added an estimated £4.2m to electricity bills in Great
- * Britain." (Owen's wording). Electricity, and Great Britain: the balancing
+ * says what holding the wind back is costing (DECISIONS 052): "Holding it back
+ * today alone will add about £4.51m to electricity bills in Great Britain."
+ * (Owen's wording), the figure a counter that ticks up through the day (see
+ * costAt). "Will add": the costs reach bills later. "Today alone": one day of
+ * something that keeps happening, without claiming how often. Electricity, and Great Britain: the balancing
  * charge is levied on electricity, and Northern Ireland is a separate market.
  * "Adding to bills" says where the cost ends up, not when; the method says the
  * charge is set in advance, so today's costs show up in later bills. The
@@ -39,10 +41,15 @@
  */
 
 import { el, setAttr, setTextCrossfade, type View } from '../../view/dom';
-import { formatMWFloor, formatPctFloor, formatPoundsEstimate, formatTime } from '../../lib/format';
+import { formatMWFloor, formatPctFloor, formatPoundsCounter, formatTime } from '../../lib/format';
 import { settlementAt } from '../../lib/settlement';
 import { speaksOfNow, type AppState } from '../../lib/state';
 import { readOnGrid } from '../onGrid';
+
+/** How far past the last settled half hour the cost counter may count on at the current rate. */
+const PROJECT_HOURS = 2;
+/** How often the counter is redrawn; it only changes on screen when it passes another £10,000. */
+const COUNTER_TICK_MS = 5_000;
 
 export function mapHeadlineView(): View {
   const lead = el('span', { class: 'map-headline__lead' });
@@ -70,12 +77,48 @@ export function mapHeadlineView(): View {
     costTail
   );
 
-  /** Today's estimate, formatted, or null: not for today, not above zero, or not read. */
-  function costToday(state: AppState): string | null {
+  /**
+   * The running cost, as a counter (Owen): the settled estimate up to the last
+   * half hour Elexon has settled, counted on from there at the current rate —
+   * the megawatts held back right now (the live reading) × today's average
+   * cost per MWh held back — for at most PROJECT_HOURS, so an Elexon outage
+   * can't run it away. Nothing held back now: it holds still. It never counts
+   * down: when a settled total lands below what's shown, it waits for the
+   * count to catch up. Null: no estimate for today (London), or not above zero.
+   */
+  let counterDate = '';
+  let counterPounds = 0;
+  function costAt(state: AppState, at: Date): number | null {
     const today = state.cost?.cost;
-    if (!today || today.date !== settlementAt(state.now).date || !(today.estimatePounds > 0)) return null;
-    return formatPoundsEstimate(today.estimatePounds);
+    const date = settlementAt(at).date;
+    if (!today || today.date !== date || !(today.estimatePounds > 0)) return null;
+    const reading = state.curtailment?.now;
+    const live =
+      reading && speaksOfNow(state.curtailment?.fetchedAt, reading.settlement, at) ? reading.curtailedMW : 0;
+    const perMWh = today.heldBackMWh > 0 ? today.estimatePounds / today.heldBackMWh : 0;
+    const hours = Math.min(PROJECT_HOURS, Math.max(0, (at.getTime() - Date.parse(today.throughTime)) / 3_600_000));
+    if (counterDate !== date) {
+      counterDate = date;
+      counterPounds = 0;
+    }
+    counterPounds = Math.max(counterPounds, today.estimatePounds + live * hours * perMWh);
+    return counterPounds;
   }
+
+  /** Which cost sentence the headline carries, set by update(); the tick redraws it. */
+  let costMode: 'off' | 'today' | 'earlier' = 'off';
+  let lastState: AppState | null = null;
+  function drawCost() {
+    const pounds = lastState && costMode !== 'off' ? costAt(lastState, new Date()) : null;
+    if (pounds === null) return setCost('');
+    const figureText = formatPoundsCounter(pounds);
+    if (costMode === 'today') {
+      setCost(' Holding it back today alone will add about ', figureText, ' to electricity bills in Great Britain.');
+    } else {
+      setCost(' Holding it back earlier today will add about ', figureText, ' to electricity bills in Great Britain.');
+    }
+  }
+  setInterval(drawCost, COUNTER_TICK_MS);
 
   const root = el(
     'section',
@@ -86,6 +129,7 @@ export function mapHeadlineView(): View {
   return {
     el: root,
     update(state: AppState) {
+      lastState = state;
       const data = state.curtailment;
       const present = speaksOfNow(data?.fetchedAt, data?.now?.settlement, state.now);
 
@@ -96,6 +140,7 @@ export function mapHeadlineView(): View {
         setTextCrossfade(lead, '');
         setTextCrossfade(figure, '');
         setTextCrossfade(tail, 'We’re asking Elexon how much of Scotland’s wind is being held back this half hour.');
+        costMode = 'off';
         setCost('');
         return;
       }
@@ -110,6 +155,7 @@ export function mapHeadlineView(): View {
             ? 'We can’t reach our data right now, so there are no figures for this half hour.'
             : 'Elexon hasn’t sent this half hour’s switch-offs yet. The grid mix on the map is unaffected.'
         );
+        costMode = 'off';
         setCost('');
         return;
       }
@@ -129,9 +175,8 @@ export function mapHeadlineView(): View {
             ? ' of Scotland’s tracked wind is currently on the grid.'
             : ` of Scotland’s tracked wind was on the grid ${when}.`
         );
-        const earlier = costToday(state);
-        if (earlier) setCost(' Holding wind back earlier today added an estimated ', earlier, ' to electricity bills in Great Britain.');
-        else setCost('');
+        costMode = 'earlier';
+        drawCost();
         return;
       }
 
@@ -151,9 +196,8 @@ export function mapHeadlineView(): View {
       // Its own sentence, the act as its subject: as one sentence ("…from the
       // grid, adding £4.2m … so far today") it read as the cost of the current
       // hold-up rather than the day's running total (Owen).
-      const soFar = costToday(state);
-      if (soFar) setCost(' Holding wind back today has added an estimated ', soFar, ' to electricity bills in Great Britain.');
-      else setCost('');
+      costMode = 'today';
+      drawCost();
     },
   };
 }

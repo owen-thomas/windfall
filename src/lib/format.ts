@@ -108,14 +108,13 @@ export function fuelLabel(fuel: string): string {
 }
 
 /**
- * Pounds to two significant figures, millions as "m": £3,067,709 -> "£3.1m",
- * £319,845 -> "£320,000", £9,604 -> "£9,600". For an estimate, where more
- * digits would claim precision it doesn't have.
+ * The headline's running cost (DECISIONS 052): rounded *down* to the £10,000,
+ * so a figure that ticks up never overstates, and millions to two decimals so
+ * its width holds steady as it ticks: £4,512,300 -> "£4.51m", £438,000 ->
+ * "£430,000".
  */
-export function formatPoundsEstimate(pounds: number): string {
-  if (!(pounds > 0)) return '£0';
-  const magnitude = Math.pow(10, Math.floor(Math.log10(pounds)) - 1);
-  const rounded = Math.round(pounds / magnitude) * magnitude;
-  if (rounded >= 1_000_000) return `£${(rounded / 1_000_000).toFixed(1).replace(/\.0$/, '')}m`;
-  return `£${rounded.toLocaleString('en-GB')}`;
+export function formatPoundsCounter(pounds: number): string {
+  const tens = Math.floor(Math.max(0, pounds) / 10_000) * 10_000;
+  if (tens >= 1_000_000) return `£${(tens / 1_000_000).toFixed(2)}m`;
+  return `£${tens.toLocaleString('en-GB')}`;
 }

@@ -155,10 +155,9 @@ body {
 .map-headline {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  /* 4d: 32px between the three sections — sentence, bar and farms, settlement —
-     measured optically, ink to ink: the sentence's last baseline to the bar
-     labels' cap height (both trimmed), and the last farm row's text to the
-     settlement heading's cap height (.map-settlement pulls in for that). */
+  /* 4d: 32px between the sections, measured optically, ink to ink: the
+     sentence's last baseline to the bar labels' cap height (both trimmed). The
+     method follows the bar's line closer (.map-settlement__body). */
   gap: var(--gap-group);
 }
 
@@ -191,56 +190,6 @@ body {
    grey (4d, Owen). */
 .map-headline[data-state='none'] .map-headline__figure {
   color: var(--data-ink);
-}
-
-/* The settlement heading, seated in the method disclosure's summary by main.ts
-   (views/settlement.ts); the masthead view still owns it and its notice
-   (010/016/017). Set like the bar's legend (Owen): one size throughout
-   (--type-subhead-label), the times semibold like the legend's MW figures,
-   "to" and "Settlement period 31" regular like its words. */
-.map-settlement__summary .map-masthead__clock {
-  flex: 1 1 auto;
-  min-width: 0;
-  /* A block of inline text, not app.css's flex row, so the optical trim below
-     (text-box) can take its first line to cap height and its last to the
-     baseline — the 40px above it is then measured as the frame measures it. */
-  display: block;
-  max-width: none;
-  font-size: var(--type-subhead-label);
-  font-family: var(--font-display);
-  line-height: 1.15;
-  text-align: left;
-  color: var(--text-secondary); /* the headings' grey (Owen) */
-}
-
-.map-settlement__summary .clock__span {
-  /* A trailing gap rather than a leading one, so when "Settlement period 31"
-     wraps (a phone) it starts flush left. Each phrase is an unbreakable inline
-     block, so a wrap only ever falls between them, never inside "Settlement
-     period 32". */
-  display: inline-block;
-  margin-right: 0.5rem;
-  white-space: nowrap;
-  font-size: var(--type-subhead-label);
-  font-weight: var(--wt-regular);
-  color: inherit;
-}
-
-.map-settlement__summary .clock__span[hidden] {
-  display: none;
-}
-
-.map-settlement__summary .clock__time {
-  font-weight: var(--wt-semibold);
-  letter-spacing: -0.01em;
-}
-
-.map-settlement__summary .clock__period {
-  display: inline-block;
-  white-space: nowrap;
-  font-size: var(--type-subhead-label);
-  font-weight: var(--wt-regular);
-  color: inherit;
 }
 
 /* The freshness dot and age, in the footer since 4d (views/masthead.ts builds
@@ -702,7 +651,6 @@ body {
 
 .map-sources__more:hover,
 .map-sources__open:hover .map-toggle,
-.map-settlement__summary:hover .map-toggle,
 .map-band__summary:hover .map-toggle {
   color: var(--text-secondary);
   background: color-mix(in srgb, var(--ink-box) 45%, transparent);
@@ -719,47 +667,10 @@ body {
   border: 1px solid var(--text-muted);
 }
 
-/* --- The settlement disclosure (4c §4c.4, re-cut by 4d) ------------------------
- * The heading row is the summary (the whole row toggles); the page's one
- * explanation is its body (views/settlement.ts). The toggle is text now — "▶
- * Show method" / "▼ Hide method", underlined, right-aligned — not 4c's boxed
- * chevron. Closed on first load.
+/* --- The method (4c §4c.4, re-cut by 4d and DECISIONS 053) ------------------
+ * Opened by "▶ Show method" beside "▶ Show wind farms" under the bar (it
+ * reuses that button's class, so its look and chevron). Closed on first load.
  */
-.map-settlement {
-  /* The farm rows are 24px boxes whose text sits ≈8px above their foot (the
-     baseline is 8.25px up for the MW figures and the control, 9.5px for the
-     names), so a box-to-cap gap of 32px reads ≈40px. Pulling in by 8px makes it
-     read as the same 32px as the sentence-to-bar gap above (Owen). */
-  margin-top: -0.5rem;
-}
-
-/* With the farm list shut, the settlement line follows the foot's text rather
-   than a farm row, so it pulls in by its own amount (grid.css). */
-.map-sources:has(> .map-sources__body[hidden]) + .map-settlement {
-  margin-top: var(--settlement-after-foot);
-}
-
-.map-settlement__summary {
-  display: flex;
-  align-items: baseline;
-  /* Only ever seen when the row is tight: the clock grows and pushes the toggle
-     to the far edge. At 64rem, the text column's narrowest, --gap-md left the
-     widest heading ("22:00 to 22:30 Settlement period 45") 4px short, and
-     "Settlement period" wrapped; --gap-sm clears it with the toggle's 6px hover
-     bleed still apart from the text. */
-  gap: var(--gap-sm);
-  list-style: none;
-  cursor: pointer;
-}
-
-.map-settlement__summary::-webkit-details-marker {
-  display: none;
-}
-
-.map-settlement__summary:focus-visible {
-  outline: 2px solid var(--text-primary);
-  outline-offset: 2px;
-}
 
 /* The text toggle, shared by the method disclosure and the two country
    summaries (4d): "▶ Show method", "▶ Show summary". */
@@ -776,13 +687,6 @@ body {
   font-family: var(--font-body);
   font-size: var(--type-row);
   line-height: 1.5rem;
-}
-
-/* Right-aligned on the heading row: the tint bleeds out to the right. The
-   negative block margins keep its 24px hover box from standing taller than the
-   trimmed heading beside it, which would push the row down. */
-.map-settlement__toggle {
-  margin: -0.25rem -6px -0.25rem 0;
 }
 
 /* Left-aligned under a country's legend: the tint bleeds out to the left, so
@@ -804,13 +708,15 @@ body {
   transition: transform var(--dur-quick) var(--ease-in-out);
 }
 
-.map-settlement[open] .map-toggle::before,
 .map-band__more[open] .map-toggle::before {
   transform: none;
 }
 
 .map-settlement__body {
-  margin-top: 1rem;
+  /* 12px from the toggles' line to the text, as the farm list's first row
+     sits (.map-sources__body); it's a grid item of .map-headline, so its gap
+     comes off. */
+  margin-top: calc(0.75rem - var(--gap-group));
   /* Two-up across the tablet range, one column elsewhere (--method-cols, in
      grid.css; 4d, Owen). Paragraphs are kept whole. */
   columns: var(--method-cols);
@@ -1342,7 +1248,6 @@ body[data-panel-style='card'] .panel {
   .map-masthead__wordmark,
   .map-headline__sentence,
   .map-sources__label,
-  .map-settlement__summary .map-masthead__clock,
   .map-settlement__p,
   .map-band__place,
   .map-band__intensity,

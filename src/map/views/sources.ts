@@ -77,12 +77,16 @@ function closedByDefault(): boolean {
 export interface SourcesOptions {
   /** A farm was selected, or (null) the selection was cleared. */
   onSelect(farm: string | null): void;
+  /** The reader opened the list — main.ts closes the method, which shares its row (DECISIONS 053). */
+  onOpen?(): void;
 }
 
 export interface SourcesView extends View {
   el: HTMLElement;
   selected(): string | null;
   select(farm: string | null): void;
+  close(): void;
+  addToggle(node: HTMLElement): void;
 }
 
 interface Row {
@@ -200,7 +204,7 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
   );
 
   // "Show / Hide wind farms" and the installed figure share the line under the
-  // bar, left and right.
+  // bar, left and right; "Show method" joins the left (addToggle, DECISIONS 053).
   const foot = el('div', { class: 'map-sources__foot' }, open, installed);
 
   const root = el('section', { class: 'map-sources', 'data-state': 'pending' }, labels, shareBar, foot, body);
@@ -407,7 +411,17 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
     if (!opened && selectedFarm !== null) select(null);
     if (opened) enterRows();
     setText(status, opened ? 'Farm list shown.' : 'Farm list hidden.');
+    if (opened) options.onOpen?.();
   });
+
+  /** Shut the list without the reader's click — the method opening closes it. */
+  function close() {
+    if (!(opened ?? !closedByDefault())) return;
+    opened = false;
+    shown = null;
+    layout();
+    if (selectedFarm !== null) select(null);
+  }
 
   collapse.addEventListener('click', () => {
     shown = null;
@@ -439,6 +453,11 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
 
   return {
     el: root,
+    close,
+    /** Seat another text toggle beside "Show wind farms", before the installed figure. */
+    addToggle(node: HTMLElement) {
+      foot.insertBefore(node, installed);
+    },
     selected: () => selectedFarm,
     select,
     update(state: AppState) {
