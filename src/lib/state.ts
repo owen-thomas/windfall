@@ -13,7 +13,7 @@
  */
 
 import { msUntilRollover, type SettlementRef } from './settlement.js';
-import type { CurtailmentResponse, GridResponse } from './types.js';
+import type { CostResponse, CurtailmentResponse, GridResponse } from './types.js';
 
 export type Freshness = 'fresh' | 'ageing' | 'stale';
 
@@ -40,6 +40,11 @@ export interface AppState extends Feeds {
    * while it is still in the first (DECISIONS 016).
    */
   pending: boolean;
+  /**
+   * /map only: today's estimated cost of holding the wind back (/api/cost,
+   * DECISIONS 052). Undefined on `/`, null until it lands or when it can't be read.
+   */
+  cost?: CostResponse | null;
 }
 
 export function emptyFeeds(): Feeds {

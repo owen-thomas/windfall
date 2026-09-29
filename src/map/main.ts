@@ -101,7 +101,7 @@ import { fetchCoreFeeds } from '../lib/client';
 import { msUntilRolloverCheck } from '../lib/settlement';
 import { scenarioByName, SCENARIOS } from '../lib/scenarios';
 import { emptyFeeds, type AppState } from '../lib/state';
-import type { BorderLimit, BorderResponse, FarmNow } from '../lib/types';
+import type { BorderLimit, BorderResponse, CostResponse, FarmNow } from '../lib/types';
 
 import { el, type View } from '../view/dom';
 import { SCOTLAND, ENGLAND } from '../view/band';
@@ -1077,6 +1077,7 @@ function bootMap(): void {
     toggle?.setActive(name);
     render();
     void refresh();
+    void refreshCost();
   }
 
   render();
@@ -1136,6 +1137,28 @@ function bootMap(): void {
   }
   void refreshBorder();
   setInterval(() => void refreshBorder(), 60 * 60_000);
+
+  // Today's estimated cost of holding the wind back (/api/cost, DECISIONS
+  // 052): settlement data lands a half hour at a time, 20–45 minutes late,
+  // so every ten minutes is plenty. Not for the dev fixtures, whose readings
+  // are invented — a live £ figure beside them would be about another day.
+  // A failed fetch keeps the last estimate.
+  async function refreshCost() {
+    if (scenarioByName(state.scenario).build) {
+      state.cost = null;
+      render();
+      return;
+    }
+    try {
+      const res = await fetch('/api/cost');
+      state.cost = (await res.json()) as CostResponse;
+      render();
+    } catch {
+      // Keep what's shown.
+    }
+  }
+  void refreshCost();
+  setInterval(() => void refreshCost(), 10 * 60_000);
 
   const TICK_MS = 15_000;
   setInterval(render, TICK_MS);

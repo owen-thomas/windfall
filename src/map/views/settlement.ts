@@ -61,12 +61,27 @@
 
 import { el, setText, type View } from '../../view/dom';
 import type { AppState } from '../../lib/state';
-import type { BorderLimit } from '../../lib/types';
+import type { BorderLimit, CostToday } from '../../lib/types';
+import { formatTime } from '../../lib/format';
+import { settlementAt } from '../../lib/settlement';
 
 // Static: the same in every state, so set once rather than on every render.
 const PERIODS =
   'Britain’s grid runs in half-hour blocks called settlement periods. Every figure on this page ' +
   'is for the half hour shown above.';
+
+/**
+ * The headline's cost, in two sentences (DECISIONS 052), Owen's wording. What
+ * it's an estimate of is the mechanism paragraph's two payments; how the
+ * replacement is priced, and today's split, are in DECISIONS 052 rather than
+ * on the page.
+ */
+function costNote(cost: CostToday): string {
+  return (
+    `The cost in the headline is our estimate up to ${formatTime(cost.throughTime)} (the latest ` +
+    'half hour with data). It’s passed on in future electricity bills across Great Britain.'
+  );
+}
 
 /**
  * How the network holds wind back, with the border's limit in it once it has
@@ -87,12 +102,13 @@ function mechanism(border: BorderLimit | null): string {
             month: 'long',
             timeZone: 'Europe/London',
           })}`;
-    limit = ` (${mw(border.limitMW)}/${mw(border.maxMW)} MW ${when})`;
+    limit = ` (${mw(border.limitMW)} MW ${when}, ${mw(border.maxMW)} MW max)`;
   }
   return (
-    'Scotland’s wind farms tell the grid how much power they could make. The cables south to ' +
-    `England can only carry so much${limit}, so when there’s more wind than they can take, farms ` +
-    'are paid to switch off.'
+    'Scotland’s wind farms tell the grid how much power they could make. When there’s more wind ' +
+    `than the cables south to England can take${limit}, the grid operator switches farms off ` +
+    '(usually by paying them) and also pays gas plants in England and Wales to make up the southern ' +
+    'shortfall.'
   );
 }
 
@@ -106,12 +122,15 @@ export function mapSettlementView(clockEl: Element): View & { setBorder(border: 
   const summary = el('summary', { class: 'map-settlement__summary' }, clockEl, toggle);
 
   const coverage = el('p', { class: 'map-settlement__p' });
+  const costP = el('p', { class: 'map-settlement__p' });
+  costP.hidden = true;
   const mechanismP = el('p', { class: 'map-settlement__p', text: mechanism(null) });
   const body = el(
     'div',
     { class: 'map-settlement__body' },
     el('p', { class: 'map-settlement__p', text: PERIODS }),
     mechanismP,
+    costP,
     el('p', { class: 'map-settlement__p', text: FLOOR }),
     coverage
   );
@@ -147,6 +166,11 @@ export function mapSettlementView(clockEl: Element): View & { setBorder(border: 
       setText(mechanismP, mechanism(border));
     },
     update(state: AppState) {
+      const cost = state.cost?.cost;
+      const showCost = !!cost && cost.date === settlementAt(state.now).date && cost.estimatePounds > 0;
+      if (showCost) setText(costP, costNote(cost));
+      costP.hidden = !showCost;
+
       const data = state.curtailment;
       const method = data?.method;
       const now = data?.now;
@@ -160,17 +184,16 @@ export function mapSettlementView(clockEl: Element): View & { setBorder(border: 
         const reported = declaring === total ? `All ${total}` : `${declaring} of ${total}`;
         setText(
           coverage,
-          `We’re tracking ${method.unitsTracked} transmission-connected wind units across ${total} ` +
-            `Scottish farms, with ${Math.round(method.capacityMW).toLocaleString('en-GB')} MW of ` +
-            `registered capacity between them. ${reported} had reported their figures when this ` +
-            'data was taken.'
+          `We track ${total} Scottish wind farms: ${method.unitsTracked} units and ` +
+            `${Math.round(method.capacityMW).toLocaleString('en-GB')} MW of registered capacity. ` +
+            `${reported} had reported their figures when this data was taken.`
         );
       } else if (method) {
         setText(
           coverage,
-          `We’re tracking ${method.unitsTracked} transmission-connected Scottish wind units, with ` +
-            `${Math.round(method.capacityMW).toLocaleString('en-GB')} MW of registered capacity ` +
-            'between them. Which farms have reported is unknown while the balancing feed is unavailable.'
+          `We track ${method.unitsTracked} Scottish wind units: ` +
+            `${Math.round(method.capacityMW).toLocaleString('en-GB')} MW of registered capacity. ` +
+            'Which farms have reported is unknown while the balancing feed is unavailable.'
         );
       } else {
         setText(coverage, 'How many farms are covered is unknown while the balancing feed is unavailable.');
