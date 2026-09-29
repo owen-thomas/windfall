@@ -158,7 +158,7 @@ body {
   /* 4d: 32px between the sections, measured optically, ink to ink: the
      sentence's last baseline to the bar labels' cap height (both trimmed). The
      method follows the bar's line closer (.map-settlement__body). */
-  gap: var(--gap-group);
+  gap: var(--gap-headline-content);
 }
 
 .map-headline__sentence {
@@ -365,14 +365,28 @@ body {
   margin-top: var(--bar-foot-gap);
 }
 
+/* Set like the cost timeline's hours (DECISIONS 055, Owen): the body face at
+   the farm rows' figure size, on the toggle's line at the right at every tier
+   now that the method toggle has moved to the footer. 4px from the bar to the
+   text, as the hours sit: the toggle's taller line (its hover tint) sets the
+   row and drops the text 2px into it. Should it ever not fit, it wraps under
+   the toggle rather than overflowing. */
+.map-sources:not(.map-cost) .map-sources__foot {
+  flex-wrap: wrap;
+  row-gap: 0;
+  margin-top: calc(var(--gap-hair) - 0.125rem);
+}
+
 .map-sources__installed {
+  flex: none;
   margin: 0 0 0 auto;
-  font-family: var(--font-display);
-  font-size: var(--type-subhead-label);
-  line-height: 1.15;
+  font-size: var(--type-row);
+  line-height: normal;
   white-space: nowrap;
   color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
+
 
 /* "▶ Show wind farms" / "▼ Hide wind farms": the list's toggle at every tier
    (views/sources.ts), the page's text toggle as a button. */
@@ -418,8 +432,10 @@ body {
 /* The list, filled row-first (4d): a batch only ever adds rows at the foot, so
    nothing already showing moves between the columns. */
 .map-sources__body {
-  /* The step from the toggle's line to the first row, as from the bar to it. */
-  margin-top: 0.75rem;
+  /* 12px from the toggles' line to the first row's cap height, as the method's
+     paragraphs sit (their text is trimmed to the cap; a row's isn't, so its
+     cap sits --row-cap-offset below the row's top; Owen). */
+  margin-top: calc(0.75rem - var(--row-cap-offset));
 }
 
 .map-sources {
@@ -716,7 +732,7 @@ body {
   /* 12px from the toggles' line to the text, as the farm list's first row
      sits (.map-sources__body); it's a grid item of .map-headline, so its gap
      comes off. */
-  margin-top: calc(0.75rem - var(--gap-group));
+  margin-top: calc(0.75rem - var(--gap-headline-content));
   /* Two-up across the tablet range, one column elsewhere (--method-cols, in
      grid.css; 4d, Owen). Paragraphs are kept whole. */
   columns: var(--method-cols);
@@ -1342,11 +1358,32 @@ body[data-panel-style='card'] .panel {
   background: var(--signal-ageing);
 }
 
-.map-foot .sources .colophon__byline {
-  margin-left: 0;
-  margin-top: var(--gap-md);
+/* "▶ Show method  Built by owenthomas.work" (DECISIONS 055, Owen): the one
+   method toggle before the byline, on the byline's line, which stands clear
+   of the sources above it. The toggle's 6px hover bleed hangs into the
+   margin, so its triangle lines up with the text above. */
+.map-foot__line {
+  display: flex;
+  flex-wrap: wrap;
   flex-basis: 100%;
+  align-items: baseline;
+  column-gap: var(--gap-md);
+  margin-top: var(--gap-md);
+}
+
+.map-foot__line .map-settlement__open {
+  margin-left: -6px;
+}
+
+.map-foot .sources .colophon__byline {
+  margin: 0;
   color: var(--text-muted);
+}
+
+/* The method opens under that line, across the footer's width. */
+.map-foot .map-settlement__body {
+  flex-basis: 100%;
+  margin-top: 0.75rem;
 }
 
 /* "Built by Owen Thomas ✺ owenthomas.work": the glyph is a separator with clear
@@ -1573,16 +1610,31 @@ body.plate-mode {
 /* --- The cost block (DECISIONS 055) ------------------------------------------
  * The second headline over its own bar, the same size as the first and built
  * from the share bar's parts (.map-sources, views/cost.ts). A grid item of
- * .map-headline, 32px from the share block, the same as its own gaps (Owen).
+ * .map-headline, --gap-headlines from the share block: 32px on a phone, 40px
+ * from the tablet up (grid.css, Owen). The grid's own gap gives 32px; the
+ * margin adds the rest.
  */
 .map-headline__block {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--gap-group);
+  gap: var(--gap-headline-content);
+  margin-top: calc(var(--gap-headlines) - var(--gap-headline-content));
 }
 
 .map-headline__block[hidden] {
   display: none;
+}
+
+/* One step below the first headline (grid.css --type-display-2, Owen). */
+.map-headline__sentence--cost {
+  font-size: var(--type-display-2);
+  line-height: var(--lh-display-2);
+}
+
+/* The descender lift under it, scaled to its own size as the first's is
+   (--sources-lift: 0 on a phone, 1/8 of the headline's size from the tablet). */
+.map-cost {
+  margin-top: var(--sources-lift-2);
 }
 
 .map-sources__label--wind .map-sources__swatch {

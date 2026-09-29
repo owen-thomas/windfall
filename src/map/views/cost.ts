@@ -21,12 +21,13 @@
  * below. That column draws gas alone, and a day's negative net is said in
  * words in the legend.
  *
- * "Show method" under it opens the cost's half of the method: how wind that's
- * held back is paid for, and how the estimate is made. The share's half stays
- * under the first bar (views/settlement.ts).
+ * The cost's half of the method — how wind that's held back is paid for, and
+ * how the estimate is made — is two paragraphs this view keeps up to date and
+ * main.ts seats in the one method panel, opened from the footer (DECISIONS
+ * 055, Owen).
  */
 
-import { el, setAttr, setText, type View } from '../../view/dom';
+import { el, setText, type View } from '../../view/dom';
 import { formatPoundsCounter, formatTime } from '../../lib/format';
 import { settlementAt } from '../../lib/settlement';
 import type { AppState } from '../../lib/state';
@@ -48,7 +49,12 @@ function estimate(cost: CostToday): string {
   );
 }
 
-export function mapCostView(): View {
+export interface CostView extends View {
+  /** The cost's two method paragraphs, seated in the one method panel (views/settlement.ts). */
+  methodParagraphs: HTMLElement[];
+}
+
+export function mapCostView(): CostView {
   function legendItem(kind: 'wind' | 'gas') {
     const figure = el('strong', { class: 'map-sources__figure' });
     const word = el('span');
@@ -89,31 +95,21 @@ export function mapCostView(): View {
 
   const mechanismP = el('p', { class: 'map-settlement__p', text: mechanism() });
   const estimateP = el('p', { class: 'map-settlement__p' });
-  const body = el('div', { class: 'map-settlement__body', id: 'map-cost-method' }, mechanismP, estimateP);
-  body.hidden = true;
+  mechanismP.hidden = true;
+  estimateP.hidden = true;
 
-  const toggleText = el('span', { class: 'map-toggle__text', text: 'Show method' });
-  const toggle = el(
-    'button',
-    { class: 'map-sources__open', type: 'button', 'aria-expanded': 'false', 'aria-controls': 'map-cost-method' },
-    el('span', { class: 'map-toggle' }, toggleText)
-  );
-  toggle.addEventListener('click', () => {
-    const open = body.hidden;
-    body.hidden = !open;
-    setAttr(toggle, 'aria-expanded', String(open));
-    setText(toggleText, open ? 'Hide method' : 'Show method');
-  });
-
-  const foot = el('div', { class: 'map-sources__foot' }, toggle);
-  const root = el('div', { class: 'map-sources map-cost', 'data-state': 'ok' }, labels, bar, foot, body);
+  const root = el('div', { class: 'map-sources map-cost', 'data-state': 'ok' }, labels, bar);
 
   return {
     el: root,
+    methodParagraphs: [mechanismP, estimateP],
     update(state: AppState) {
       const cost = state.cost?.cost;
       // The headline's own test (views/headline.ts hides the whole block too).
-      if (!cost || cost.date !== settlementAt(state.now).date || !(cost.estimatePounds > 0)) return;
+      const show = !!cost && cost.date === settlementAt(state.now).date && cost.estimatePounds > 0;
+      mechanismP.hidden = !show;
+      estimateP.hidden = !show;
+      if (!cost || !show) return;
 
       const wind = cost.netPaymentsPounds;
       const gas = Math.max(0, cost.replacementPounds);

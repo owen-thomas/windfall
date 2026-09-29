@@ -220,7 +220,7 @@ function bootMap(): void {
   let highlightedFarm: string | null = null;
   // The list and the method share the line under the bar and close each other
   // (DECISIONS 053); `settlement` is declared below, and only read on a click.
-  const sources = mapSourcesView({ onSelect: highlightFarm, onOpen: () => settlement.setOpen(false) });
+  const sources = mapSourcesView({ onSelect: highlightFarm });
 
   // The two mix panels are grid items of the map cell (map.css): their columns
   // come from the grid tokens, their vertical position from positionOverlays()
@@ -266,11 +266,13 @@ function bootMap(): void {
   //    not seated anywhere on this page.
   headline.el.append(sources.el);
   masthead.clock.remove();
-  const settlement = mapSettlementView({ onOpen: () => sources.close() });
-  sources.addToggle(settlement.toggle);
-  headline.el.append(settlement.el);
-  // The cost, its own headline over its own bar and method (DECISIONS 055).
+  // One method for both headlines, its toggle in the footer before the byline
+  // and its panel under that line (DECISIONS 055, Owen): the share's two
+  // paragraphs, then the cost's.
+  const settlement = mapSettlementView();
+  // The cost, its own headline over its own timeline (DECISIONS 055).
   const cost = mapCostView();
+  settlement.append(...cost.methodParagraphs);
   headline.costBlock.append(cost.el);
   headline.el.append(headline.costBlock);
 
@@ -327,7 +329,14 @@ function bootMap(): void {
       el('a', { class: 'map-foot__link', href: 'https://bmrs.elexon.co.uk', text: 'Elexon' })
     );
   const feeds = el('span', { class: 'map-foot__feeds' }, carbonRow, elexonRow);
-  colophon.el.querySelector('.colophon__byline')!.before(feeds, masthead.freshness);
+  const byline = colophon.el.querySelector('.colophon__byline')!;
+  byline.before(feeds, masthead.freshness);
+  // "▶ Show method  Built by owenthomas.work" on one line, the method opening
+  // under it (DECISIONS 055, Owen).
+  const footLine = el('div', { class: 'map-foot__line' });
+  byline.replaceWith(footLine);
+  footLine.append(settlement.toggle, byline);
+  footLine.after(settlement.el);
 
   // The footer sits in the same grid row as the map and overlays its bottom-
   // left corner, as the Figma frames do; the dev state toggle rides in it so

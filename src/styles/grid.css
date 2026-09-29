@@ -94,6 +94,7 @@
      row already seats its 12px texts' cap height 7.7px under the bar, so its
      margin is the 0.3px left. Tablet and up keep their own values, below. */
   --sources-lift: 0px;
+  --sources-lift-2: 0px; /* the same, under the second headline */
   --legend-bar-gap: 0.5rem;
   --legend-item-gap: 1rem;
   --bar-foot-gap: 0.3px;
@@ -113,6 +114,11 @@
      12px, measured against Owen's frame. */
   --type-row: 0.75rem; /* 12px */
   --lh-display: 1.2;
+  /* The second headline, the cost (DECISIONS 055): one step below the first at
+     every tier (Owen) — 20 / 24 / 32px against 24 / 32 / 40px (16px on a
+     phone was tried and read as a paragraph). */
+  --type-display-2: 1.25rem; /* 20px */
+  --lh-display-2: 1.2;
   --type-wordmark: 0.75rem; /* 12px */
   --type-legend: 0.6875rem; /* 11px — the mobile legend */
   /* The method's paragraphs: on a phone, the farm rows' MW figures' size, so
@@ -135,6 +141,16 @@
   --band-head-display: contents;
   --band-head-direction: row;
   --method-cols: 1;
+  /* From the share block's toggles to the cost headline (DECISIONS 055): 32px
+     on a phone, 40px from the tablet up (Owen). */
+  --gap-headlines: var(--gap-group);
+  /* From each headline to its legend and bar (and between the parts of a
+     block): 24px on a phone, 32px from the tablet up (Owen). */
+  --gap-headline-content: 1.5rem; /* 24px */
+  /* How far a farm row's cap height sits below the row's top, measured, so
+     the list can start 12px from the toggles to its ink as the method does
+     (DECISIONS 055, Owen). */
+  --row-cap-offset: 0.45rem; /* 7.2px */
   --legend-flow: column;
   --scotland-align: start;
   --scotland-swatch-order: 0;
@@ -173,6 +189,9 @@
        (The 44rem text cap tried here read as a premature max width, so the
        text block is full width again.) */
     --method-cols: 2;
+    --gap-headlines: 2.5rem; /* 40px (Owen) */
+    --gap-headline-content: var(--gap-group); /* 32px */
+    --row-cap-offset: 0.35rem; /* 5.6px */
     --type-method: 1rem; /* 16px (Owen) */
     /* 64px from 744px up — the Tablet frame's margin (spec §5.1 says 24px;
        DECISIONS 028) — easing down to 36px at 600px, linearly, so the two farm
@@ -183,12 +202,15 @@
     --gap-masthead: 2.875rem;
     --text-lift: 1.5rem;
     --sources-lift: calc(var(--type-display) * 0.125);
+    --sources-lift-2: calc(var(--type-display-2) * 0.125);
     --legend-bar-gap: 0.75rem;
     --legend-item-gap: var(--gap-lg);
     --bar-foot-gap: calc(0.75rem - 2.5px);
     --mix-span: 3;
     --type-display: 2rem; /* 32px */
     --lh-display: 1.125;
+    --type-display-2: 1.5rem; /* 24px */
+    --lh-display-2: 1.2;
     --type-subhead: 1.5rem; /* 24px */
     --type-subhead-label: 1rem; /* 16px */
     --type-farm-name: 1rem; /* 16px */
@@ -278,6 +300,8 @@
     --type-subhead: 1.5rem; /* 24px from HD (Owen) */
     --type-display: 2.5rem; /* 40px (48px was tried in 4d and read too big — Owen) */
     --lh-display: 1.1;
+    --type-display-2: 2rem; /* 32px */
+    --lh-display-2: 1.125;
     /* The 1440 frame's text block is columns 1–5 plus the gutter after them
        (557px; the 1280 frame is exactly 1–5). It is what lets the headline
        hold its three lines at 40px. DECISIONS 028. */
