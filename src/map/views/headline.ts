@@ -27,11 +27,11 @@
  * When there's an estimate for today (London) above zero, a second sentence
  * says what holding the wind back is costing (DECISIONS 052), the settled
  * estimate so far (see costAt). When some of it is the gas that replaced the
- * wind and the reading is current, the gas gets its own sentence and the cost
- * refers back to both (DECISIONS 054, 055, Owen): "At least 68% of Scotland's
- * tracked wind is being held back. Gas is being burned in its place." then
- * "So far today, that's about £10.51m added to Great Britain's electricity
- * bills." With nothing held back now: "Earlier today, holding it back and
+ * wind and the reading is current, the gas opens the cost headline, over the
+ * timeline that shows it (DECISIONS 054, 055, Owen): "At least 68% of
+ * Scotland's tracked wind is being held back from the grid." then "Gas is
+ * being burned instead. So far today, that's about £10.51m added
+ * to Great Britain's electricity bills." With nothing held back now: "Earlier today, holding it back and
  * burning gas in its place meant about £X added to …". The cost is its own
  * headline over the cost timeline (costBlock, views/cost.ts). "So far today"
  * (was "Today alone … will add"): the figure is the day to date, not a
@@ -122,19 +122,23 @@ export function mapHeadlineView(): MapHeadlineView {
 
   /** Which cost sentence the headline carries, set by update(). */
   let costMode: 'off' | 'today' | 'earlier' = 'off';
-  /** Whether the share sentence carries the gas clause, set by update(). */
-  let gasInLead = false;
+  /** Whether the cost headline opens with the gas sentence, set by update(). */
+  let gasNow = false;
   let lastState: AppState | null = null;
   function drawCost() {
     const pounds = lastState && costMode !== 'off' ? costAt(lastState) : null;
     costBlock.hidden = pounds === null;
     if (pounds === null) return setCost('');
     const figureText = formatPoundsCounter(pounds);
-    // "That" is the first headline's held-back wind (and, when it says so, the
-    // gas burned in its place). With nothing held back now, the first headline
+    // The gas opens the cost headline, over the timeline that shows it
+    // (Owen): "Gas is being burned instead." "That" is the holding back and the gas together, loosely;
+    // the legend splits them. With nothing held back now, the first headline
     // is about the wind on the grid, so this one names what it refers to.
     const tail = ' added to Great Britain’s electricity bills.';
-    if (costMode === 'today') return setCost('So far today, that’s about ', figureText, tail);
+    if (costMode === 'today') {
+      const lead = gasNow ? 'Gas is being burned instead. So far today, that’s about ' : 'So far today, that’s about ';
+      return setCost(lead, figureText, tail);
+    }
     const gas = gasPaid(lastState) ? ' and burning gas in its place' : '';
     setCost(`Earlier today, holding it back${gas} meant about `, figureText, tail);
   }
@@ -201,7 +205,7 @@ export function mapHeadlineView(): MapHeadlineView {
       }
 
       setAttr(root, 'data-state', 'curtailing');
-      gasInLead = present && gasPaid(state);
+      gasNow = present && gasPaid(state);
       let figureText: string;
       if (reading.heldPct >= 1) figureText = formatPctFloor(reading.heldPct);
       else if (reading.heldMW >= 1) figureText = formatMWFloor(reading.heldMW);
@@ -211,9 +215,7 @@ export function mapHeadlineView(): MapHeadlineView {
       setTextCrossfade(
         tail,
         present
-          ? gasInLead
-            ? ' of Scotland’s tracked wind is being held back. Gas is being burned in its place.'
-            : ' of Scotland’s tracked wind is currently being held back from the grid.'
+          ? ' of Scotland’s tracked wind is being held back from the grid.'
           : ` of Scotland’s tracked wind was held back from the grid ${when}.`
       );
       // Its own sentence, the act as its subject: as one sentence ("…from the

@@ -78,7 +78,7 @@ function closedByDefault(): boolean {
 export interface SourcesOptions {
   /** A farm was selected, or (null) the selection was cleared. */
   onSelect(farm: string | null): void;
-  /** The reader opened the list — main.ts closes the method, which shares its row (DECISIONS 053). */
+  /** The reader opened the list. (Until DECISIONS 055 main.ts closed the method here, when the two shared a row.) */
   onOpen?(): void;
 }
 
@@ -204,8 +204,11 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
     el('span', { class: 'map-toggle' }, openText)
   );
 
-  // "Show / Hide wind farms" and the installed figure share the line under the
-  // bar, left and right; "Show method" joins the left (addToggle, DECISIONS 053).
+  // "Show / Hide wind farms", then "Show method" beside it (addToggle,
+  // DECISIONS 053), and the installed figure, set like the cost timeline's
+  // hours (DECISIONS 055, Owen). Where the three fit on one line they share it,
+  // the figure at the right; where they don't, the figure takes its own line
+  // under the bar's end, above the toggles, as the hours sit (map.css).
   const foot = el('div', { class: 'map-sources__foot' }, open, installed);
 
   const root = el('section', { class: 'map-sources', 'data-state': 'pending' }, labels, shareBar, foot, body);

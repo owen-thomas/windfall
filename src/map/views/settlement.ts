@@ -1,7 +1,9 @@
 /**
- * Now (DECISIONS 055): the method for the first headline only — how wind is
- * held back, then the share and what it covers. What holding it back costs,
- * and how it's paid for, moved under the cost bar (views/cost.ts).
+ * Now (DECISIONS 055): the page's one method, its toggle in the footer before
+ * the byline ("▶ Show method  Built by owenthomas.work") and its panel under
+ * that line (main.ts seats both). Four paragraphs in the headlines' order: how
+ * wind is held back, the share and what it covers, then the cost's two, which
+ * views/cost.ts keeps up to date and hides when there's no cost headline.
  *
  * DECISIONS 053: a "Show method" text toggle beside "Show wind farms",
  * under the bar (the two close each other), opening three paragraphs in the
@@ -147,10 +149,12 @@ function share(state: AppState): string {
 }
 
 export interface MethodView extends View {
-  /** "Show method" / "Hide method": main.ts seats it beside "Show wind farms". */
+  /** "Show method" / "Hide method": main.ts seats it in the footer, before the byline. */
   toggle: HTMLButtonElement;
+  /** Add paragraphs after the share's two — the cost's (views/cost.ts). */
+  append(...paragraphs: HTMLElement[]): void;
   setBorder(border: BorderLimit): void;
-  /** Open or close it without the reader's click — the farm list opening closes it. */
+  /** Open or close it without the reader's click. */
   setOpen(open: boolean): void;
 }
 
@@ -207,6 +211,9 @@ export function mapSettlementView(options: { onOpen?(): void } = {}): MethodView
     el: root,
     toggle,
     setOpen,
+    append(...paragraphs: HTMLElement[]) {
+      root.append(...paragraphs);
+    },
     setBorder(border: BorderLimit) {
       setText(mechanismP, mechanism(border));
     },
