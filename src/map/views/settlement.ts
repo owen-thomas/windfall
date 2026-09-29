@@ -1,5 +1,9 @@
 /**
- * Now (DECISIONS 053): a "Show method" text toggle beside "Show wind farms",
+ * Now (DECISIONS 055): the method for the first headline only — how wind is
+ * held back, then the share and what it covers. What holding it back costs,
+ * and how it's paid for, moved under the cost bar (views/cost.ts).
+ *
+ * DECISIONS 053: a "Show method" text toggle beside "Show wind farms",
  * under the bar (the two close each other), opening three paragraphs in the
  * headline's order: how wind is held back and paid for, the share and what
  * it covers (the settlement period folded in: "…the share held back now is
@@ -68,9 +72,8 @@
 
 import { el, setAttr, setText, type View } from '../../view/dom';
 import { speaksOfNow, type AppState } from '../../lib/state';
-import type { BorderLimit, CostToday } from '../../lib/types';
+import type { BorderLimit } from '../../lib/types';
 import { formatTime } from '../../lib/format';
-import { settlementAt } from '../../lib/settlement';
 
 /**
  * How the network holds wind back, with the border's limit in it once it has
@@ -95,9 +98,7 @@ function mechanism(border: BorderLimit | null): string {
   }
   return (
     'Scotland’s wind farms tell the grid how much power they could make. When there’s more wind ' +
-    `than the cables south to England can take${limit}, the grid operator switches farms off ` +
-    '(usually by paying them) and also pays gas plants in England and Wales to make up the southern ' +
-    'shortfall.'
+    `than the cables south to England can take${limit}, the grid operator switches farms off.`
   );
 }
 
@@ -145,23 +146,6 @@ function share(state: AppState): string {
   );
 }
 
-/**
- * The headline's second claim, the cost (DECISIONS 052). How the replacement
- * is priced is in DECISIONS 052 rather than on the page; that it reaches bills
- * is the headline's own "will add". The headline names the gas but not its
- * share (DECISIONS 054), so the method says how much of the settled estimate
- * is the gas, floored, when that's a share between 1% and 99% — a net payment
- * to the farms below zero would put it over 100%, which reads as an error.
- */
-function costNote(cost: CostToday): string {
-  const gasPct = Math.floor((cost.replacementPounds / cost.estimatePounds) * 100);
-  const gas = gasPct >= 1 && gasPct <= 99 ? ` Of that, ${gasPct}% is the cost of the gas.` : '';
-  return (
-    `The cost is our estimate for the day so far: settled figures up to ${formatTime(cost.throughTime)} ` +
-    `(the latest half hour with data), then counted on at the rate wind is being held back now.${gas}`
-  );
-}
-
 export interface MethodView extends View {
   /** "Show method" / "Hide method": main.ts seats it beside "Show wind farms". */
   toggle: HTMLButtonElement;
@@ -180,11 +164,9 @@ export function mapSettlementView(options: { onOpen?(): void } = {}): MethodView
 
   const mechanismP = el('p', { class: 'map-settlement__p', text: mechanism(null) });
   const shareP = el('p', { class: 'map-settlement__p' });
-  const costP = el('p', { class: 'map-settlement__p' });
-  costP.hidden = true;
 
   // Closed on first load, every tier (4d decision 11).
-  const root = el('div', { class: 'map-settlement__body', id: 'map-method' }, mechanismP, shareP, costP);
+  const root = el('div', { class: 'map-settlement__body', id: 'map-method' }, mechanismP, shareP);
   root.hidden = true;
 
   function setOpen(open: boolean) {
@@ -230,10 +212,6 @@ export function mapSettlementView(options: { onOpen?(): void } = {}): MethodView
     },
     update(state: AppState) {
       setText(shareP, share(state));
-      const cost = state.cost?.cost;
-      const showCost = !!cost && cost.date === settlementAt(state.now).date && cost.estimatePounds > 0;
-      if (showCost) setText(costP, costNote(cost));
-      costP.hidden = !showCost;
     },
   };
 }

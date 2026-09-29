@@ -111,6 +111,7 @@ import { mapMastheadView } from './views/masthead';
 import { mapHeadlineView } from './views/headline';
 import { mapSourcesView } from './views/sources';
 import { mapSettlementView } from './views/settlement';
+import { mapCostView } from './views/cost';
 import { mapBandView } from './views/band';
 import { buildProjection } from '../flow/projection';
 import { extendToCoast } from './borderLine';
@@ -268,6 +269,10 @@ function bootMap(): void {
   const settlement = mapSettlementView({ onOpen: () => sources.close() });
   sources.addToggle(settlement.toggle);
   headline.el.append(settlement.el);
+  // The cost, its own headline over its own bar and method (DECISIONS 055).
+  const cost = mapCostView();
+  headline.costBlock.append(cost.el);
+  headline.el.append(headline.costBlock);
 
   // 2. The old "How this number is worked out" toggle — colophonView's own
   //    <details>, reused unchanged on `/` — is retired from this page (4c.4):
@@ -975,7 +980,7 @@ function bootMap(): void {
     pending: true,
   };
 
-  const views: View[] = [masthead, scotlandBand, englandBand, headline, sources, settlement, colophon];
+  const views: View[] = [masthead, scotlandBand, englandBand, headline, sources, settlement, cost, colophon];
 
   function render() {
     state.now = new Date();

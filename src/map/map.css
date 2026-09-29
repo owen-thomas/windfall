@@ -1569,3 +1569,82 @@ body.plate-mode {
     opacity var(--dur-base) var(--ease-out) calc(var(--enter-i, 0) * var(--cascade-step)),
     transform var(--dur-base) var(--ease-out) calc(var(--enter-i, 0) * var(--cascade-step));
 }
+
+/* --- The cost block (DECISIONS 055) ------------------------------------------
+ * The second headline over its own bar, the same size as the first and built
+ * from the share bar's parts (.map-sources, views/cost.ts). A grid item of
+ * .map-headline, 32px from the share block, the same as its own gaps (Owen).
+ */
+.map-headline__block {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--gap-group);
+}
+
+.map-headline__block[hidden] {
+  display: none;
+}
+
+.map-sources__label--wind .map-sources__swatch {
+  background: var(--bar-off);
+}
+
+.map-sources__label--gas .map-sources__swatch {
+  background: var(--fuel-gas);
+}
+
+/* Here the method sits inside the bar's block, not as a grid item of
+   .map-headline, so it takes the 12px straight. */
+.map-cost .map-settlement__body {
+  margin-top: 0.75rem;
+}
+
+/* The cost timeline (DECISIONS 055): one column per half hour of the day, the
+   share bar's height, each stacking the farms' payments under the gas. The
+   pale track is the slots still to come; heights scale to the day's dearest
+   half hour so far. */
+.cost-timeline {
+  display: flex;
+  gap: 1px;
+  height: 2rem;
+}
+
+.cost-timeline__slot {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-width: 0;
+  background: var(--ink-raised);
+}
+
+.cost-timeline__wind,
+.cost-timeline__gas {
+  display: block;
+  flex: none;
+  transition: height var(--dur-base) var(--ease-out);
+}
+
+.cost-timeline__wind { background: var(--bar-off); }
+.cost-timeline__gas { background: var(--fuel-gas); }
+
+.cost-timeline__hours {
+  position: relative;
+  height: 1.25em;
+  margin-top: var(--gap-hair);
+  font-size: var(--type-row);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Each hour centred on its quarter of the day; the ends flush with the strip. */
+.cost-timeline__hours span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+}
+.cost-timeline__hours span:nth-child(1) { left: 0; transform: none; }
+.cost-timeline__hours span:nth-child(2) { left: 25%; }
+.cost-timeline__hours span:nth-child(3) { left: 50%; }
+.cost-timeline__hours span:nth-child(4) { left: 75%; }
+.cost-timeline__hours span:nth-child(5) { right: 0; transform: none; }
