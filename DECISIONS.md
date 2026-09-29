@@ -1684,6 +1684,6 @@ Both reach bills through BSUoS, which since 1 April 2023 (CMP308) is recovered s
 
 ## 056 — England's panel sits lower on desktop
 
-**Decision:** England's mix panel anchors 0.4° further south at every desktop tier: `--anchor-england-lat` 54.72 → 54.32 (1024–1439) and 54.44 → 54.04 (1440 up). Tablet and phone unchanged.
+**Decision:** England's mix panel anchors further south at every desktop tier: `--anchor-england-lat` 54.72 → 54.32 (1024–1439) and 54.44 → 54.24 (1440 up; 54.04 was tried first and read low on HD, Owen). Tablet and phone unchanged.
 
-**Why:** Owen: on desktop it sat high, over Cumbria, and close under Scotland's panel. Measured, the gap below Scotland's panel goes from 59px to 88px at 1024×768 and from 166px to 203px at 1440×900.
+**Why:** Owen: on desktop it sat high, over Cumbria, and close under Scotland's panel. Measured, the gap below Scotland's panel goes from 59px to 88px at 1024×768 and from 166px to 185px at 1440×900 (244px at 1920×1080).

@@ -310,7 +310,7 @@
        above it. 57.58 puts the "Scotland" heading at y=191 on a 1440x1024
        screen, as the Desktop HD frame (49:747) has it (57.33 through 4b). */
     --anchor-scotland-lat: 57.58;
-    --anchor-england-lat: 54.04; /* 54.44 sat high and close to Scotland (Owen) */
+    --anchor-england-lat: 54.24; /* 54.44 sat high and close to Scotland, 54.04 low (Owen) */
   }
 }
 
