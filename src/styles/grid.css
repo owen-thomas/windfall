@@ -115,6 +115,9 @@
   --lh-display: 1.2;
   --type-wordmark: 0.75rem; /* 12px */
   --type-legend: 0.6875rem; /* 11px — the mobile legend */
+  /* The method's paragraphs: on a phone, the farm rows' MW figures' size, so
+     the text under the bar is one size (Owen); 16px from the tablet up. */
+  --type-method: var(--type-row);
 
   /* --- The mix panel, tier by tier ---------------------------------------------
      What differs between tiers is arrangement, not content, so it is all
@@ -170,6 +173,7 @@
        (The 44rem text cap tried here read as a premature max width, so the
        text block is full width again.) */
     --method-cols: 2;
+    --type-method: 1rem; /* 16px (Owen) */
     /* 64px from 744px up — the Tablet frame's margin (spec §5.1 says 24px;
        DECISIONS 028) — easing down to 36px at 600px, linearly, so the two farm
        columns stay ≈250px wide at the bottom of the range (4d). */

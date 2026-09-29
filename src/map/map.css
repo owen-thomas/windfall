@@ -734,7 +734,7 @@ body {
 
 .map-settlement__p {
   margin: 0;
-  font-size: 1rem; /* 16px (Owen) */
+  font-size: var(--type-method); /* 12px on a phone, 16px from the tablet up (grid.css) */
   font-weight: var(--wt-light);
   line-height: 1.25;
   color: var(--text-muted); /* paragraph copy (Owen) */
