@@ -1681,3 +1681,9 @@ Both reach bills through BSUoS, which since 1 April 2023 (CMP308) is recovered s
 - The gas figure is the full offer price, not a difference against the wind's price: the wind's energy was already bought in the day-ahead market and the farms keep that money, so the same energy is paid for again at the gas price (NESO counts its constraint costs the same way).
 
 **Open:** on a clock-change day the hour labels are an hour out after 01:00. Opening the method from the footer relies on the existing scroll-into-view, not yet checked there. The dark theme's gas and held-back colours are unchanged.
+
+## 056 — England's panel sits lower on desktop
+
+**Decision:** England's mix panel anchors 0.4° further south at every desktop tier: `--anchor-england-lat` 54.72 → 54.32 (1024–1439) and 54.44 → 54.04 (1440 up). Tablet and phone unchanged.
+
+**Why:** Owen: on desktop it sat high, over Cumbria, and close under Scotland's panel. Measured, the gap below Scotland's panel goes from 59px to 88px at 1024×768 and from 166px to 203px at 1440×900.
