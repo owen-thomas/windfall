@@ -403,7 +403,14 @@ function bootMap(): void {
   // Softened (0.9 -> 0.55 opacity) so the flow reads as texture behind the farm
   // markers rather than competing with them in the same ink (Owen). The
   // held-back palette below takes it too.
-  const palette = { ...LIGHT_PALETTE, washAlpha: 0.03, baseStrokeWidth: 1.1, baseStrokeAlpha: 0.55 };
+  // Its ink is --fuel-wind (DECISIONS 057), not the flow page's own blue.
+  const palette = {
+    ...LIGHT_PALETTE,
+    ...hslOfHex(tokenColor('--fuel-wind', '#0a1299')),
+    washAlpha: 0.03,
+    baseStrokeWidth: 1.1,
+    baseStrokeAlpha: 0.55,
+  };
   /**
    * The flow's speed and stroke width above are in device px as tuned on a 2x
    * screen. The look they give is right at a phone's map (the land drawn at
@@ -438,7 +445,7 @@ function bootMap(): void {
   // field, weighted by each farm's MW held back, drawn in the held-back
   // periwinkle (--bar-off, the bar's held run and a held farm's marker), and
   // fading out before it reaches the border (heldFade.ts).
-  const heldPalette = { ...palette, ...hslOfHex(tokenColor('--bar-off', '#94a3e1')) };
+  const heldPalette = { ...palette, ...hslOfHex(tokenColor('--bar-off', '#5b64ff')) };
   /** Each farm's MW held back in the latest reading — the held flow's emission weights. */
   const heldMW = new Map<string, number>();
   /** The held flow's fade, rebuilt with the world; until then, nothing is held back from drawing. */
@@ -792,9 +799,9 @@ function bootMap(): void {
       // The flow dims and returns at the markers' own pace (--dur-quick).
       fadeSeconds: prefersReducedMotion() ? 0 : 0.06,
     };
-    particles.setHighlightSource(farm, { ...highlight, color: tokenColor('--highlight', '#0a7cff') });
+    particles.setHighlightSource(farm, { ...highlight, color: tokenColor('--highlight', '#0a1299') });
     // The picked farm's held-back wind stays its own periwinkle; the rest dims.
-    heldParticles.setHighlightSource(farm, { ...highlight, color: tokenColor('--bar-off', '#94a3e1') });
+    heldParticles.setHighlightSource(farm, { ...highlight, color: tokenColor('--bar-off', '#5b64ff') });
     markerLayer.setHighlight(farm);
     setMarkerHighlight(insetSvg, insetMarkers, farm);
   }

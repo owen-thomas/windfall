@@ -1687,3 +1687,21 @@ Both reach bills through BSUoS, which since 1 April 2023 (CMP308) is recovered s
 **Decision:** England's mix panel anchors further south at every desktop tier: `--anchor-england-lat` 54.72 → 54.32 (1024–1439) and 54.44 → 54.24 (1440 up; 54.04 was tried first and read low on HD, Owen). Tablet and phone unchanged.
 
 **Why:** Owen: on desktop it sat high, over Cumbria, and close under Scotland's panel. Measured, the gap below Scotland's panel goes from 59px to 88px at 1024×768 and from 166px to 185px at 1440×900 (244px at 1920×1080).
+
+## 057 — Seven swatches
+
+**Decision:** Every colour on /map comes from seven swatches (Owen), set in `tokens-light.css`:
+
+- `#0A1299` energy primary: all text (primary, secondary and muted are one colour now; hierarchy is size and weight), wind on the grid (`--bar-on`, `--fuel-wind`, `--wind-live`, `--data-ink`), the flow lines, the selected farm (`--highlight`)
+- `#5B64FF` energy secondary: wind held back (`--bar-off`, `--held-text`, `--link`, the held flow)
+- `#F63E56` gas, and the staleness warnings (`--signal-ageing`, `--signal-stale`, `--signal-failed`)
+- `#B3B3C6` other energy, lines and borders (`--ink-line*`, `--ink-box`, `--inset-stroke`, and every fuel /map doesn't draw)
+- `#E7E7E9` the ground
+- `#59990A` status: live (`--signal-ok`)
+- `#FFFFFF` the island, bar tracks and raised surfaces (`--ink-raised`)
+
+The flow's ink was the flow page's own blue (`LIGHT_PALETTE`, HSL 216/85/42) and now reads `--fuel-wind`. Favicon, logo and `theme-color` follow.
+
+**Trade-offs, disclosed:** on the ground, `#5B64FF` is 3.61:1, under AA for "Held back 2,228 MW" at 16px regular; the gas warnings as text are 2.96:1; the green dot (2.84:1) and gas fills sit just under the 3:1 graphic line. The selected farm is now the flow's own colour, so the selection reads only through everything else dimming.
+
+**Open:** `og-windfall.png` still has the old colours. The dark theme is unchanged.
