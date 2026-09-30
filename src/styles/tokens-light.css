@@ -55,13 +55,13 @@
    *   #F63E56  gas, and every warning
    *   #B3B3C6  other energy, lines and borders
    *   #E7E7E9  the ground
-   *   #59990A  status: live
+   *   #12990A  status: live
    *   #FFFFFF  the island, bar tracks, raised surfaces
    *
    * Contrast on the ground: #0A1299 10.90, #5B64FF 3.61, #F63E56 2.96,
-   * #59990A 2.84, #B3B3C6 1.67, white 1.23. #5B64FF as 16px regular text
+   * #12990A 3.04, #B3B3C6 1.67, white 1.23. #5B64FF as 16px regular text
    * ("Held back 2,228 MW") is under AA's 4.5, and the gas warnings under it
-   * as text; the green dot and gas fills sit just under the 3:1 graphic line.
+   * as text; gas fills sit just under the 3:1 graphic line.
    * Accepted for the palette, disclosed here.
    */
   --ink-void: #e7e7e9;
@@ -108,7 +108,7 @@
   --bar-label: #ffffff; /* 13.47 on --bar-on, 4.46 on --bar-off */
   --held-text: var(--link);
 
-  --signal-ok: #59990a;
+  --signal-ok: #12990a;
   --signal-ageing: #f63e56;
   --signal-stale: #f63e56;
   --signal-failed: #f63e56;

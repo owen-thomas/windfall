@@ -1697,11 +1697,11 @@ Both reach bills through BSUoS, which since 1 April 2023 (CMP308) is recovered s
 - `#F63E56` gas, and the staleness warnings (`--signal-ageing`, `--signal-stale`, `--signal-failed`)
 - `#B3B3C6` other energy, lines and borders (`--ink-line*`, `--ink-box`, `--inset-stroke`, and every fuel /map doesn't draw)
 - `#E7E7E9` the ground
-- `#59990A` status: live (`--signal-ok`)
+- `#12990A` status: live (was `#59990A`, 2.84:1; this clears 3:1 at 3.04) (`--signal-ok`)
 - `#FFFFFF` the island, bar tracks and raised surfaces (`--ink-raised`)
 
 The flow's ink was the flow page's own blue (`LIGHT_PALETTE`, HSL 216/85/42) and now reads `--fuel-wind`. Favicon, logo and `theme-color` follow.
 
-**Trade-offs, disclosed:** on the ground, `#5B64FF` is 3.61:1, under AA for "Held back 2,228 MW" at 16px regular; the gas warnings as text are 2.96:1; the green dot (2.84:1) and gas fills sit just under the 3:1 graphic line. The selected farm is now the flow's own colour, so the selection reads only through everything else dimming.
+**Trade-offs, disclosed:** on the ground, `#5B64FF` is 3.61:1, under AA for "Held back 2,228 MW" at 16px regular; the gas warnings as text are 2.96:1 and gas fills sit just under the 3:1 graphic line. The selected farm is now the flow's own colour, so the selection reads only through everything else dimming.
 
 **Open:** `og-windfall.png` still has the old colours. The dark theme is unchanged.
