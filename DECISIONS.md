@@ -1704,4 +1704,4 @@ The flow's ink was the flow page's own blue (`LIGHT_PALETTE`, HSL 216/85/42) and
 
 **Trade-offs, disclosed:** on the ground, `#5B64FF` is 3.61:1, under AA for "Held back 2,228 MW" at 16px regular; the gas warnings as text are 2.96:1 and gas fills sit just under the 3:1 graphic line. The selected farm is now the flow's own colour, so the selection reads only through everything else dimming.
 
-**Open:** `og-windfall.png` still has the old colours. The dark theme is unchanged.
+**Open:** the dark theme is unchanged. (`og-windfall.png` was re-exported in the new palette by Owen.)
