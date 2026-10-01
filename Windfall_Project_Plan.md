@@ -146,8 +146,42 @@ Prove the curtailment derivation end to end before any interface exists.
 ## 9. Out of scope for slice one
 Running cost totals in £ (slice two, needs price joins). Historical views and trends. Personalisation or location awareness. Accounts, sharing beyond OG cards, notifications. Native mobile polish. Any advisory content.
 
-## 10. Slice two candidates (parked, do not build)
-Cost-today figure via NESO balancing cost data or bid-price joins. A day/week retrospective ("yesterday Scotland was paid £X to switch off Y GWh"). Forecast-forward view. Embeddable widget.
+## 10. Backlog (updated 1 October 2026)
+Replaces the slice two candidates. The cost-today figure shipped on 29 September (DECISIONS 052). Most of what follows came from responses to the LinkedIn launch post (w/c 28 September). The one-screen rule in §11 still applies: an idea earns a place by serving the argument, not by being asked for.
+
+**Next, in order:**
+
+| Idea | Source | Note |
+|---|---|---|
+| Where the replacement gas burns, and what it costs | LinkedIn comment | First choice for the next build and post. The cost pipeline already identifies the units turned up for network reasons. Must lead on cost: other public maps already show gas turn-up. |
+| The border's limit rising as new links arrive | LinkedIn comment | Second choice. When and where the new grid gets built. From NESO planning publications, not a live feed, so it needs a date on it. |
+| Exact values on hover | LinkedIn comment | Small. Today the farm list carries the per-farm figures. |
+| A day or week look-back ("yesterday X GWh was held back, costing £Y") | Slice two list | Daily totals were the figures people quoted most in replies. |
+
+**Worth exploring:**
+
+| Idea | Source | Note |
+|---|---|---|
+| What Scotland's planned long-duration storage could absorb | LinkedIn comment | ~5 GW / 100 GWh in Ofgem's minded-to decision, against days like 28 September (~25 GWh held back). A what-if, so it must be labelled as one. |
+| Annual comparison (wind not used, in households or cities) | LinkedIn comment | Needs a year of history. |
+| Forecast-forward view | Slice two list | |
+| Embeddable widget | Slice two list | |
+
+**Parked (needs modelling Windfall doesn't have):**
+
+| Idea | Source | Note |
+|---|---|---|
+| The no-wind counterfactual, and connecting early versus waiting for reinforcement | LinkedIn comment | Needs a market model. The most interesting question raised. |
+| Payback on grid reinforcement | LinkedIn comment | Needs network and cost modelling. |
+
+**Method-note clarifications, not features:**
+- The England mix includes plants running for export (for example over BritNed). The cost figure doesn't, because it counts only actions flagged as taken for the network.
+- Much wind is sold forward below the gas price. The cost figure is a different thing: what the grid pays to switch wind off and turn gas on instead.
+
+**Ruled out:**
+- A Welsh figure. The England and Wales blend failed in testing (DECISIONS, map spec decision 4), and a third panel was ruled out for density. Revisit only if the layout changes.
+- Local generation against local demand. Distribution-connected generation and live Scottish demand aren't published.
+- Weather or route planning for climbers, and selling Windfall as a product. Outside its purpose.
 
 ## 11. Risks
 - **Curtailment derivation complexity** — mitigated by the phase 0 gate and named fallback.
