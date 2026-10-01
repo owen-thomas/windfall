@@ -153,7 +153,8 @@ Replaces the slice two candidates. The cost-today figure shipped on 29 September
 
 | Idea | Source | Note |
 |---|---|---|
-| Where the replacement gas burns, and what it costs | LinkedIn comment | First choice for the next build and post. The cost pipeline already identifies the units turned up for network reasons. Must lead on cost: other public maps already show gas turn-up. |
+| Make clear the flow is electricity, not wind | Two LinkedIn readers | Fix first: it affects how the main visual is read. Two readers took the particle trails for the wind itself, one asking to buy "tracking of directional wind". Particle trails on a map read as weather. Options: a label on the flow, a legend line ("lines show Scottish wind power on the grid"), or a treatment that reads less like weather. Small. |
+| Where the replacement gas burns, and what it costs | LinkedIn comments | First choice for the next build and post. A second reader asked why the flow thins in the south-east with nothing filling the gap. The cost pipeline already identifies the units turned up for network reasons. Must lead on cost: other public maps already show gas turn-up. |
 | The border's limit rising as new links arrive | LinkedIn comment | Second choice. When and where the new grid gets built. From NESO planning publications, not a live feed, so it needs a date on it. |
 | Exact values on hover | LinkedIn comment | Small. Today the farm list carries the per-farm figures. |
 | A day or week look-back ("yesterday X GWh was held back, costing £Y") | Slice two list | Daily totals were the figures people quoted most in replies. |
