@@ -146,7 +146,7 @@ Prove the curtailment derivation end to end before any interface exists.
 ## 9. Out of scope for slice one
 Running cost totals in £ (slice two, needs price joins). Historical views and trends. Personalisation or location awareness. Accounts, sharing beyond OG cards, notifications. Native mobile polish. Any advisory content.
 
-## 10. Backlog (updated 1 October 2026)
+## 10. Backlog (updated 4 October 2026)
 Replaces the slice two candidates. The cost-today figure shipped on 29 September (DECISIONS 052). Most of what follows came from responses to the LinkedIn launch post (w/c 28 September). The one-screen rule in §11 still applies: an idea earns a place by serving the argument, not by being asked for.
 
 **Next, in order:**
@@ -154,6 +154,7 @@ Replaces the slice two candidates. The cost-today figure shipped on 29 September
 | Idea | Source | Note |
 |---|---|---|
 | Make clear the flow is electricity, not wind | Two LinkedIn readers | Fix first: it affects how the main visual is read. Two readers took the particle trails for the wind itself, one asking to buy "tracking of directional wind". Particle trails on a map read as weather. Options: a label on the flow, a legend line ("lines show Scottish wind power on the grid"), or a treatment that reads less like weather. Small. |
+| Draw the half hours when farms pay to be switched off below the cost timeline's baseline | Owen, reading the live site (1 October) | Fix: the chart misleads today. `views/cost.ts` clamps a half hour's net payment to zero, so when the held-back farms pay to be switched off (mostly Moray East) the column shows gas alone. On 1 October the only blue was overnight, which read as switching off only happening then, while the legend said £40k "paid by farms to be switched off" and 22% was held back. Draw negative nets in held-back blue below the line, so the dips explain the legend's net. Heights would then scale to the largest positive or negative half hour, and the chart needs room under the line. Small to medium. |
 | Where the replacement gas burns, and what it costs | LinkedIn comments | First choice for the next build and post. A second reader asked why the flow thins in the south-east with nothing filling the gap. The cost pipeline already identifies the units turned up for network reasons. Must lead on cost: other public maps already show gas turn-up. |
 | The border's limit rising as new links arrive | LinkedIn comment | Second choice. When and where the new grid gets built. From NESO planning publications, not a live feed, so it needs a date on it. |
 | Exact values on hover | LinkedIn comment | Small. Today the farm list carries the per-farm figures. |
