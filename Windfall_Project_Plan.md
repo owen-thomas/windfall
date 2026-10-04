@@ -177,6 +177,7 @@ Replaces the slice two candidates. The cost-today figure shipped on 29 September
 
 **Method-note clarifications, not features:**
 - The England mix includes plants running for export (for example over BritNed). The cost figure doesn't, because it counts only actions flagged as taken for the network.
+- The country panels' carbon intensity is NESO's published Carbon Intensity figure, which counts emissions at the power station, not across the fuel's life cycle (upstream methane, extraction, processing). Say so, so the figure can't be read as a full life-cycle number. Check how Carbon Intensity treats biomass before describing it.
 - Much wind is sold forward below the gas price. The cost figure is a different thing: what the grid pays to switch wind off and turn gas on instead.
 
 **Ruled out:**
