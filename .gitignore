@@ -6,3 +6,6 @@ dist
 .env.*
 !.env.example
 .DS_Store
+
+# Third-party reference images: kept local, the repo is public
+reference/

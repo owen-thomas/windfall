@@ -31,7 +31,7 @@ Together they give one visual rule: **trails are weather, lines are wires.** Gre
 
 ## 3. The references
 
-Two images in `reference/` carry the electricity's look. The earlier flow references (Design Week Highlights, Pin by you, Digital Art) now belong to the wind layer.
+Two images in `reference/` carry the electricity's look. `reference/` is git-ignored (third-party images, public repo), so a fresh worktree will not have it: read the images from Owen's main checkout. The earlier flow references (Design Week Highlights, Pin by you, Digital Art) now belong to the wind layer.
 
 **`reference/Typography Pin.jpg`** — the marks.
 - Thin, solid, smoothly curved lines running roughly parallel in a bundle.
