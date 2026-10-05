@@ -1,11 +1,12 @@
 /**
  * Scottish wind BMUs, transmission-connected.
  *
- * 112 units, ~13,105 MW registered capacity, derived from Elexon's BM unit
+ * 114 units, ~12,809 MW registered capacity, derived from Elexon's BM unit
  * registry (`/reference/bmunits/all`): every unit with `bmUnitType` T and
  * `fuelType` WIND whose farm is in Scotland or Scottish waters. Capacities
  * are the registry's `generationCapacity` verbatim, so the total on screen is
- * traceable to a published figure rather than to a hand-kept number.
+ * traceable to a published figure rather than to a hand-kept number. Last
+ * re-derived 5 October 2026 (DECISIONS.md 015, re-derivation logged after it).
  *
  * It replaces the 50-unit list curated in the phase 0 spike, which was
  * validated on 20 June 2026 — a light day. Re-deriving 13 June 2026, a
@@ -49,24 +50,24 @@ export const SCOTTISH_WIND_BMUS: Record<string, BmuInfo> = {
   'MOWWO-4': { name: 'Moray West 4', capacityMW: 287, farm: 'Moray West' },
   'NNGAO-1': { name: 'Neart Na Gaoithe 1', capacityMW: 224, farm: 'Neart Na Gaoithe' },
   'NNGAO-2': { name: 'Neart Na Gaoithe 2', capacityMW: 224, farm: 'Neart Na Gaoithe' },
-  'SGRWO-1': { name: 'Seagreen 1', capacityMW: 431.132, farm: 'Seagreen' },
+  'SGRWO-1': { name: 'Seagreen 1', capacityMW: 358, farm: 'Seagreen' },
   'SGRWO-2': { name: 'Seagreen 2', capacityMW: 220, farm: 'Seagreen' },
   'SGRWO-3': { name: 'Seagreen 3', capacityMW: 374.618, farm: 'Seagreen' },
   'SGRWO-4': { name: 'Seagreen 4', capacityMW: 140, farm: 'Seagreen' },
   'SGRWO-5': { name: 'Seagreen 5', capacityMW: 300, farm: 'Seagreen' },
-  'SGRWO-6': { name: 'Seagreen 6', capacityMW: 525.302, farm: 'Seagreen' },
+  'SGRWO-6': { name: 'Seagreen 6', capacityMW: 380, farm: 'Seagreen' },
   'RREW-1': { name: 'Robin Rigg East', capacityMW: 114.293, farm: 'Robin Rigg' },
   'RRWW-1': { name: 'Robin Rigg West', capacityMW: 90.838, farm: 'Robin Rigg' },
 
   // Highland, Moray, Caithness, Sutherland, Shetland and Skye
-  'BDCHW-1': { name: 'Bad a Cheo', capacityMW: 270, farm: 'Bad a Cheo' },
+  'BDCHW-1': { name: 'Bad a Cheo', capacityMW: 27, farm: 'Bad a Cheo' },
   'BEINW-1': { name: 'Beinneun', capacityMW: 108.8, farm: 'Beinneun' },
-  'BHLAW-1': { name: 'Bhlaraidh', capacityMW: 108, farm: 'Bhlaraidh' },
+  'BHLAW-1': { name: 'Bhlaraidh', capacityMW: 108.112, farm: 'Bhlaraidh' },
   'CGTHW-1': { name: 'Corriegarth', capacityMW: 69, farm: 'Corriegarth' },
   'CREAW-1': { name: 'Creag Riabhach', capacityMW: 93, farm: 'Creag Riabhach' },
   'CRMLW-1': { name: 'Corriemoillie', capacityMW: 48, farm: 'Corriemoillie' },
-  'DOREW-1': { name: 'Dorenell 1', capacityMW: 156.92, farm: 'Dorenell' },
-  'DOREW-2': { name: 'Dorenell 2', capacityMW: 156.92, farm: 'Dorenell' },
+  'DOREW-1': { name: 'Dorenell 1', capacityMW: 114, farm: 'Dorenell' },
+  'DOREW-2': { name: 'Dorenell 2', capacityMW: 114, farm: 'Dorenell' },
   'DUNGW-1': { name: 'Dunmaglass', capacityMW: 100, farm: 'Dunmaglass' },
   'EDINW-1': { name: 'Edinbane (Skye)', capacityMW: 41.4, farm: 'Edinbane' },
   'FAARW-1': { name: 'Farr 1', capacityMW: 92, farm: 'Farr' },
@@ -110,7 +111,8 @@ export const SCOTTISH_WIND_BMUS: Record<string, BmuInfo> = {
   'DOUGW-1': { name: 'Douglas West', capacityMW: 45, farm: 'Douglas West' },
   'DWEXW-1': { name: 'Douglas West Ext', capacityMW: 65.51, farm: 'Douglas West' },
   'GLWSW-1': { name: 'Galawhistle', capacityMW: 55.2, farm: 'Galawhistle' },
-  'HAHAW-1': { name: 'Hagshaw Hill', capacityMW: 30.258, farm: 'Hagshaw Hill' },
+  'HAGHW-2': { name: 'Hagshaw Repower 2', capacityMW: 51.3, farm: 'Hagshaw Hill' },
+  'HAHAW-1': { name: 'Hagshaw Repower 1', capacityMW: 30.258, farm: 'Hagshaw Hill' },
   'KENNW-1': { name: 'Kennoxhead', capacityMW: 60, farm: 'Kennoxhead' },
   'KPMRW-1': { name: 'Kype Muir', capacityMW: 89, farm: 'Kype Muir' },
   'KYPEW-1': { name: 'Kype Muir Ext', capacityMW: 67, farm: 'Kype Muir' },
@@ -142,9 +144,10 @@ export const SCOTTISH_WIND_BMUS: Record<string, BmuInfo> = {
   'GNAPW-1': { name: 'Glen App', capacityMW: 22, farm: 'Glen App' },
   'HADHW-1': { name: 'Hadyard Hill', capacityMW: 130, farm: 'Hadyard Hill' },
   'HRSTW-1': { name: 'Harestanes', capacityMW: 142.3, farm: 'Harestanes' },
-  'KLGLW-1': { name: 'Kilgallioch', capacityMW: 252.66, farm: 'Kilgallioch' },
+  'KLGLW-1': { name: 'Kilgallioch 1', capacityMW: 228, farm: 'Kilgallioch' },
+  'KLGLW-2': { name: 'Kilgallioch 2', capacityMW: 225, farm: 'Kilgallioch' },
   'KTHLW-1': { name: 'Keith Hill', capacityMW: 4.54, farm: 'Keith Hill' },
-  'MKHLW-1': { name: 'Mark Hill', capacityMW: 53.84, farm: 'Mark Hill' },
+  'MKHLW-1': { name: 'Mark Hill', capacityMW: 53, farm: 'Mark Hill' },
   'MYGPW-1': { name: 'Minnygap', capacityMW: 25, farm: 'Minnygap' },
   'NOKYW-1': { name: 'North Kyle 1', capacityMW: 106, farm: 'North Kyle' },
   'NOKYW-2': { name: 'North Kyle 2', capacityMW: 106, farm: 'North Kyle' },

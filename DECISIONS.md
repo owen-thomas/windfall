@@ -1705,3 +1705,34 @@ The flow's ink was the flow page's own blue (`LIGHT_PALETTE`, HSL 216/85/42) and
 **Trade-offs, disclosed:** on the ground, `#5B64FF` is 3.61:1, under AA for "Held back 2,228 MW" at 16px regular; the gas warnings as text are 2.96:1 and gas fills sit just under the 3:1 graphic line. The selected farm is now the flow's own colour, so the selection reads only through everything else dimming.
 
 **Open:** the dark theme is unchanged. (`og-windfall.png` was re-exported in the new palette by Owen.)
+
+## 058 — The BMU list re-derived: 114 units, 12,809 MW
+
+**Date:** 2026-10-05
+**Decision:** Re-derive `SCOTTISH_WIND_BMUS` from the registry the same way 015 did (`bmUnitType` T, `fuelType` WIND, farm in Scotland or Scottish waters). 112 units and 13,105 MW become **114 units and 12,809 MW**: two units in, none out, eight capacities changed. The page's "13,105 MW installed" now reads **12,809 MW installed**, and the coverage line reads "114 units, 12,809 MW". Both are generated from `bmus.ts`, so only the list changed.
+
+**Added.** Both are at farms already on the map, so no new farm:
+
+- `KLGLW-2` (`T_KLGLW-2`, SP Renewables, 225 MW) joins Kilgallioch. The registry gives it no name beyond its ID. REPD's only other Kilgallioch wind row is the extension, 50.4 MW and under construction, so this is not the extension coming online. The farm now totals 453 MW in the registry against 239 MW in REPD, inflated the same way Seagreen and Dorenell are below.
+- `HAGHW-2` (Hagshaw Repower 2, 51.3 MW) joins Hagshaw Hill. `HAHAW-1` stays, now registered as "Hagshaw Repower 1" (30.258 MW). Together they are 81.6 MW against REPD's "Hagshaw Hill (Repowering)", 84 MW, operational November 2025. Hagshaw Hill's farms.json point moves from the 1995 site (REPD 3301) to the repowering's (REPD 7456), about 3 km east, as a hand match in `build-farms.ts`. That also settles the old entry's note that REPD's 7.8 MW "looked stale" against 30.258 MW: the 7.8 MW was the old farm and the 30.258 MW was half of the new one.
+
+**Changed capacities** (registry `generationCapacity`, verbatim):
+
+| Unit | Was | Now |
+|---|---|---|
+| SGRWO-1 Seagreen 1 | 431.132 | 358 |
+| SGRWO-6 Seagreen 6 | 525.302 | 380 |
+| BDCHW-1 Bad a Cheo | 270 | 27 |
+| DOREW-1 Dorenell 1 | 156.92 | 114 |
+| DOREW-2 Dorenell 2 | 156.92 | 114 |
+| KLGLW-1 Kilgallioch | 252.66 | 228 |
+| MKHLW-1 Mark Hill | 53.84 | 53 |
+| BHLAW-1 Bhlaraidh | 108 | 108.112 |
+
+The total falls even though units were added. Most of the change moves towards REPD: Bad a Cheo 27 against REPD's 26.7 (270 was ten times too high), Dorenell 228 against 177 (was 314), Seagreen 1,773 against 1,075 (was 1,991). There is no snapshot of the July registry, so the record cannot show whether these were registry revisions or errors made when the list was transcribed in 015. Either way the rule from 015 holds: the registry's figure is the one used.
+
+**Not added:** the other 68 T WIND units in the registry (WALNEY_4 is listed twice) are all English or Welsh, or in English waters: Dogger Bank, Sofia, Hornsea, Walney, Gwynt y Môr and others. No unit in the list left the registry or changed type.
+
+**Also moved with the list:** `SAMPLE_CURTAILMENT.method` (114 / 12,809.092), so sample-state screens don't print 13,105 beside a bar that says 12,809. The per-unit rows in that capture keep the capacities they were captured with. The comments in `sources.ts`, `map.css` and `farmCapacity.ts` that quote the figure were updated too.
+
+**Checks:** `farms:check` passes (still 76 farms). `scripts/probe-api.ts` runs live and reports "114 units, 12809.092 MW tracked". The dev page renders "12,809 MW installed". `npm run typecheck` fails, but only in `scripts/export-map-svg.ts`, which this change does not touch.

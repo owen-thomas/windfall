@@ -2,7 +2,7 @@
  * Every tracked farm's installed capacity, known without a live reading: the
  * same static BM unit list the curtailment endpoint tracks (api/_lib/bmus.ts,
  * the registry's `generationCapacity` per unit), summed per farm. It lets the
- * bar, its "13,105 MW installed" and the farm list stay on the page while a
+ * bar, its "12,809 MW installed" and the farm list stay on the page while a
  * reading is pending or unavailable (Owen) — capacity is the one thing about
  * the fleet that doesn't need Elexon to answer.
  */

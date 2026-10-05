@@ -8,7 +8,7 @@
  * marker does: MW on the grid, MW held back, and the rest a pale idle track.
  * Above it, a legend of the two that carry the story — "2,913 MW on the grid",
  * "2,196 MW held back", each with its swatch; idle gets no legend item, only
- * the quiet "13,105 MW installed" under the bar's end (Owen). They are real
+ * the quiet "12,809 MW installed" under the bar's end (Owen). They are real
  * text, so the bar itself is `aria-hidden` and needs no sentence of its own.
  * The held-back run is never drawn narrower than 4px while anything is held
  * back.
@@ -157,7 +157,7 @@ export function mapSourcesView(options: SourcesOptions): SourcesView {
   const onLegend = legendItem('on', 'on the grid');
   const heldLegend = legendItem('held', 'held back');
   const labels = el('div', { class: 'map-sources__labels' }, onLegend.item, heldLegend.item);
-  // The bar's full length, named quietly under its end: "13,105 MW installed".
+  // The bar's full length, named quietly under its end: "12,809 MW installed".
   // "Installed", never "capacity" — the page's issue is the grid's capacity,
   // and the farms' own is a different thing.
   const installed = el('p', { class: 'map-sources__installed' });
