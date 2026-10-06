@@ -54,10 +54,11 @@ const REFERENCES: Reference[] = [
   // 1,696.5 MWh, which is 84% of the disagreement. Comparing the published
   // totals therefore overstates the gap; see DECISIONS 014.
   { date: '2026-07-23', monitorGWh: 7.2, note: 'comparator missing 19:00 and 19:30' },
-  // The heaviest day yet, at roughly twice 13 June. The monitor's series is
+  // The heaviest day in this sample, about 1.6 times 13 June, though only the
+  // 15th most curtailed of 2026 by the monitor's count. The monitor's series is
   // complete (48 half-hours summing to 96.18 GWh) and Windfall reads higher
   // in 44 of them, so the gap is spread through the day; see DECISIONS 058.
-  { date: '2026-10-05', monitorGWh: 96.2, note: 'heaviest constraint, series complete' },
+  { date: '2026-10-05', monitorGWh: 96.2, note: 'heaviest in sample, series complete' },
 ];
 
 /** The availability-based figure from DECISIONS 002, for contrast. */

@@ -1706,11 +1706,11 @@ The flow's ink was the flow page's own blue (`LIGHT_PALETTE`, HSL 216/85/42) and
 
 **Open:** the dark theme is unchanged. (`og-windfall.png` was re-exported in the new palette by Owen.)
 
-## 058 — 5 October, the heaviest day yet, reads 10% above the monitor all day long
+## 058 — 5 October, the heaviest day in the sample, reads 10% above the monitor all day long
 
 **Decision:** 5 October 2026 joins the cross-check as a second heavily constrained reference, next to 13 June. Windfall reads 106.00 GWh and the Wind Curtailment Monitor 96.2 GWh: 1.102x. The gap is recorded, not resolved.
 
-**The day.** Roughly twice 13 June. Curtailment peaked in the first half hour at 3,192.5 MWh across 65 units (about 6.4 GW held off, near half of the 13,105 MW tracked), eased through the day and was still 733 MWh at 23:30. Seagreen, Moray West, Moray East, Viking, Neart Na Gaoithe and Beatrice carry 72% of it.
+**The day.** The heaviest in the cross-check sample, about 1.6 times 13 June (106.00 GWh against 68.34), but not a record. In the monitor's history it is the 15th most curtailed day of 2026 (277 days), and 30 September, a week earlier, was heavier at 114.8 GWh. Nor was it especially windy: the monitor puts the wind available at 289 GWh, 73rd of 2026's 277 days, against a median of 186 and around 440–450 on the windiest. A third of it was held back. Curtailment peaked in the first half hour at 3,192.5 MWh across 65 units (about 6.4 GW held off, near half of the 13,105 MW tracked), eased through the day and was still 733 MWh at 23:30. Seagreen, Moray West, Moray East, Viking, Neart Na Gaoithe and Beatrice carry 72% of it.
 
 **Ruling out 014's cause first.** A missing half hour or two (the 23 July failure) would only need three overnight periods to make 9.8 GWh, so the monitor's own series was checked before anything was attributed. Its CSV download has all 48 half-hours for the day, no gaps or duplicates, summing to 96.18 GWh against the 96.2 on its page. Its times are local: 29 March 2026 has 46 rows, as a clocks-forward day should, so its periods line up with Windfall's.
 
