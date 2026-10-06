@@ -12,18 +12,23 @@
  *                 paid to a farm; some farms pay to be turned down (Moray East
  *                 about £30–45/MWh through September 2026), so the net can be
  *                 negative.
- *   replacement   the tracked units' bid volume flagged as a system action
- *                 (DISPTAV's "Tagged" share: taken for the network, not to
- *                 balance supply and demand — 93–96% of it through September
- *                 2026) — the energy that had to come from elsewhere — priced
- *                 at that half hour's flagged offers from generators outside
- *                 Scotland, each unit at its own average offer price (EBOCF ÷
- *                 DISPTAV), weighted by its flagged volume: a proxy. It isn't
- *                 the specific offers that replaced this wind; interconnector
+ *   replacement   all of the tracked units' held-back volume — the energy
+ *                 that had to come from elsewhere; 99.5% of it was flagged by
+ *                 NESO as a system action (BOALF soFlag) through September
+ *                 2026 — priced at that half hour's accepted offers from
+ *                 generators outside Scotland, each unit at its own average
+ *                 offer price (EBOCF ÷ its accepted volume), weighted by that
+ *                 volume: a proxy. It isn't the specific offers that replaced
+ *                 this wind (NESO flags only about a quarter of the gas
+ *                 turn-up, so the flag can't pick them out); interconnector
  *                 trades outside the balancing mechanism aren't counted.
  *
- * DISPTAV splits each unit's accepted volume between four types (Original,
- * Original-Priced, Re-priced, Tagged) that sum to the whole. "Outside
+ * DISPTAV reports each unit's accepted volume four times, once per stage of
+ * the imbalance price calculation (Original, Original-Priced, Re-priced,
+ * Tagged). They are not shares of a whole and must not be summed: summing
+ * them roughly doubled the volume and halved every price (DECISIONS 059).
+ * The largest of the four is the accepted volume — it matched a per-action
+ * rebuild from BOALF, PN and BOD to 0.02% for September's gas. "Outside
  * Scotland" is every unit not in the two transmission loss factor zones the
  * tracked wind units mostly sit in, read from Elexon's registry each time, so
  * a new tariff year's values follow.
@@ -83,6 +88,20 @@ async function scottishUnits(): Promise<Set<string>> {
 
 const key = (period: number, unit: string) => `${period}|${unit}`;
 
+/**
+ * Each unit's accepted volume per half hour, MWh, signed by `sign` (−1 for
+ * bids). DISPTAV repeats it once per data type; the largest is the volume.
+ */
+function acceptedVolumes(rows: VolumeRow[], include: (unit: string) => boolean, sign: 1 | -1): Map<string, number> {
+  const volumes = new Map<string, number>();
+  for (const r of rows) {
+    if (!r.nationalGridBmUnit || !include(r.nationalGridBmUnit)) continue;
+    const k = key(r.settlementPeriod, r.nationalGridBmUnit);
+    volumes.set(k, Math.max(volumes.get(k) ?? 0, sign * (r.totalVolumeAccepted ?? 0)));
+  }
+  return volumes;
+}
+
 /** Today's estimate so far, or null if Elexon has settled nothing of today yet. */
 export async function fetchCostToday(date: string): Promise<CostToday | null> {
   const [bidCash, bidVol, offerCash, offerVol, scotland] = await Promise.all([
@@ -101,40 +120,28 @@ export async function fetchCostToday(date: string): Promise<CostToday | null> {
   const periods = [...net.keys()];
   if (periods.length === 0) return null;
 
-  // Held back, and the flagged part of it that had to be replaced. Bid
-  // volumes are negative (energy below the declaration).
+  // Held back, per half hour: each tracked unit's accepted bid volume, all of
+  // which had to be replaced. Bid volumes are negative (energy below the
+  // declaration).
   const held = new Map<number, number>();
-  const replaced = new Map<number, number>();
-  for (const r of bidVol) {
-    if (!r.nationalGridBmUnit || !SCOTTISH_WIND_SET.has(r.nationalGridBmUnit)) continue;
-    const mwh = -(r.totalVolumeAccepted ?? 0);
-    held.set(r.settlementPeriod, (held.get(r.settlementPeriod) ?? 0) + mwh);
-    if (r.dataType === 'Tagged') replaced.set(r.settlementPeriod, (replaced.get(r.settlementPeriod) ?? 0) + mwh);
+  for (const [k, mwh] of acceptedVolumes(bidVol, (u) => SCOTTISH_WIND_SET.has(u), -1)) {
+    const period = Number(k.split('|')[0]);
+    held.set(period, (held.get(period) ?? 0) + mwh);
   }
 
-  // Each offering unit's average price per half hour, and its flagged volume.
+  // Each offering unit outside Scotland: its average price per half hour, and its volume.
   const unitPounds = new Map<string, number>();
   for (const r of offerCash) {
     if (r.nationalGridBmUnit) unitPounds.set(key(r.settlementPeriod, r.nationalGridBmUnit), r.totalCashflow ?? 0);
   }
-  const unitMWh = new Map<string, number>();
-  const unitFlagged = new Map<string, number>();
-  for (const r of offerVol) {
-    if (!r.nationalGridBmUnit) continue;
-    const k = key(r.settlementPeriod, r.nationalGridBmUnit);
-    const mwh = r.totalVolumeAccepted ?? 0;
-    unitMWh.set(k, (unitMWh.get(k) ?? 0) + mwh);
-    if (r.dataType === 'Tagged' && !scotland.has(r.nationalGridBmUnit)) unitFlagged.set(k, (unitFlagged.get(k) ?? 0) + mwh);
-  }
-  // Per half hour: flagged-volume-weighted price of flagged offers outside Scotland.
+  // Per half hour: volume-weighted price of accepted offers outside Scotland.
   const pricePounds = new Map<number, number>();
   const priceMWh = new Map<number, number>();
-  for (const [k, flagged] of unitFlagged) {
-    const total = unitMWh.get(k) ?? 0;
-    if (!(flagged > 0) || !(total > 0)) continue;
+  for (const [k, mwh] of acceptedVolumes(offerVol, (u) => !scotland.has(u), 1)) {
+    if (!(mwh > 0)) continue;
     const period = Number(k.split('|')[0]);
-    pricePounds.set(period, (pricePounds.get(period) ?? 0) + ((unitPounds.get(k) ?? 0) / total) * flagged);
-    priceMWh.set(period, (priceMWh.get(period) ?? 0) + flagged);
+    pricePounds.set(period, (pricePounds.get(period) ?? 0) + (unitPounds.get(k) ?? 0));
+    priceMWh.set(period, (priceMWh.get(period) ?? 0) + mwh);
   }
   let dayPounds = 0;
   let dayMWh = 0;
@@ -153,7 +160,7 @@ export async function fetchCostToday(date: string): Promise<CostToday | null> {
     const offered = priceMWh.get(p) ?? 0;
     const price = offered > 0 ? (pricePounds.get(p) ?? 0) / offered : dayPrice;
     const periodNet = net.get(p) ?? 0;
-    const periodReplacement = Math.max(0, replaced.get(p) ?? 0) * Math.max(0, price);
+    const periodReplacement = Math.max(0, held.get(p) ?? 0) * Math.max(0, price);
     netPayments += periodNet;
     replacement += periodReplacement;
     heldBack += Math.max(0, held.get(p) ?? 0);

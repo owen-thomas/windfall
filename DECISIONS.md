@@ -1734,3 +1734,35 @@ Windfall is higher in 44 of 48 half-hours. A steady proportion across the whole 
 **What was rejected:** treating 1.102x as confirming 015's unit-scope reading (two constrained days sharing a direction is a pattern, not a cause); reading the day's total off the monitor's page alone (that is how 23 July's gap went unseen); keeping the monitor's CSV in the repo (reference data stays out of the public repo, as with the images).
 
 **Open:** the per-unit split that would turn the scope reading into a finding, for 13 June and 5 October together.
+
+## 059 — The cost estimate counted every unit's volume twice
+
+**Date:** 2026-10-06
+**Phase:** Post-launch
+**Decision:** `api/_lib/cost.ts` takes each unit's accepted volume per half hour as the largest of DISPTAV's four data types, not their sum, for both the held-back wind and the offers that price its replacement. All of the held-back volume is priced as replaced, at that half hour's accepted offers from generators outside Scotland, weighted by volume. This corrects 052, whose estimate ran at about 60% of the real figure, and the counting on between settlements (054), whose rate came from the same numbers. September 2026 goes from £253m to **£412m**: £48m paid to the tracked farms, £364m for the replacement (£211/MWh, was £119).
+
+**How it was found.** Robin Hawkes posted on 5 October that NESO's gas turn-up in September averaged £203/MWh and wind turn-down £30/MWh. Windfall's farms side agreed (£24/MWh net, £33 paid to farms only), but its replacement price was £119, and gas alone on its method only £127. Dropping the non-gas offers moved it by £7, so the cheap offers weren't the cause.
+
+**The cause.** DISPTAV reports each unit's accepted volume once per stage of the imbalance price calculation: Original, Original-Priced, Re-priced, Tagged. 052 read them as four shares of a whole ("that sum to the whole") and summed them. They aren't shares. For a unit turned up by 158 MWh, Original and Tagged both say 158. Summed over September's gas, the four types give 3,277 GWh against a true 1,728, so dividing cashflow by the sum roughly halved every unit's price. On the bid side the same sum put September's held-back wind at 2,019 GWh against a true 1,731.
+
+**052 also misread "Tagged".** It took the type as the volume "flagged as a system action: taken for the network". Elexon's glossary defines Tagged Acceptance Volume as the volume left out of the System Price stacks by De Minimis, Arbitrage, NIV or PAR tagging, a step in the imbalance price, not NESO's flag. The 93–96% "flagged" share 052 quoted was the tagged share, and the "replaced" volume it drove came out close to the whole by coincidence. NESO's own flag is BOALF's `soFlag`.
+
+**Checked from the ground up.** Every acceptance in September for Britain's 91 gas units and the 112 tracked wind units was rebuilt minute by minute: the declared output (PN), the acceptances in force chained in acceptance-number order, and each increment priced through the unit's own bid-offer bands (BOD), offer price going up and bid price coming down. Totals agree with Elexon's indicative cashflows (gas offers £390.4m against £387.7m), and the rebuilt volume agrees with the largest DISPTAV type (1,728.0 against 1,727.7 GWh), not the sum.
+
+| September 2026 | £/MWh | Volume |
+|---|---|---|
+| Gas turn-up, all | 226 | 1,728 GWh |
+| Gas turn-up flagged by NESO (`soFlag`) | 234 | 467 GWh |
+| Gas turn-up not flagged | 223 | 1,261 GWh |
+| Tracked wind turn-down, flagged (paid to farms) | 29 | 1,722 GWh |
+| Tracked wind turn-down, not flagged | 49 | 8 GWh |
+
+Robin's £203 sits within about 10% of the rebuilt £226 and the corrected proxy's £211; which actions his average covers isn't stated. His £30 for wind matches the rebuilt £29.
+
+**Why every held-back MWh counts as replaced, and not only the flagged gas.** 99.5% of the held-back wind is flagged, so all of it is a network action. But NESO flags only 27% of gas turn-up, because most of the energy that replaces constrained wind is bought as energy balancing, not as a locational action. The flag can't pick out the replacement, so the proxy stays what it was meant to be: the half hour's offers from outside Scotland (gas about 84% of their volume), with its price now right.
+
+**Days, before → after:** 28 September £3.26m → £5.78m; 29 September £14.05m → £24.64m (settled whole-day figures, re-run on 6 October). The rate the headline counts on at is now about £240 per MWh held back, not ~£129. Replacement goes from about 80% of the estimate (054's "£7.21m of £9.02m") to about 88%.
+
+**What was rejected:** pricing only the gas offers NESO flags (£234; a quarter of the volume, and not the replacement); summing Tagged alone (it matches the total in aggregate, but its meaning is the imbalance price's, and the largest type is what the per-action rebuild confirmed); shipping the per-action rebuild as the runtime method (31 days of BOALF, PN and BOD for 200 units to replace four Elexon files a day, when the corrected proxy is already within 7% of the rebuilt gas price).
+
+**Open:** 052's comparison of flagged English offers with all offers (medians £121 and £112) used the same halved prices and isn't re-run. 058's cross-check is unaffected: it measures volume through BOALF and PN, not DISPTAV.

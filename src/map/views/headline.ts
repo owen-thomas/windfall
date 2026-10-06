@@ -112,8 +112,8 @@ export function mapHeadlineView(): MapHeadlineView {
 
   /**
    * Some of today's settled estimate is the replacement: held-back energy
-   * priced at flagged offers from outside Scotland, almost all gas (DECISIONS
-   * 052). Read from each day's split, never assumed.
+   * priced at accepted offers from outside Scotland, mostly gas (DECISIONS
+   * 052, 059). Read from each day's split, never assumed.
    */
   function gasPaid(state: AppState | null): boolean {
     const today = state?.cost?.cost;
