@@ -189,8 +189,8 @@ export interface BorderResponse {
  * An estimate of what holding back the tracked Scottish wind has cost bill
  * payers so far today (api/_lib/cost.ts, DECISIONS 052): the net payments to
  * the tracked farms for turning down, plus the power bought to replace what
- * the network made them hold back, priced at flagged offers from generators
- * outside Scotland. An estimate, not a floor or a measurement.
+ * the network made them hold back, priced at accepted offers from generators
+ * outside Scotland (DECISIONS 059). An estimate, not a floor or a measurement.
  */
 export interface CostToday {
   /** The London day it covers, YYYY-MM-DD. */
@@ -203,7 +203,7 @@ export interface CostToday {
   estimatePounds: number;
   /** Paid to the tracked farms for turning down, net of what some of them paid (£; can be negative). */
   netPaymentsPounds: number;
-  /** The held-back energy flagged as a network action, priced at that half hour's flagged offers from generators outside Scotland, £. */
+  /** The held-back energy, priced at that half hour's accepted offers from generators outside Scotland, £ (DECISIONS 059). */
   replacementPounds: number;
   heldBackMWh: number;
   /** 48, or 46 / 50 on a clock-change day: the cost timeline's width (DECISIONS 055). */

@@ -1706,7 +1706,68 @@ The flow's ink was the flow page's own blue (`LIGHT_PALETTE`, HSL 216/85/42) and
 
 **Open:** the dark theme is unchanged. (`og-windfall.png` was re-exported in the new palette by Owen.)
 
-## 058 — The BMU list re-derived: 114 units, 12,809 MW
+## 058 — 5 October, the heaviest day in the sample, reads 10% above the monitor all day long
+
+**Decision:** 5 October 2026 joins the cross-check as a second heavily constrained reference, next to 13 June. Windfall reads 106.00 GWh and the Wind Curtailment Monitor 96.2 GWh: 1.102x. The gap is recorded, not resolved.
+
+**The day.** The heaviest in the cross-check sample, about 1.6 times 13 June (106.00 GWh against 68.34), but not a record. In the monitor's history it is the 15th most curtailed day of 2026 (277 days), and 30 September, a week earlier, was heavier at 114.8 GWh. Nor was it especially windy: the monitor puts the wind available at 289 GWh, 73rd of 2026's 277 days, against a median of 186 and around 440–450 on the windiest. A third of it was held back. Curtailment peaked in the first half hour at 3,192.5 MWh across 65 units (about 6.4 GW held off, near half of the 13,105 MW tracked), eased through the day and was still 733 MWh at 23:30. Seagreen, Moray West, Moray East, Viking, Neart Na Gaoithe and Beatrice carry 72% of it.
+
+**Ruling out 014's cause first.** A missing half hour or two (the 23 July failure) would only need three overnight periods to make 9.8 GWh, so the monitor's own series was checked before anything was attributed. Its CSV download has all 48 half-hours for the day, no gaps or duplicates, summing to 96.18 GWh against the 96.2 on its page. Its times are local: 29 March 2026 has 46 rows, as a clocks-forward day should, so its periods line up with Windfall's.
+
+**Localising, per 014.** Held against Windfall half-hour by half-hour, the gap is spread through the day:
+
+| Window | Windfall | Monitor | Gap | Ratio |
+|---|---|---|---|---|
+| 00:00–08:30 | 51.67 GWh | 47.02 GWh | +4.65 GWh | 1.099x |
+| 09:00–17:30 | 40.05 GWh | 36.11 GWh | +3.94 GWh | 1.109x |
+| 18:00–23:30 | 14.28 GWh | 13.05 GWh | +1.23 GWh | 1.094x |
+| Day | 106.00 GWh | 96.18 GWh | +9.82 GWh | 1.102x |
+
+Windfall is higher in 44 of 48 half-hours. A steady proportion across the whole day, rather than one window or one event, is the shape a difference in which units are counted would make. It is the same direction and similar size as 13 June's 1.168x, which 015 read as Windfall's 112-unit list now outnumbering the comparator's on constrained days. **That is still a plausible reading, not a demonstrated one.** Demonstrating it means splitting Windfall's day by unit and finding the units the monitor doesn't count.
+
+**The full table**, re-run with this day added: mean 1.081x, spread 0.343. The four ordinary days still agree within 2% or rounding; both heavily constrained days sit 10–17% high; 23 July is still 014's gap.
+
+**Two things seen in passing:**
+- From 09:00 to 13:30 the monitor's values alternate low and high (1,772 MWh at 10:00, 2,068 at 10:30) where Windfall's are smooth. These are the only half-hours where the monitor reads higher. It looks like instructions landing in the neighbouring period, which moves volume between half-hours without changing the day.
+- 26 October 2025, a clocks-back day, has 44 rows in the monitor's history where it should have 50. Not a day Windfall has used, but one to avoid as a reference.
+
+**What was rejected:** treating 1.102x as confirming 015's unit-scope reading (two constrained days sharing a direction is a pattern, not a cause); reading the day's total off the monitor's page alone (that is how 23 July's gap went unseen); keeping the monitor's CSV in the repo (reference data stays out of the public repo, as with the images).
+
+**Open:** the per-unit split that would turn the scope reading into a finding, for 13 June and 5 October together.
+
+## 059 — The cost estimate counted every unit's volume twice
+
+**Date:** 2026-10-06
+**Phase:** Post-launch
+**Decision:** `api/_lib/cost.ts` takes each unit's accepted volume per half hour as the largest of DISPTAV's four data types, not their sum, for both the held-back wind and the offers that price its replacement. All of the held-back volume is priced as replaced, at that half hour's accepted offers from generators outside Scotland, weighted by volume. This corrects 052, whose estimate ran at about 60% of the real figure, and the counting on between settlements (054), whose rate came from the same numbers. September 2026 goes from £253m to **£412m**: £48m paid to the tracked farms, £364m for the replacement (£211/MWh, was £119).
+
+**How it was found.** Robin Hawkes posted on 5 October that NESO's gas turn-up in September averaged £203/MWh and wind turn-down £30/MWh. Windfall's farms side agreed (£24/MWh net, £33 paid to farms only), but its replacement price was £119, and gas alone on its method only £127. Dropping the non-gas offers moved it by £7, so the cheap offers weren't the cause.
+
+**The cause.** DISPTAV reports each unit's accepted volume once per stage of the imbalance price calculation: Original, Original-Priced, Re-priced, Tagged. 052 read them as four shares of a whole ("that sum to the whole") and summed them. They aren't shares. For a unit turned up by 158 MWh, Original and Tagged both say 158. Summed over September's gas, the four types give 3,277 GWh against a true 1,728, so dividing cashflow by the sum roughly halved every unit's price. On the bid side the same sum put September's held-back wind at 2,019 GWh against a true 1,731.
+
+**052 also misread "Tagged".** It took the type as the volume "flagged as a system action: taken for the network". Elexon's glossary defines Tagged Acceptance Volume as the volume left out of the System Price stacks by De Minimis, Arbitrage, NIV or PAR tagging, a step in the imbalance price, not NESO's flag. The 93–96% "flagged" share 052 quoted was the tagged share, and the "replaced" volume it drove came out close to the whole by coincidence. NESO's own flag is BOALF's `soFlag`.
+
+**Checked from the ground up.** Every acceptance in September for Britain's 91 gas units and the 112 tracked wind units was rebuilt minute by minute: the declared output (PN), the acceptances in force chained in acceptance-number order, and each increment priced through the unit's own bid-offer bands (BOD), offer price going up and bid price coming down. Totals agree with Elexon's indicative cashflows (gas offers £390.4m against £387.7m), and the rebuilt volume agrees with the largest DISPTAV type (1,728.0 against 1,727.7 GWh), not the sum.
+
+| September 2026 | £/MWh | Volume |
+|---|---|---|
+| Gas turn-up, all | 226 | 1,728 GWh |
+| Gas turn-up flagged by NESO (`soFlag`) | 234 | 467 GWh |
+| Gas turn-up not flagged | 223 | 1,261 GWh |
+| Tracked wind turn-down, flagged (paid to farms) | 29 | 1,722 GWh |
+| Tracked wind turn-down, not flagged | 49 | 8 GWh |
+
+Robin's £203 sits within about 10% of the rebuilt £226 and the corrected proxy's £211; which actions his average covers isn't stated. His £30 for wind matches the rebuilt £29.
+
+**Why every held-back MWh counts as replaced, and not only the flagged gas.** 99.5% of the held-back wind is flagged, so all of it is a network action. But NESO flags only 27% of gas turn-up, because most of the energy that replaces constrained wind is bought as energy balancing, not as a locational action. The flag can't pick out the replacement, so the proxy stays what it was meant to be: the half hour's offers from outside Scotland (gas about 84% of their volume), with its price now right.
+
+**Days, before → after:** 28 September £3.26m → £5.78m; 29 September £14.05m → £24.64m (settled whole-day figures, re-run on 6 October). The rate the headline counts on at is now about £240 per MWh held back, not ~£129. Replacement goes from about 80% of the estimate (054's "£7.21m of £9.02m") to about 88%.
+
+**What was rejected:** pricing only the gas offers NESO flags (£234; a quarter of the volume, and not the replacement); summing Tagged alone (it matches the total in aggregate, but its meaning is the imbalance price's, and the largest type is what the per-action rebuild confirmed); shipping the per-action rebuild as the runtime method (31 days of BOALF, PN and BOD for 200 units to replace four Elexon files a day, when the corrected proxy is already within 7% of the rebuilt gas price).
+
+**Open:** 052's comparison of flagged English offers with all offers (medians £121 and £112) used the same halved prices and isn't re-run. 058's cross-check is unaffected: it measures volume through BOALF and PN, not DISPTAV.
+
+## 060 — The BMU list re-derived: 114 units, 12,809 MW
 
 **Date:** 2026-10-05
 **Decision:** Re-derive `SCOTTISH_WIND_BMUS` from the registry the same way 015 did (`bmUnitType` T, `fuelType` WIND, farm in Scotland or Scottish waters). 112 units and 13,105 MW become **114 units and 12,809 MW**: two units in, none out, eight capacities changed. The page's "13,105 MW installed" now reads **12,809 MW installed**, and the coverage line reads "114 units, 12,809 MW". Both are generated from `bmus.ts`, so only the list changed.
@@ -1734,5 +1795,7 @@ The total falls even though units were added. Most of the change moves towards R
 **Not added:** the other 68 T WIND units in the registry (WALNEY_4 is listed twice) are all English or Welsh, or in English waters: Dogger Bank, Sofia, Hornsea, Walney, Gwynt y Môr and others. No unit in the list left the registry or changed type.
 
 **Also moved with the list:** `SAMPLE_CURTAILMENT.method` (114 / 12,809.092), so sample-state screens don't print 13,105 beside a bar that says 12,809. The per-unit rows in that capture keep the capacities they were captured with. The comments in `sources.ts`, `map.css` and `farmCapacity.ts` that quote the figure were updated too.
+
+**For 058 and 059:** both ran on the 112-unit list. Neither is re-run here. A re-run of 5 October would now count `KLGLW-2` and `HAGHW-2` too, which pushes in the direction 058's open per-unit split is asking about. Whether they curtailed that day hasn't been checked.
 
 **Checks:** `farms:check` passes (still 76 farms). `scripts/probe-api.ts` runs live and reports "114 units, 12809.092 MW tracked". The dev page renders "12,809 MW installed". `npm run typecheck` fails, but only in `scripts/export-map-svg.ts`, which this change does not touch.
