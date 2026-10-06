@@ -5,9 +5,9 @@ import { spawn } from 'node:child_process';
 const PORT = 5197;
 const BASE = `http://localhost:${PORT}`;
 
-function waitForServer(url, timeoutMs = 30000) {
+function waitForServer(url: string, timeoutMs = 30000) {
   const deadline = Date.now() + timeoutMs;
-  return new Promise((resolve, reject) => {
+  return new Promise<void>((resolve, reject) => {
     const tryOnce = () => {
       fetch(url).then(() => resolve()).catch(() => {
         if (Date.now() > deadline) reject(new Error('timeout'));
@@ -28,9 +28,10 @@ try {
   await page.waitForTimeout(20000);
 
   const result = await page.evaluate(() => {
-    const svg = document.querySelector('.map__svg');
-    const canvas = document.querySelector('.map__canvas');
-    const clone = svg.cloneNode(true);
+    const svg = document.querySelector<SVGSVGElement>('.map__svg');
+    const canvas = document.querySelector<HTMLCanvasElement>('.map__canvas');
+    if (!svg || !canvas) throw new Error('The map has no .map__svg or .map__canvas');
+    const clone = svg.cloneNode(true) as SVGSVGElement;
 
     // The clone carries only class names, not the stylesheet that gives
     // those classes meaning — bake every relevant computed style in as
@@ -78,6 +79,7 @@ try {
 
   await browser.close();
 
+  if (!result.viewBox) throw new Error('The map SVG has no viewBox');
   const [, , w, h] = result.viewBox.split(' ');
   const svgDoc = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
   <rect width="100%" height="100%" fill="#e9e5dc"/>

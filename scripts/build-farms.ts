@@ -351,11 +351,11 @@ const HAND_MATCHES: Record<string, HandMatch> = {
     source: "Parent 'Hadyard Hill' (Operational, 120 MW) used; the extension row is Application Withdrawn.",
   },
   'Hagshaw Hill': {
-    refs: ['3301'],
+    refs: ['7456'],
     source:
-      "Four REPD rows share this name; the plain, non-extension, non-repowering 'Hagshaw Hill Wind " +
-      "Farm' row is used per the extension rule, even though REPD's own capacity for it (7.8 MW) " +
-      'looks stale against the tracked unit (30.258 MW) — its coordinate is the original site either way.',
+      "REPD's 'Hagshaw Hill (Repowering)' row (Operational November 2025, 84 MW) is used: both tracked " +
+      "units are registered as 'Hagshaw Repower' 1 and 2 (30.258 + 51.3 MW), so the repowered site is " +
+      "the farm, not the 1995 'Hagshaw Hill Wind Farm' rows (7.8 MW) or the 2008 extension.",
   },
   Harestanes: {
     refs: ['4119'],
