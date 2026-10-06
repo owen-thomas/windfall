@@ -16,8 +16,10 @@
  * difference between method families rather than an error in ours.
  *
  * Reference figures below were read from the monitor's date picker on
- * 24 July 2026. It publishes to 0.1 GWh, which sets the floor on how tightly
- * any agreement here can be claimed.
+ * 24 July 2026, and 5 October on 6 October 2026, checked against the
+ * half-hourly series in its CSV download (DECISIONS 058). It publishes to
+ * 0.1 GWh, which sets the floor on how tightly any agreement here can be
+ * claimed.
  *
  * Deliberately not automated against their API: this is a one-off validation
  * feeding the method note, not a runtime dependency. Windfall must never need
@@ -52,6 +54,10 @@ const REFERENCES: Reference[] = [
   // 1,696.5 MWh, which is 84% of the disagreement. Comparing the published
   // totals therefore overstates the gap; see DECISIONS 014.
   { date: '2026-07-23', monitorGWh: 7.2, note: 'comparator missing 19:00 and 19:30' },
+  // The heaviest day yet, at roughly twice 13 June. The monitor's series is
+  // complete (48 half-hours summing to 96.18 GWh) and Windfall reads higher
+  // in 44 of them, so the gap is spread through the day; see DECISIONS 058.
+  { date: '2026-10-05', monitorGWh: 96.2, note: 'heaviest constraint, series complete' },
 ];
 
 /** The availability-based figure from DECISIONS 002, for contrast. */

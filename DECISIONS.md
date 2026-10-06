@@ -1705,3 +1705,32 @@ The flow's ink was the flow page's own blue (`LIGHT_PALETTE`, HSL 216/85/42) and
 **Trade-offs, disclosed:** on the ground, `#5B64FF` is 3.61:1, under AA for "Held back 2,228 MW" at 16px regular; the gas warnings as text are 2.96:1 and gas fills sit just under the 3:1 graphic line. The selected farm is now the flow's own colour, so the selection reads only through everything else dimming.
 
 **Open:** the dark theme is unchanged. (`og-windfall.png` was re-exported in the new palette by Owen.)
+
+## 058 — 5 October, the heaviest day yet, reads 10% above the monitor all day long
+
+**Decision:** 5 October 2026 joins the cross-check as a second heavily constrained reference, next to 13 June. Windfall reads 106.00 GWh and the Wind Curtailment Monitor 96.2 GWh: 1.102x. The gap is recorded, not resolved.
+
+**The day.** Roughly twice 13 June. Curtailment peaked in the first half hour at 3,192.5 MWh across 65 units (about 6.4 GW held off, near half of the 13,105 MW tracked), eased through the day and was still 733 MWh at 23:30. Seagreen, Moray West, Moray East, Viking, Neart Na Gaoithe and Beatrice carry 72% of it.
+
+**Ruling out 014's cause first.** A missing half hour or two (the 23 July failure) would only need three overnight periods to make 9.8 GWh, so the monitor's own series was checked before anything was attributed. Its CSV download has all 48 half-hours for the day, no gaps or duplicates, summing to 96.18 GWh against the 96.2 on its page. Its times are local: 29 March 2026 has 46 rows, as a clocks-forward day should, so its periods line up with Windfall's.
+
+**Localising, per 014.** Held against Windfall half-hour by half-hour, the gap is spread through the day:
+
+| Window | Windfall | Monitor | Gap | Ratio |
+|---|---|---|---|---|
+| 00:00–08:30 | 51.67 GWh | 47.02 GWh | +4.65 GWh | 1.099x |
+| 09:00–17:30 | 40.05 GWh | 36.11 GWh | +3.94 GWh | 1.109x |
+| 18:00–23:30 | 14.28 GWh | 13.05 GWh | +1.23 GWh | 1.094x |
+| Day | 106.00 GWh | 96.18 GWh | +9.82 GWh | 1.102x |
+
+Windfall is higher in 44 of 48 half-hours. A steady proportion across the whole day, rather than one window or one event, is the shape a difference in which units are counted would make. It is the same direction and similar size as 13 June's 1.168x, which 015 read as Windfall's 112-unit list now outnumbering the comparator's on constrained days. **That is still a plausible reading, not a demonstrated one.** Demonstrating it means splitting Windfall's day by unit and finding the units the monitor doesn't count.
+
+**The full table**, re-run with this day added: mean 1.081x, spread 0.343. The four ordinary days still agree within 2% or rounding; both heavily constrained days sit 10–17% high; 23 July is still 014's gap.
+
+**Two things seen in passing:**
+- From 09:00 to 13:30 the monitor's values alternate low and high (1,772 MWh at 10:00, 2,068 at 10:30) where Windfall's are smooth. These are the only half-hours where the monitor reads higher. It looks like instructions landing in the neighbouring period, which moves volume between half-hours without changing the day.
+- 26 October 2025, a clocks-back day, has 44 rows in the monitor's history where it should have 50. Not a day Windfall has used, but one to avoid as a reference.
+
+**What was rejected:** treating 1.102x as confirming 015's unit-scope reading (two constrained days sharing a direction is a pattern, not a cause); reading the day's total off the monitor's page alone (that is how 23 July's gap went unseen); keeping the monitor's CSV in the repo (reference data stays out of the public repo, as with the images).
+
+**Open:** the per-unit split that would turn the scope reading into a finding, for 13 June and 5 October together.
